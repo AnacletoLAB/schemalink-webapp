@@ -201,6 +201,7 @@ export default class DetailInspector extends Component<
 
       fields.push(
         <CaptionInspector
+          captions={graph.nodes.map((node) => node.caption)}
           key=""
           value={value}
           onSaveCaption={(caption: string) => onSaveCaption(selection, caption)}
