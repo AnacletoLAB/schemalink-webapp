@@ -21,12 +21,13 @@ export class CaptionInspector extends Component<CaptionInspectorProps> {
     const fieldValue = value || '';
     const placeholder = value === undefined ? '<multiple values>' : null;
     const error = (value: string) =>
-      (value === '' && { content: `${label} cannot be empty` }) ||
-      (captions.filter(
-        (caption) => caption.toLowerCase() === value.toLowerCase()
-      ).length > 1 && {
-        content: `${label} must be unique`,
-      });
+      value !== undefined &&
+      ((value === '' && { content: `${label} cannot be empty` }) ||
+        (captions.filter(
+          (caption) => caption.toLowerCase() === value.toLowerCase()
+        ).length > 1 && {
+          content: `${label} must be unique`,
+        }));
 
     const textBox = (
       <Input
