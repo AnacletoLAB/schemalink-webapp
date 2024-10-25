@@ -39,10 +39,16 @@ type LinkMLGraph = {
 
 export const fromGraph = (
   name: string,
-  { description, nodes, relationships }: Graph,
+  { description, nodes: maybeNodes, relationships: maybeRelationships }: Graph,
   spiresType: SpiresType = SpiresType.RE
 ): LinkML => {
+  const nodes = maybeNodes.filter(({ caption }) => caption);
   const findNode = findNodeFactory(nodes);
+  const relationships = maybeRelationships.filter(({ fromId, toId }) => {
+    const from = findNode(fromId);
+    const to = findNode(toId);
+    return from && to;
+  });
   const findRelationshipFromNode =
     findRelationshipsFromNodeFactory(relationships);
   const toRelationshipClassName = toRelationshipClassNameFactory(nodes);
