@@ -78,6 +78,7 @@ export const createNode =
       newNodeId: nextAvailableId(getPresentGraph(getState()).nodes),
       newNodePosition,
       caption: '',
+      description: '',
       style: {},
     });
   };
@@ -119,6 +120,7 @@ export const createNodesAndRelationships =
       targetNodeIds,
       targetNodePositions,
       caption: '',
+      description: '',
       style: {},
     });
   };
