@@ -47,7 +47,7 @@ export const fromGraph = (
   const relationships = maybeRelationships.filter(({ fromId, toId }) => {
     const from = findNode(fromId);
     const to = findNode(toId);
-    return from && to;
+    return from && to && from.caption !== to.caption;
   });
   const findRelationshipFromNode =
     findRelationshipsFromNodeFactory(relationships);
