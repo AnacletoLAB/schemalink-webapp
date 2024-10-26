@@ -21,6 +21,7 @@ import { linkToGoogleFontsCss } from '@neo4j-arrows/graphics';
 import { handleImportMessage } from '../reducers/storage';
 
 import './App.css';
+import ContextMenu from '../components/ContextMenu';
 
 export interface AppProps {
   inspectorVisible: boolean;
@@ -122,6 +123,7 @@ class App extends Component<AppProps> {
           {inspector}
         </section>
         <FooterContainer />
+        <ContextMenu />
       </div>
     );
   }

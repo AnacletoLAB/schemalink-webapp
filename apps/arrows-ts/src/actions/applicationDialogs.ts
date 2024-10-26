@@ -1,3 +1,5 @@
+import { Point } from '@neo4j-arrows/model';
+
 export const showExportDialog = () => {
   return {
     type: 'SHOW_EXPORT_DIALOG',
@@ -9,6 +11,15 @@ export const hideExportDialog = () => {
     type: 'HIDE_EXPORT_DIALOG',
   };
 };
+
+export const showContextMenu = (canvasPosition: Point) => ({
+  type: 'SHOW_CONTEXT_MENU',
+  canvasPosition,
+});
+
+export const hideContextMenu = () => ({
+  type: 'HIDE_CONTEXT_MENU',
+});
 
 export const showSaveAsDialog = () => {
   return {
