@@ -9,6 +9,7 @@ import {
   Message,
 } from 'semantic-ui-react';
 import { GptDialog } from './GptDialog';
+import { validateLinkml } from '@neo4j-arrows/api';
 
 interface ImportModalProps {
   onCancel: () => void;
@@ -73,33 +74,28 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
         content: 'Importing might lead to unexpected results',
       },
     });
-    await fetch(import.meta.env.VITE_VALIDATE_LINKML_ENDPOINT, {
-      body: text,
-      method: 'POST',
-    })
-      .then((response) =>
-        response.status === 200
-          ? response.json().then((data) =>
-              this.setState({
-                messageProps: {
-                  icon: data.length ? 'cancel' : 'checkmark',
-                  positive: !data.length,
-                  negative: data.length,
-                  header: `This is ${
-                    data.length ? 'not ' : ''
-                  }a valid LinkML schema`,
-                  content: data.length
-                    ? data[0].message
-                    : 'You can import safely',
-                },
-              })
-            )
-          : this.setState({
+    await validateLinkml(text, import.meta.env.VITE_VALIDATE_LINKML_ENDPOINT)
+      .then(({ validationIssues, error }) =>
+        error
+          ? this.setState({
               messageProps: {
                 icon: 'cancel',
                 negative: true,
                 header: 'Could not validate the LinkML schema',
-                content: `The server returned status ${response.status}`,
+                content: error,
+              },
+            })
+          : this.setState({
+              messageProps: {
+                icon: validationIssues.length ? 'cancel' : 'checkmark',
+                positive: !validationIssues.length,
+                negative: validationIssues.length,
+                header: `This is ${
+                  validationIssues.length ? 'not ' : ''
+                }a valid LinkML schema`,
+                content: validationIssues.length
+                  ? validationIssues[0].message
+                  : 'You can import safely',
               },
             })
       )
