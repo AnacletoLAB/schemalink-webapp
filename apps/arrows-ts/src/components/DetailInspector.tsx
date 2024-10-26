@@ -29,6 +29,7 @@ import {
   Entity,
   Relationship,
   isRelationship,
+  Point,
 } from '@neo4j-arrows/model';
 import { renderCounters } from './EntityCounters';
 import PropertyTable from './PropertyTable';
@@ -38,6 +39,10 @@ import { CaptionInspector } from './CaptionInspector';
 import { OntologyState } from '../reducers/ontologies';
 import { ImageInfo } from '@neo4j-arrows/graphics';
 import _ from 'lodash';
+import { GptDialog, GptState } from './GptDialog';
+import { fromGraph, LinkML, SpiresType, toGraph } from '@neo4j-arrows/linkml';
+import yaml from 'js-yaml';
+import { edit } from '@neo4j-arrows/api';
 
 interface DetailInspectorProps {
   cachedImages: Record<string, ImageInfo>;
@@ -94,9 +99,12 @@ interface DetailInspectorProps {
     required: boolean
   ) => void;
   onSaveDescription: (selection: EntitySelection, description: string) => void;
+  importNodesAndRelationships: (graph: Graph) => void;
+  clearGraph: () => void;
+  separation: number;
 }
 
-interface DetailInspectorState {
+interface DetailInspectorState extends GptState {
   additionalExamplesOptions: string[];
 }
 
@@ -106,18 +114,27 @@ export default class DetailInspector extends Component<
 > {
   constructor(props: DetailInspectorProps) {
     super(props);
-    this.state = { additionalExamplesOptions: [] };
+    this.state = {
+      additionalExamplesOptions: [],
+      prompt: '',
+      showGpt: false,
+      gptLoading: false,
+    };
   }
 
   captionInput: any;
 
-  shouldComponentUpdate(nextProps: DetailInspectorProps) {
+  shouldComponentUpdate(
+    nextProps: DetailInspectorProps,
+    nextState: DetailInspectorState
+  ) {
     return (
       nextProps.inspectorVisible &&
       (graphsDifferInMoreThanPositions(this.props.graph, nextProps.graph) ||
         this.props.selection !== nextProps.selection ||
         this.props.ontologies !== nextProps.ontologies ||
-        this.props.cachedImages !== nextProps.cachedImages)
+        this.props.cachedImages !== nextProps.cachedImages ||
+        this.state.gptLoading !== nextState.gptLoading)
     );
   }
 
@@ -162,6 +179,9 @@ export default class DetailInspector extends Component<
       onSavePropertyMultivalued,
       onSavePropertyRequired,
       onSaveDescription,
+      importNodesAndRelationships,
+      clearGraph,
+      separation,
     } = this.props;
     const fields = [];
 
@@ -171,6 +191,75 @@ export default class DetailInspector extends Component<
       nodes: selectedNodes.length > 0,
       relationships: relationships.length > 0,
     };
+
+    const onGenerate = async () => {
+      this.setState({ gptLoading: true });
+      const fullSchema = graph;
+      const selectedSchema: Graph = {
+        description: graph.description,
+        relationships,
+        nodes: selectedNodes,
+        style: {},
+      };
+      const fullLinkml = yaml.dump(
+        fromGraph('', fullSchema, SpiresType.LINKML)
+      );
+      const selectedLinkml = yaml.dump(
+        fromGraph('', selectedSchema, SpiresType.LINKML)
+      );
+
+      edit(
+        fullLinkml,
+        selectedLinkml,
+        this.state.prompt,
+        import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT
+      )
+        .then((returnedSchema) => {
+          const returnedGraph = toGraph(
+            yaml.load(returnedSchema) as LinkML,
+            ontologies.ontologies
+          );
+          const returnedNodes = returnedGraph.nodes.map((node, index) => ({
+            position: new Point(
+              separation * Math.cos(360 * index),
+              separation * Math.sin(360 * index)
+            ),
+            style: {},
+            ...fullSchema.nodes.find(
+              (n) => n.caption.toLowerCase() === node.caption.toLowerCase()
+            ),
+            ...node,
+          }));
+          const returnedNodesIds = returnedNodes.map(({ id }) => id);
+          const returnedRelationships = returnedGraph.relationships
+            .filter(
+              ({ fromId, toId }) =>
+                returnedNodesIds.includes(fromId) &&
+                returnedNodesIds.includes(toId)
+            )
+            .map((relationship) => ({
+              style: {},
+              ...relationship,
+            }));
+
+          clearGraph();
+          importNodesAndRelationships({
+            nodes: returnedNodes,
+            relationships: returnedRelationships,
+            description: graph.description,
+            style: graph.style,
+          });
+        })
+        .finally(() => this.setState({ gptLoading: false }));
+    };
+
+    fields.push(
+      <GptDialog
+        loading={this.state.gptLoading}
+        onChange={(event) => this.setState({ prompt: event.target.value })}
+        onClick={onGenerate}
+      />
+    );
 
     fields.push(
       <Divider key="DataDivider" horizontal clearing style={{ paddingTop: 50 }}>
