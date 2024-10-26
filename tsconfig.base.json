@@ -15,6 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@neo4j-arrows/api": ["libs/api/src/index.ts"],
       "@neo4j-arrows/graphics": ["libs/graphics/src/index.ts"],
       "@neo4j-arrows/linkml": ["libs/linkml/src/index.ts"],
       "@neo4j-arrows/model": ["libs/model/src/index.ts"],
