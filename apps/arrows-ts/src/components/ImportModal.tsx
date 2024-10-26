@@ -8,7 +8,7 @@ import {
   TextArea,
   Message,
 } from 'semantic-ui-react';
-import { GptDialog } from './GptDialog';
+import { GptDialog, GptState } from './GptDialog';
 import { validateLinkml } from '@neo4j-arrows/api';
 
 interface ImportModalProps {
@@ -22,11 +22,8 @@ interface ImportModalProps {
   ) => { errorMessage?: string };
 }
 
-interface ImportModalState {
+interface ImportModalState extends GptState {
   errorMessage?: string;
-  prompt: string;
-  showGpt: boolean;
-  gptLoading: boolean;
   text: string;
   messageProps: MessageItemProps;
 }

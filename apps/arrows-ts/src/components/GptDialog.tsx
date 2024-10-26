@@ -1,5 +1,11 @@
 import { Button, Segment, TextArea } from 'semantic-ui-react';
 
+export interface GptState {
+  prompt: string;
+  showGpt: boolean;
+  gptLoading: boolean;
+}
+
 interface GtpDialogProps {
   loading: boolean;
   onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
