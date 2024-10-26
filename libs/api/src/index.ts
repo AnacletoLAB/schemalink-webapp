@@ -8,6 +8,24 @@ export const generate = async (
   }).then((response) => response.text());
 };
 
+export const edit = async (
+  linkmlSchema: string,
+  linkmlSelection: string,
+  prompt: string,
+  url: string
+): Promise<string> => {
+  const fullPrompt = `
+Given this LinkML schema\n\n
+${linkmlSchema}\n\n
+Given this selection of classes in that schema\n\n
+${linkmlSelection}\n\n
+Perform this operation on the selection\n\n
+${prompt}\n\n
+Return an updated version of the full LinkML schema`;
+
+  return generate(fullPrompt, url);
+};
+
 interface ValidationIssue {
   message: string;
 }
