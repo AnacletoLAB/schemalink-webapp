@@ -260,7 +260,7 @@ export const mouseMove = (canvasPosition) => {
 
     if (!preventDefault) {
       switch (mouse.dragType) {
-        case 'NONE':
+        case 'NONE': {
           const item = visualGraph.entityAtPoint(graphPosition);
           if (item && item.entityType === 'nodeRing') {
             if (
@@ -275,6 +275,7 @@ export const mouseMove = (canvasPosition) => {
             }
           }
           break;
+        }
 
         case 'HANDLE':
         case 'HANDLE_ROTATE':
@@ -350,7 +351,7 @@ export const mouseUp = () => {
         case 'NODE':
           dispatch(moveNodesEndDrag(getPositionsOfSelectedNodes(state)));
           break;
-        case 'NODE_RING':
+        case 'NODE_RING': {
           const dragToCreate = state.gestures.dragToCreate;
 
           if (dragToCreate.sourceNodeId) {
@@ -382,6 +383,7 @@ export const mouseUp = () => {
             }
           }
           break;
+        }
       }
     }
 

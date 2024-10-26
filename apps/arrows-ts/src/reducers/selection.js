@@ -65,7 +65,7 @@ export default function selection(
         entities: state.entities,
       };
 
-    case 'TOGGLE_SELECTION':
+    case 'TOGGLE_SELECTION': {
       const entities = toggleEntities(
         state.entities,
         action.entities,
@@ -84,6 +84,7 @@ export default function selection(
         editing,
         entities,
       };
+    }
 
     case 'CLEAR_SELECTION':
     case 'DELETE_NODES_AND_RELATIONSHIPS':
