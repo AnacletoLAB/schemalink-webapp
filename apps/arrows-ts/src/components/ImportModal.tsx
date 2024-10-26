@@ -9,7 +9,7 @@ import {
   Message,
 } from 'semantic-ui-react';
 import { GptDialog, GptState } from './GptDialog';
-import { validateLinkml } from '@neo4j-arrows/api';
+import { generate, validateLinkml } from '@neo4j-arrows/api';
 
 interface ImportModalProps {
   onCancel: () => void;
@@ -120,15 +120,13 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
 
   generate = async () => {
     this.setState({ gptLoading: true });
-    await fetch(import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT, {
-      body: this.state.prompt,
-      method: 'POST',
-    })
-      .then((response) => {
-        response.text().then((text) => {
-          this.setState({ text });
-          this.validateText(text);
-        });
+    await generate(
+      this.state.prompt,
+      import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT
+    )
+      .then((text) => {
+        this.setState({ text });
+        this.validateText(text);
       })
       .finally(() => this.setState({ gptLoading: false }));
   };
