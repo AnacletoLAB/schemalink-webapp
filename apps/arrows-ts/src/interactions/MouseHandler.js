@@ -1,9 +1,11 @@
 import {
   doubleClick,
   endDrag,
+  leftClick,
   mouseDown,
   mouseMove,
   mouseUp,
+  rightClick,
   wheel,
 } from '../actions/mouse';
 import { Point, Vector } from '@neo4j-arrows/model';
@@ -22,6 +24,11 @@ export default class MouseHandler {
       'mouseleave',
       this.handleMouseLeave.bind(this)
     );
+    this.canvas.addEventListener(
+      'contextmenu',
+      this.handleRightClick.bind(this)
+    );
+    this.canvas.addEventListener('click', this.handleLeftClick.bind(this));
   }
 
   setDispatch(dispatch) {
@@ -37,6 +44,15 @@ export default class MouseHandler {
       )
     );
     evt.preventDefault();
+  }
+
+  handleRightClick(evt) {
+    this.dispatch(rightClick(this.canvasPosition(evt)));
+    evt.preventDefault();
+  }
+
+  handleLeftClick(evt) {
+    this.dispatch(leftClick(this.canvasPosition(evt)));
   }
 
   handleDoubleClick(evt) {

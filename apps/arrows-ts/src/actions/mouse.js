@@ -12,6 +12,7 @@ import {
   tryMoveHandle,
   tryMoveNode,
 } from './graph';
+import { hideContextMenu, showContextMenu } from './applicationDialogs';
 import { adjustViewport } from './viewTransformation';
 import { activateRing, deactivateRing, tryDragRing } from './dragToCreate';
 import { selectItemsInMarquee, setMarquee } from './selectionMarquee';
@@ -131,6 +132,21 @@ export const doubleClick = (canvasPosition) => {
     if (item) {
       dispatch(activateEditing(item));
     }
+  };
+};
+
+export const rightClick = (canvasPosition) => {
+  return function (dispatch, getState) {
+    const { selection } = getState();
+    if (selection.entities.length > 0) {
+      dispatch(showContextMenu(canvasPosition));
+    }
+  };
+};
+
+export const leftClick = (canvasPosition) => {
+  return function (dispatch, getState) {
+    dispatch(hideContextMenu(canvasPosition));
   };
 };
 
