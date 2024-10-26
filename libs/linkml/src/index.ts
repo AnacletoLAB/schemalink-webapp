@@ -28,7 +28,7 @@ import {
 import { nodeToClass } from './lib/nodes';
 import { toPrefixes } from './lib/ontologies';
 
-export { SpiresType } from './lib/types';
+export * from './lib/types';
 
 type LinkMLNode = Omit<Node, 'style' | 'position'>;
 type LinkMLRelationship = Omit<Relationship, 'style'>;
