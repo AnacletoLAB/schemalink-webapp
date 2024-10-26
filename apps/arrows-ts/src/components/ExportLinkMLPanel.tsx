@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { Form, Icon, TextArea } from 'semantic-ui-react';
 import { Base64 } from 'js-base64';
+import { genPydantic } from '@neo4j-arrows/api';
 
 interface ExportLinkMLPanelProps {
   diagramName: string;
@@ -11,11 +12,10 @@ class ExportLinkMLPanel extends Component<ExportLinkMLPanelProps> {
   render() {
     const { diagramName, linkMLString } = this.props;
     const handleDownloadPydantic = async () => {
-      const response = await fetch(import.meta.env.VITE_GEN_PYDANTIC_ENDPOINT, {
-        body: linkMLString,
-        method: 'POST',
-      });
-      const blob = await response.blob();
+      const blob = await genPydantic(
+        linkMLString,
+        import.meta.env.VITE_GEN_PYDANTIC_ENDPOINT
+      );
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
