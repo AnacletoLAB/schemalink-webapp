@@ -10,16 +10,19 @@ export const generate = async (
 
 export const edit = async (
   linkmlSchema: string,
-  linkmlSelection: string,
+  linkmlSelection: string | null,
   prompt: string,
   url: string
 ): Promise<string> => {
   const fullPrompt = `
 Given this LinkML schema\n\n
 ${linkmlSchema}\n\n
-Given this selection of classes in that schema\n\n
-${linkmlSelection}\n\n
-Perform this operation on the selection\n\n
+${
+  linkmlSelection
+    ? `Given this selection of classes in that schema\n\n${linkmlSelection}\n\n`
+    : ''
+}
+Perform this operation\n\n
 ${prompt}\n\n
 Return an updated version of the full LinkML schema`;
 
