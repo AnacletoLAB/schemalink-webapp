@@ -137,10 +137,7 @@ export const doubleClick = (canvasPosition) => {
 
 export const rightClick = (canvasPosition) => {
   return function (dispatch, getState) {
-    const { selection } = getState();
-    if (selection.entities.length > 0) {
-      dispatch(showContextMenu(canvasPosition));
-    }
+    dispatch(showContextMenu(canvasPosition));
   };
 };
 

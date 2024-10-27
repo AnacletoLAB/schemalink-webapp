@@ -58,9 +58,10 @@ class ContextMenu extends Component<ContextMenuProps, GptState> {
       style: {},
     };
     const fullLinkml = yaml.dump(fromGraph('', fullSchema, SpiresType.LINKML));
-    const selectedLinkml = yaml.dump(
-      fromGraph('', selectedSchema, SpiresType.LINKML)
-    );
+    const selectedLinkml =
+      this.props.selection.entities.length > 0
+        ? yaml.dump(fromGraph('', selectedSchema, SpiresType.LINKML))
+        : null;
 
     edit(
       fullLinkml,
