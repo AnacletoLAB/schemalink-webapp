@@ -28,6 +28,7 @@ import {
 import { nodeToClass } from './lib/nodes';
 import { toPrefixes } from './lib/ontologies';
 
+export * from './lib/naming';
 export * from './lib/types';
 
 type LinkMLNode = Omit<Node, 'style' | 'position'>;
