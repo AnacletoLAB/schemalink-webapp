@@ -47,6 +47,7 @@ enum Selection {
 
 interface ActionKind {
   action?: Action;
+  label?: string;
   commandKind: CommandKind;
 }
 
@@ -56,8 +57,13 @@ const selectionToActions: Record<Selection, Record<Method, ActionKind[]>> = {
       {
         action: Action.ASSOCIATION_RELATIONSHIP,
         commandKind: CommandKind.AddClassAssociatedToClass,
+        label: 'Class associated to',
       },
-      { action: Action.CLASS, commandKind: CommandKind.AddClassSimilarToClass },
+      {
+        action: Action.CLASS,
+        commandKind: CommandKind.AddClassSimilarToClass,
+        label: 'Class similar to',
+      },
     ],
     [Method.FIX]: [
       { action: Action.CLASS_NAME, commandKind: CommandKind.FixClassName },
@@ -68,6 +74,7 @@ const selectionToActions: Record<Selection, Record<Method, ActionKind[]>> = {
       {
         action: Action.CLASS,
         commandKind: CommandKind.AddClassesSimilarToEntities,
+        label: 'Classes similar to',
       },
     ],
     [Method.FIX]: [],
@@ -150,9 +157,9 @@ const ContextMenu = ({
             actions.length > 1 ? (
               <Dropdown item text={method}>
                 <DropdownMenu>
-                  {actions.map(({ action, commandKind }) => (
+                  {actions.map(({ action, commandKind, label }) => (
                     <DropdownItem
-                      text={action}
+                      text={label || action}
                       onClick={() => {
                         const startingPrompt = computePrompt({
                           kind: commandKind,
@@ -174,7 +181,9 @@ const ContextMenu = ({
             ) : (
               <MenuItem
                 name={`${method}${
-                  actions[0].action ? ` ${actions[0].action}` : ''
+                  actions[0].action
+                    ? ` ${actions[0].label || actions[0].action}`
+                    : ''
                 }`}
                 onClick={() => {
                   const startingPrompt = computePrompt({
