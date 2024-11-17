@@ -29,6 +29,7 @@ import { nodeToClass } from './lib/nodes';
 import { toPrefixes } from './lib/ontologies';
 
 export * from './lib/types';
+export * from './lib/naming';
 
 type LinkMLNode = Omit<Node, 'style' | 'position'>;
 type LinkMLRelationship = Omit<Relationship, 'style'>;

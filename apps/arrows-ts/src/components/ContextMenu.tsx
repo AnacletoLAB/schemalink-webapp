@@ -2,9 +2,94 @@ import React from 'react';
 import { connect } from 'react-redux';
 import { Dispatch } from 'redux';
 import { ArrowsState } from '../reducers';
-import { MenuItem, Menu } from 'semantic-ui-react';
-import { EntitySelection, Graph } from '@neo4j-arrows/model';
+import {
+  Dropdown,
+  MenuItem,
+  Menu,
+  DropdownMenu,
+  DropdownItem,
+} from 'semantic-ui-react';
+import {
+  CommandKind,
+  EntitySelection,
+  Graph,
+  computePrompt,
+  selectedNodes,
+  selectedRelationships,
+} from '@neo4j-arrows/model';
 import { hideContextMenu, showGptModal } from '../actions/applicationDialogs';
+import {
+  SpiresType,
+  fromGraph,
+  toRelationshipClassNameFactory,
+} from '@neo4j-arrows/linkml';
+import yaml from 'js-yaml';
+
+enum Method {
+  ADD = 'Add',
+  FIX = 'Fix',
+}
+
+enum Action {
+  ASSOCIATION_RELATIONSHIP = 'Association Relationship',
+  CLASS = 'Class',
+  CLASS_ATTRIBUTE = 'Class Attribute',
+  CLASS_NAME = 'Class Name',
+}
+
+enum Selection {
+  ALL = 'All',
+  CLASS = 'Class',
+  MULTIPLE = 'Multiple',
+  NONE = 'None',
+  RELATIONSHIP = 'Relationship',
+}
+
+interface ActionKind {
+  action?: Action;
+  commandKind: CommandKind;
+}
+
+const selectionToActions: Record<Selection, Record<Method, ActionKind[]>> = {
+  [Selection.CLASS]: {
+    [Method.ADD]: [
+      {
+        action: Action.ASSOCIATION_RELATIONSHIP,
+        commandKind: CommandKind.AddClassAssociatedToClass,
+      },
+      { action: Action.CLASS, commandKind: CommandKind.AddClassSimilarToClass },
+    ],
+    [Method.FIX]: [
+      { action: Action.CLASS_NAME, commandKind: CommandKind.FixClassName },
+    ],
+  },
+  [Selection.MULTIPLE]: {
+    [Method.ADD]: [
+      {
+        action: Action.CLASS,
+        commandKind: CommandKind.AddClassesSimilarToEntities,
+      },
+    ],
+    [Method.FIX]: [],
+  },
+  [Selection.RELATIONSHIP]: {
+    [Method.ADD]: [
+      {
+        action: Action.CLASS_ATTRIBUTE,
+        commandKind: CommandKind.AddAttributeToRelationship,
+      },
+    ],
+    [Method.FIX]: [],
+  },
+  [Selection.ALL]: {
+    [Method.ADD]: [],
+    [Method.FIX]: [],
+  },
+  [Selection.NONE]: {
+    [Method.ADD]: [],
+    [Method.FIX]: [],
+  },
+};
 
 interface ContextMenuProps {
   open: boolean;
@@ -18,12 +103,37 @@ interface ContextMenuProps {
 }
 
 const ContextMenu = ({
+  diagramName,
+  graph,
   onClose,
   open,
   openGtpModal,
+  selection,
   x,
   y,
 }: ContextMenuProps) => {
+  const whichSelection = () => {
+    if (selection.entities.length === 0) {
+      return Selection.NONE;
+    }
+
+    if (selection.entities.length > 10) {
+      return Selection.ALL;
+    }
+
+    if (nodes.length && relationships.length) {
+      return Selection.MULTIPLE;
+    }
+
+    return nodes.length ? Selection.CLASS : Selection.RELATIONSHIP;
+  };
+
+  const nodes = selectedNodes(graph, selection);
+  const relationships = selectedRelationships(graph, selection);
+  const selectionType = whichSelection();
+  const entries = Object.entries(selectionToActions[selectionType]);
+  const toRelationshipClassName = toRelationshipClassNameFactory(nodes);
+
   return open ? (
     <div
       style={{
@@ -34,6 +144,53 @@ const ContextMenu = ({
       }}
     >
       <Menu vertical>
+        {entries
+          .filter(([method, actions]) => actions.length)
+          .map(([method, actions]) =>
+            actions.length > 1 ? (
+              <Dropdown item text={method}>
+                <DropdownMenu>
+                  {actions.map(({ action, commandKind }) => (
+                    <DropdownItem
+                      text={action}
+                      onClick={() => {
+                        const startingPrompt = computePrompt({
+                          kind: commandKind,
+                          nodes: nodes.map(({ caption }) => caption),
+                          relationships: relationships.map(
+                            toRelationshipClassName
+                          ),
+                          fullSchema: yaml.dump(
+                            fromGraph(diagramName, graph, SpiresType.LINKML)
+                          ),
+                        });
+                        openGtpModal(startingPrompt);
+                        onClose();
+                      }}
+                    />
+                  ))}
+                </DropdownMenu>
+              </Dropdown>
+            ) : (
+              <MenuItem
+                name={`${method}${
+                  actions[0].action ? ` ${actions[0].action}` : ''
+                }`}
+                onClick={() => {
+                  const startingPrompt = computePrompt({
+                    kind: actions[0].commandKind,
+                    nodes: nodes.map(({ caption }) => caption),
+                    relationships: relationships.map(toRelationshipClassName),
+                    fullSchema: yaml.dump(
+                      fromGraph(diagramName, graph, SpiresType.LINKML)
+                    ),
+                  });
+                  openGtpModal(startingPrompt);
+                  onClose();
+                }}
+              />
+            )
+          )}
         <MenuItem
           name={`Open GPT dialog`}
           onClick={() => {
@@ -49,6 +206,9 @@ const ContextMenu = ({
 const mapStateToProps = (state: ArrowsState) => {
   return {
     ...state.applicationDialogs.contextMenu,
+    graph: state.graph.present,
+    diagramName: state.diagramName,
+    selection: state.selection,
   };
 };
 
