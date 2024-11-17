@@ -12,6 +12,19 @@ export const hideExportDialog = () => {
   };
 };
 
+export const showGptModal = (startingPrompt?: string) => {
+  return {
+    type: 'SHOW_GPT_MODAL',
+    startingPrompt,
+  };
+};
+
+export const hideGptModal = () => {
+  return {
+    type: 'HIDE_GPT_MODAL',
+  };
+};
+
 export const showContextMenu = (canvasPosition: Point) => ({
   type: 'SHOW_CONTEXT_MENU',
   canvasPosition,

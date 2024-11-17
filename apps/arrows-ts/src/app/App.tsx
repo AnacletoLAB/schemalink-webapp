@@ -22,6 +22,9 @@ import { handleImportMessage } from '../reducers/storage';
 
 import './App.css';
 import ContextMenu from '../components/ContextMenu';
+import GptModal from '../components/GptModal';
+import { ArrowsState } from '../reducers';
+import { Dispatch } from 'redux';
 
 export interface AppProps {
   inspectorVisible: boolean;
@@ -124,6 +127,7 @@ class App extends Component<AppProps> {
         </section>
         <FooterContainer />
         <ContextMenu />
+        <GptModal />
       </div>
     );
   }
@@ -158,7 +162,7 @@ class App extends Component<AppProps> {
   }
 }
 
-const mapStateToProps = (state: any) => ({
+const mapStateToProps = (state: ArrowsState) => ({
   inspectorVisible: state.applicationLayout.inspectorVisible,
   canvasHeight: computeCanvasSize(state.applicationLayout).height,
   pickingFromGoogleDrive: state.storage.status === 'PICKING_FROM_GOOGLE_DRIVE',
@@ -169,7 +173,7 @@ const mapStateToProps = (state: any) => ({
   showImportDialog: state.applicationDialogs.showImportDialog,
 });
 
-const mapDispatchToProps = (dispatch: any) => {
+const mapDispatchToProps = (dispatch: Dispatch) => {
   return {
     onWindowResized: () =>
       dispatch(windowResized(window.innerWidth, window.innerHeight)),
