@@ -27,3 +27,4 @@ export * from './lib/guides/intervals';
 export * from './lib/guides/LineGuide';
 
 export * from './lib/Ontology';
+export * from './lib/Gpt';
