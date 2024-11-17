@@ -21,7 +21,6 @@ import {
   setPropertyMultivalued,
   setPropertyRequired,
   setDescription,
-  importNodesAndRelationships,
 } from '../actions/graph';
 import {
   loadOntologyExamplesRequest,
@@ -42,13 +41,10 @@ import {
   Cardinality,
   Entity,
   EntitySelection,
-  Graph,
   Ontology,
   RelationshipType,
 } from '@neo4j-arrows/model';
 import { ArrowsState } from '../reducers';
-import { newLocalStorageDiagram } from '../actions/storage';
-import { nodeSeparation } from '../actions/import';
 
 const mapStateToProps = (state: ArrowsState) => {
   const graph = getPresentGraph(state);
@@ -60,7 +56,6 @@ const mapStateToProps = (state: ArrowsState) => {
     selectedNodes: getSelectedNodes({ ...state, graph }),
     inspectorVisible: state.applicationLayout.inspectorVisible,
     ontologies,
-    separation: nodeSeparation(state),
   };
 };
 
@@ -181,12 +176,6 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     },
     onSaveDescription: (selection: EntitySelection, description: string) => {
       dispatch(setDescription(selection, description));
-    },
-    importNodesAndRelationships: (graph: Graph) => {
-      dispatch(importNodesAndRelationships(graph));
-    },
-    clearGraph: () => {
-      dispatch(newLocalStorageDiagram());
     },
   };
 };
