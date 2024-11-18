@@ -34,6 +34,7 @@ enum Method {
   ADD = 'Add',
   EXPLAIN = 'Explain',
   FIX = 'Fix',
+  DIVIDE_REIFY = 'Divide/Reify',
 }
 
 enum Action {
@@ -133,6 +134,7 @@ const ContextMenu = ({
           customCallback: explanationCallback,
         },
       ],
+      [Method.DIVIDE_REIFY]: [{ commandKind: CommandKind.DivideReifyClass }],
     },
     [Selection.MULTIPLE]: {
       [Method.ADD]: [
