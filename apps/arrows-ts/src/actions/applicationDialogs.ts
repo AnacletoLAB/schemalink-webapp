@@ -12,10 +12,14 @@ export const hideExportDialog = () => {
   };
 };
 
-export const showGptModal = (startingPrompt?: string) => {
+export const showGptModal = (
+  customCallback?: (text: string) => Promise<void>,
+  startingPrompt?: string
+) => {
   return {
     type: 'SHOW_GPT_MODAL',
     startingPrompt,
+    customCallback,
   };
 };
 

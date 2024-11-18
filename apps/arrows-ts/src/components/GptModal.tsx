@@ -28,6 +28,7 @@ export interface GptModalProps {
   open: boolean;
   separation: number;
   startingPrompt: string;
+  customCallback?: (text: string) => Promise<void>;
 }
 
 export const GptModal = ({
@@ -39,19 +40,16 @@ export const GptModal = ({
   open,
   separation,
   startingPrompt,
+  customCallback,
 }: GptModalProps) => {
   const [state, setState] = useState({
     prompt: '',
     loading: false,
   });
 
-  const onClick = async () => {
-    setState({ ...state, loading: true });
-    generate(
-      state.prompt !== '' ? state.prompt : startingPrompt,
-      import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT
-    )
-      .then((returnedSchema) => {
+  const defaultCallback = (text: string) =>
+    generate(text, import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT).then(
+      (returnedSchema) => {
         const returnedGraph = toGraph(
           yaml.load(returnedSchema) as LinkML,
           ontologies
@@ -86,11 +84,18 @@ export const GptModal = ({
           description: graph.description,
           style: graph.style,
         });
-      })
-      .finally(() => {
+      }
+    );
+
+  const onClick = async () => {
+    setState({ ...state, loading: true });
+    const callback = customCallback ?? defaultCallback;
+    callback(state.prompt !== '' ? state.prompt : startingPrompt).finally(
+      () => {
         setState({ prompt: '', loading: false });
         onClose();
-      });
+      }
+    );
   };
 
   return (

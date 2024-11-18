@@ -24,6 +24,7 @@ import {
   toRelationshipClassNameFactory,
 } from '@neo4j-arrows/linkml';
 import yaml from 'js-yaml';
+import { generate } from '@neo4j-arrows/api';
 
 enum Method {
   ADD = 'Add',
@@ -48,55 +49,9 @@ enum Selection {
 interface ActionKind {
   action?: Action;
   label?: string;
+  customCallback?: (text: string) => Promise<void>;
   commandKind: CommandKind;
 }
-
-const selectionToActions: Record<Selection, Record<Method, ActionKind[]>> = {
-  [Selection.CLASS]: {
-    [Method.ADD]: [
-      {
-        action: Action.ASSOCIATION_RELATIONSHIP,
-        commandKind: CommandKind.AddClassAssociatedToClass,
-        label: 'Class associated to',
-      },
-      {
-        action: Action.CLASS,
-        commandKind: CommandKind.AddClassSimilarToClass,
-        label: 'Class similar to',
-      },
-    ],
-    [Method.FIX]: [
-      { action: Action.CLASS_NAME, commandKind: CommandKind.FixClassName },
-    ],
-  },
-  [Selection.MULTIPLE]: {
-    [Method.ADD]: [
-      {
-        action: Action.CLASS,
-        commandKind: CommandKind.AddClassesSimilarToEntities,
-        label: 'Classes similar to',
-      },
-    ],
-    [Method.FIX]: [],
-  },
-  [Selection.RELATIONSHIP]: {
-    [Method.ADD]: [
-      {
-        action: Action.CLASS_ATTRIBUTE,
-        commandKind: CommandKind.AddAttributeToRelationship,
-      },
-    ],
-    [Method.FIX]: [],
-  },
-  [Selection.ALL]: {
-    [Method.ADD]: [],
-    [Method.FIX]: [],
-  },
-  [Selection.NONE]: {
-    [Method.ADD]: [],
-    [Method.FIX]: [],
-  },
-};
 
 interface ContextMenuProps {
   open: boolean;
@@ -106,7 +61,10 @@ interface ContextMenuProps {
   graph: Graph;
   selection: EntitySelection;
   onClose: () => void;
-  openGtpModal: (startingPrompt?: string) => void;
+  openGtpModal: (
+    customCallback?: (text: string) => Promise<void>,
+    startingPrompt?: string
+  ) => void;
 }
 
 const ContextMenu = ({
@@ -135,6 +93,53 @@ const ContextMenu = ({
     return nodes.length ? Selection.CLASS : Selection.RELATIONSHIP;
   };
 
+  const selectionToActions: Record<Selection, Record<Method, ActionKind[]>> = {
+    [Selection.CLASS]: {
+      [Method.ADD]: [
+        {
+          action: Action.ASSOCIATION_RELATIONSHIP,
+          commandKind: CommandKind.AddClassAssociatedToClass,
+          label: 'Class associated to',
+        },
+        {
+          action: Action.CLASS,
+          commandKind: CommandKind.AddClassSimilarToClass,
+          label: 'Class similar to',
+        },
+      ],
+      [Method.FIX]: [
+        { action: Action.CLASS_NAME, commandKind: CommandKind.FixClassName },
+      ],
+    },
+    [Selection.MULTIPLE]: {
+      [Method.ADD]: [
+        {
+          action: Action.CLASS,
+          commandKind: CommandKind.AddClassesSimilarToEntities,
+          label: 'Classes similar to',
+        },
+      ],
+      [Method.FIX]: [],
+    },
+    [Selection.RELATIONSHIP]: {
+      [Method.ADD]: [
+        {
+          action: Action.CLASS_ATTRIBUTE,
+          commandKind: CommandKind.AddAttributeToRelationship,
+        },
+      ],
+      [Method.FIX]: [],
+    },
+    [Selection.ALL]: {
+      [Method.ADD]: [],
+      [Method.FIX]: [],
+    },
+    [Selection.NONE]: {
+      [Method.ADD]: [],
+      [Method.FIX]: [],
+    },
+  };
+
   const nodes = selectedNodes(graph, selection);
   const relationships = selectedRelationships(graph, selection);
   const selectionType = whichSelection();
@@ -157,25 +162,27 @@ const ContextMenu = ({
             actions.length > 1 ? (
               <Dropdown item text={method}>
                 <DropdownMenu>
-                  {actions.map(({ action, commandKind, label }) => (
-                    <DropdownItem
-                      text={label || action}
-                      onClick={() => {
-                        const startingPrompt = computePrompt({
-                          kind: commandKind,
-                          nodes: nodes.map(({ caption }) => caption),
-                          relationships: relationships.map(
-                            toRelationshipClassName
-                          ),
-                          fullSchema: yaml.dump(
-                            fromGraph(diagramName, graph, SpiresType.LINKML)
-                          ),
-                        });
-                        openGtpModal(startingPrompt);
-                        onClose();
-                      }}
-                    />
-                  ))}
+                  {actions.map(
+                    ({ action, commandKind, label, customCallback }) => (
+                      <DropdownItem
+                        text={label || action}
+                        onClick={() => {
+                          const startingPrompt = computePrompt({
+                            kind: commandKind,
+                            nodes: nodes.map(({ caption }) => caption),
+                            relationships: relationships.map(
+                              toRelationshipClassName
+                            ),
+                            fullSchema: yaml.dump(
+                              fromGraph(diagramName, graph, SpiresType.LINKML)
+                            ),
+                          });
+                          openGtpModal(customCallback, startingPrompt);
+                          onClose();
+                        }}
+                      />
+                    )
+                  )}
                 </DropdownMenu>
               </Dropdown>
             ) : (
@@ -194,7 +201,7 @@ const ContextMenu = ({
                       fromGraph(diagramName, graph, SpiresType.LINKML)
                     ),
                   });
-                  openGtpModal(startingPrompt);
+                  openGtpModal(actions[0].customCallback, startingPrompt);
                   onClose();
                 }}
               />
@@ -226,8 +233,11 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     onClose: () => {
       dispatch(hideContextMenu());
     },
-    openGtpModal: (startingPrompt?: string) => {
-      dispatch(showGptModal(startingPrompt));
+    openGtpModal: (
+      customCallback?: (text: string) => Promise<void>,
+      startingPrompt?: string
+    ) => {
+      dispatch(showGptModal(customCallback, startingPrompt));
     },
   };
 };
