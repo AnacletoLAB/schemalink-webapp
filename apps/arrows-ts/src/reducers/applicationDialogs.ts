@@ -14,6 +14,11 @@ export type GptModalState = {
   customCallback?: (text: string) => Promise<void>;
 };
 
+export type GptExplanationModalState = {
+  open: boolean;
+  explanation: string;
+};
+
 export type ApplicationDialogsState = {
   showExportDialog: boolean;
   showSaveAsDialog: boolean;
@@ -21,6 +26,7 @@ export type ApplicationDialogsState = {
   showHelpDialog: boolean;
   contextMenu: ContextMenuState;
   gptModal: GptModalState;
+  gptExplanationModal: GptExplanationModalState;
 };
 
 interface ShowContextMenuAction extends Action<'SHOW_CONTEXT_MENU'> {
@@ -32,11 +38,17 @@ interface ShowGptModalAction extends Action<'SHOW_GPT_MODAL'> {
   customCallback?: (text: string) => Promise<void>;
 }
 
+interface ShowGptExplanationModalAction
+  extends Action<'SHOW_GPT_EXPLANATION_MODAL'> {
+  explanation: string;
+}
+
 type ApplicationDialogsAction =
   | Action<
       | 'SHOW_EXPORT_DIALOG'
       | 'HIDE_EXPORT_DIALOG'
       | 'HIDE_GPT_MODAL'
+      | 'HIDE_GPT_EXPLANATION_MODAL'
       | 'HIDE_CONTEXT_MENU'
       | 'SHOW_SAVE_AS_DIALOG'
       | 'HIDE_SAVE_AS_DIALOG'
@@ -46,7 +58,8 @@ type ApplicationDialogsAction =
       | 'HIDE_HELP_DIALOG'
     >
   | ShowContextMenuAction
-  | ShowGptModalAction;
+  | ShowGptModalAction
+  | ShowGptExplanationModalAction;
 
 export default function applicationDialogs(
   state: ApplicationDialogsState = {
@@ -54,6 +67,7 @@ export default function applicationDialogs(
     showSaveAsDialog: false,
     showImportDialog: false,
     gptModal: { open: false, startingPrompt: '' },
+    gptExplanationModal: { open: false, explanation: '' },
     contextMenu: { open: false, x: 0, y: 0 },
     showHelpDialog: !retrieveHelpDismissed(),
   },
@@ -89,6 +103,24 @@ export default function applicationDialogs(
           open: false,
           startingPrompt: '',
           customCallback: undefined,
+        },
+      };
+
+    case 'SHOW_GPT_EXPLANATION_MODAL':
+      return {
+        ...state,
+        gptExplanationModal: {
+          open: true,
+          explanation: action.explanation,
+        },
+      };
+
+    case 'HIDE_GPT_EXPLANATION_MODAL':
+      return {
+        ...state,
+        gptExplanationModal: {
+          open: false,
+          explanation: '',
         },
       };
 

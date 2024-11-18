@@ -29,6 +29,19 @@ export const hideGptModal = () => {
   };
 };
 
+export const showGptExplanationModal = (explanation: string) => {
+  return {
+    type: 'SHOW_GPT_EXPLANATION_MODAL',
+    explanation,
+  };
+};
+
+export const hideGptExplanationModal = () => {
+  return {
+    type: 'HIDE_GPT_EXPLANATION_MODAL',
+  };
+};
+
 export const showContextMenu = (canvasPosition: Point) => ({
   type: 'SHOW_CONTEXT_MENU',
   canvasPosition,

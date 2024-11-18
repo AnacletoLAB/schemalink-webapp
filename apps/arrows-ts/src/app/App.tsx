@@ -25,6 +25,7 @@ import ContextMenu from '../components/ContextMenu';
 import GptModal from '../components/GptModal';
 import { ArrowsState } from '../reducers';
 import { Dispatch } from 'redux';
+import GptExplanationModal from '../components/GptExplanationModal';
 
 export interface AppProps {
   inspectorVisible: boolean;
@@ -128,6 +129,7 @@ class App extends Component<AppProps> {
         <FooterContainer />
         <ContextMenu />
         <GptModal />
+        <GptExplanationModal />
       </div>
     );
   }

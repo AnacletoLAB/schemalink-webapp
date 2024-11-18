@@ -13,6 +13,7 @@
     "js-base64": "^3.7.5",
     "js-yaml": "^4.1.0",
     "lodash.find": "^4.6.0",
+    "marked": "^15.0.1",
     "memoizee": "^0.4.15",
     "react": "18.2.0",
     "react-color": "^2.19.3",
