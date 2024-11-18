@@ -3,6 +3,7 @@ export enum CommandKind {
   AddClassAssociatedToClass,
   AddAttributeToRelationship,
   AddClassesSimilarToEntities,
+  DivideReifyClass,
   ExplainClass,
   ExplainEntities,
   FixClassName,
@@ -37,6 +38,11 @@ interface AddClassesSimilarToEntities extends Command {
   relationships?: string[];
 }
 
+interface DivideReifyClass extends Command {
+  kind: CommandKind.DivideReifyClass;
+  nodes: string;
+}
+
 interface ExplainClass extends Command {
   kind: CommandKind.ExplainClass;
   nodes: string;
@@ -58,6 +64,7 @@ export type CommandType =
   | AddClassAssociatedToClass
   | AddClassesSimilarToEntities
   | AddAttributeToRelationship
+  | DivideReifyClass
   | ExplainEntities
   | ExplainClass
   | FixClassName;
@@ -67,6 +74,9 @@ export const computePrompt = (command: CommandType): string => {
 
   const OUTRO =
     'Maintain all the existing classes and structure from the schema. Return the entire updated schema.';
+
+  const RELATIONSHIP_EXPLANATION =
+    'For each association, introduce a predicate (a class characterized by is_a: RelationshipType) and a new relationship (a class characterized by is_a: Triple).';
 
   switch (command.kind) {
     case CommandKind.AddClassSimilarToClass:
@@ -78,7 +88,7 @@ ${command.fullSchema}`;
       return `${INTRO}add a new class that can be in a relationship with ${command.nodes}.
 Ensure that the new class fits within the context.
 Add one or more new associations between the newly introduced class and ${command.nodes}.
-For each association, introduce a predicate (a class characterized by is_a: RelationshipType) and a new relationship (a class characterized by is_a: Triple).
+${RELATIONSHIP_EXPLANATION}
 ${OUTRO}
 
 ${command.fullSchema}`;
@@ -122,5 +132,16 @@ ${command.fullSchema}`;
         ...(command.relationships || []),
       ]}.
 The explanation should include details on its role within the schema and any examples provided.`;
+    case CommandKind.DivideReifyClass:
+      return `${INTRO}reify any attributes that you consider "reifiable" in the class named ${command.nodes}.
+This means creating a new class for each reified attribute and removing them from the class named ${command.nodes}.
+Ensure that the new class(es) fits within the context.
+Add one or more new associations between the newly introduced class(es) and ${command.nodes}.
+${RELATIONSHIP_EXPLANATION}
+Ensure that the new relationship(s) fits within the context.
+${OUTRO}
+
+${command.fullSchema}
+`;
   }
 };
