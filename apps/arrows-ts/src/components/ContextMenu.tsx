@@ -17,7 +17,11 @@ import {
   selectedNodes,
   selectedRelationships,
 } from '@neo4j-arrows/model';
-import { hideContextMenu, showGptModal } from '../actions/applicationDialogs';
+import {
+  hideContextMenu,
+  showGptExplanationModal,
+  showGptModal,
+} from '../actions/applicationDialogs';
 import {
   SpiresType,
   fromGraph,
@@ -28,6 +32,7 @@ import { generate } from '@neo4j-arrows/api';
 
 enum Method {
   ADD = 'Add',
+  EXPLAIN = 'Explain',
   FIX = 'Fix',
 }
 
@@ -61,6 +66,7 @@ interface ContextMenuProps {
   graph: Graph;
   selection: EntitySelection;
   onClose: () => void;
+  openGtpExplanationModal: (explanation: string) => void;
   openGtpModal: (
     customCallback?: (text: string) => Promise<void>,
     startingPrompt?: string
@@ -72,6 +78,7 @@ const ContextMenu = ({
   graph,
   onClose,
   open,
+  openGtpExplanationModal,
   openGtpModal,
   selection,
   x,
@@ -93,6 +100,13 @@ const ContextMenu = ({
     return nodes.length ? Selection.CLASS : Selection.RELATIONSHIP;
   };
 
+  const explanationCallback = (text: string) =>
+    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT).then(
+      (explanation) => {
+        openGtpExplanationModal(explanation);
+      }
+    );
+
   const selectionToActions: Record<Selection, Record<Method, ActionKind[]>> = {
     [Selection.CLASS]: {
       [Method.ADD]: [
@@ -110,6 +124,12 @@ const ContextMenu = ({
       [Method.FIX]: [
         { action: Action.CLASS_NAME, commandKind: CommandKind.FixClassName },
       ],
+      [Method.EXPLAIN]: [
+        {
+          commandKind: CommandKind.ExplainClass,
+          customCallback: explanationCallback,
+        },
+      ],
     },
     [Selection.MULTIPLE]: {
       [Method.ADD]: [
@@ -117,6 +137,12 @@ const ContextMenu = ({
           action: Action.CLASS,
           commandKind: CommandKind.AddClassesSimilarToEntities,
           label: 'Classes similar to',
+        },
+      ],
+      [Method.EXPLAIN]: [
+        {
+          commandKind: CommandKind.ExplainEntities,
+          customCallback: explanationCallback,
         },
       ],
       [Method.FIX]: [],
@@ -128,14 +154,17 @@ const ContextMenu = ({
           commandKind: CommandKind.AddAttributeToRelationship,
         },
       ],
+      [Method.EXPLAIN]: [],
       [Method.FIX]: [],
     },
     [Selection.ALL]: {
       [Method.ADD]: [],
+      [Method.EXPLAIN]: [],
       [Method.FIX]: [],
     },
     [Selection.NONE]: {
       [Method.ADD]: [],
+      [Method.EXPLAIN]: [],
       [Method.FIX]: [],
     },
   };
@@ -238,6 +267,9 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
       startingPrompt?: string
     ) => {
       dispatch(showGptModal(customCallback, startingPrompt));
+    },
+    openGtpExplanationModal: (explanation: string) => {
+      dispatch(showGptExplanationModal(explanation));
     },
   };
 };
