@@ -107,7 +107,10 @@ const ContextMenu = ({
       }
     );
 
-  const selectionToActions: Record<Selection, Record<Method, ActionKind[]>> = {
+  const selectionToActions: Record<
+    Selection,
+    Partial<Record<Method, ActionKind[]>>
+  > = {
     [Selection.CLASS]: {
       [Method.ADD]: [
         {
@@ -145,7 +148,6 @@ const ContextMenu = ({
           customCallback: explanationCallback,
         },
       ],
-      [Method.FIX]: [],
     },
     [Selection.RELATIONSHIP]: {
       [Method.ADD]: [
@@ -154,19 +156,9 @@ const ContextMenu = ({
           commandKind: CommandKind.AddAttributeToRelationship,
         },
       ],
-      [Method.EXPLAIN]: [],
-      [Method.FIX]: [],
     },
-    [Selection.ALL]: {
-      [Method.ADD]: [],
-      [Method.EXPLAIN]: [],
-      [Method.FIX]: [],
-    },
-    [Selection.NONE]: {
-      [Method.ADD]: [],
-      [Method.EXPLAIN]: [],
-      [Method.FIX]: [],
-    },
+    [Selection.ALL]: {},
+    [Selection.NONE]: {},
   };
 
   const nodes = selectedNodes(graph, selection);
