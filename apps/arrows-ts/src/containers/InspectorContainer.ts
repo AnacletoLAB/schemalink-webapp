@@ -15,27 +15,17 @@ import {
   mergeOnPropertyValues,
   mergeNodes,
   deleteSelection,
-  setOntology,
   setExamples,
   setCardinality,
   setPropertyMultivalued,
   setPropertyRequired,
   setDescription,
+  onSaveOntology,
 } from '../actions/graph';
-import {
-  loadOntologyExamplesRequest,
-  loadOntologyExamplesSuccess,
-  loadOntologyExamplesFailure,
-} from '../actions/ontologies';
 import DetailInspector from '../components/DetailInspector';
 import { getSelectedNodes } from '@neo4j-arrows/selectors';
 import { getOntologies, getPresentGraph } from '../selectors';
 import { toggleSelection } from '../actions/selection';
-import {
-  MAX_PAGE_SIZE,
-  properties,
-  terms,
-} from '@neo4j-arrows/ontology-search';
 import { Dispatch } from 'redux';
 import {
   Cardinality,
@@ -127,33 +117,8 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     onSelect: (entities: Pick<Entity, 'id' | 'entityType'>[]) => {
       dispatch(toggleSelection(entities, 'replace'));
     },
-    onSaveOntology: (selection: EntitySelection, ontologies: Ontology[]) => {
-      dispatch(setOntology(selection, ontologies));
-      dispatch(loadOntologyExamplesRequest());
-      Promise.all(
-        ontologies.map((ontology: Ontology) =>
-          terms(ontology, MAX_PAGE_SIZE).then((terms) => {
-            return { ...ontology, terms };
-          })
-        )
-      )
-        .then((resolvedOntologies) => {
-          dispatch(loadOntologyExamplesSuccess(resolvedOntologies));
-        })
-        .catch((error) => dispatch(loadOntologyExamplesFailure()));
-      dispatch(loadOntologyExamplesRequest());
-      Promise.all(
-        ontologies.map((ontology: Ontology) =>
-          properties(ontology, MAX_PAGE_SIZE).then((properties) => {
-            return { ...ontology, properties };
-          })
-        )
-      )
-        .then((resolvedOntologies) => {
-          dispatch(loadOntologyExamplesSuccess(resolvedOntologies));
-        })
-        .catch((error) => dispatch(loadOntologyExamplesFailure()));
-    },
+    onSaveOntology: (selection: EntitySelection, ontologies: Ontology[]) =>
+      onSaveOntology(selection, ontologies)(dispatch),
     onSaveCardinality: (
       selection: EntitySelection,
       cardinality: Cardinality

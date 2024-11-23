@@ -44,6 +44,16 @@ import { ArrowsState } from '../reducers';
 import { GraphAction, MergeSpecs } from '../reducers/graph';
 import { ActionMemosState } from '../reducers/actionMemos';
 import { MouseState } from '../reducers/mouse';
+import {
+  loadOntologyExamplesFailure,
+  loadOntologyExamplesRequest,
+  loadOntologyExamplesSuccess,
+} from './ontologies';
+import {
+  MAX_PAGE_SIZE,
+  properties,
+  terms,
+} from '@neo4j-arrows/ontology-search';
 
 export const createNode =
   () => (dispatch: Dispatch, getState: () => ArrowsState) => {
@@ -1001,5 +1011,38 @@ export const convertCaptionsToPropertyValues = () => {
     );
     dispatch(setPropertyValues('', nodePropertyValues));
     dispatch(setNodeCaption(selection, ''));
+  };
+};
+
+export const onSaveOntology = (
+  selection: EntitySelection,
+  ontologies: Ontology[]
+) => {
+  return function (dispatch: Dispatch) {
+    dispatch(setOntology(selection, ontologies));
+    dispatch(loadOntologyExamplesRequest());
+    Promise.all(
+      ontologies.map((ontology: Ontology) =>
+        terms(ontology, MAX_PAGE_SIZE).then((terms) => {
+          return { ...ontology, terms };
+        })
+      )
+    )
+      .then((resolvedOntologies) => {
+        dispatch(loadOntologyExamplesSuccess(resolvedOntologies));
+      })
+      .catch((error) => dispatch(loadOntologyExamplesFailure()));
+    dispatch(loadOntologyExamplesRequest());
+    Promise.all(
+      ontologies.map((ontology: Ontology) =>
+        properties(ontology, MAX_PAGE_SIZE).then((properties) => {
+          return { ...ontology, properties };
+        })
+      )
+    )
+      .then((resolvedOntologies) => {
+        dispatch(loadOntologyExamplesSuccess(resolvedOntologies));
+      })
+      .catch((error) => dispatch(loadOntologyExamplesFailure()));
   };
 };
