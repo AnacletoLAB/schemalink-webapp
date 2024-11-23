@@ -226,7 +226,13 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
         value={propertyKey}
         label={
           attributeValue.range && {
-            content: attributeValue.range,
+            content: `${
+              attributeValue.collectionType
+                ? `${attributeValue.collectionType}(`
+                : ''
+            }${attributeValue.range}${
+              attributeValue.collectionType ? `)` : ''
+            }`,
             style: { marginRight: '1em' },
           }
         }
