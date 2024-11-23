@@ -33,7 +33,7 @@ import {
 } from '@neo4j-arrows/linkml';
 import yaml from 'js-yaml';
 import { generate } from '@neo4j-arrows/api';
-import { importNodesAndRelationships } from '../actions/graph';
+import { importNodesAndRelationships, onSaveOntology } from '../actions/graph';
 import { newLocalStorageDiagram } from '../actions/storage';
 import { nodeSeparation } from '../actions/import';
 
@@ -49,6 +49,7 @@ enum Action {
   CLASS = 'Class',
   CLASS_ATTRIBUTE = 'Class Attribute',
   CLASS_NAME = 'Class Name',
+  ONTOLOGY = 'Ontology',
 }
 
 enum Selection {
@@ -80,6 +81,7 @@ interface ContextMenuProps {
   selection: EntitySelection;
   onClose: () => void;
   ontologies: Ontology[];
+  onSaveOntology: (selection: EntitySelection, ontologies: Ontology[]) => void;
   openGtpExplanationModal: (explanation: string) => void;
   openGtpModal: (
     callback?: (text: string) => Promise<void>,
@@ -96,6 +98,7 @@ const ContextMenu = ({
   importNodesAndRelationships,
   onClose,
   ontologies,
+  onSaveOntology,
   open,
   openGtpExplanationModal,
   openGtpModal,
@@ -167,6 +170,17 @@ const ContextMenu = ({
       }
     );
 
+  const ontologiesCallback: CallbackFactory = (selection) => (text: string) =>
+    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT).then(
+      (returnedOntologies) => {
+        const ids = returnedOntologies.split(',').map((id) => id.trim());
+        onSaveOntology(
+          selection,
+          ontologies.filter((ontology) => ids.includes(ontology.id))
+        );
+      }
+    );
+
   const selectionToActions: Record<
     Selection,
     Partial<Record<Method, ActionKind[]>>
@@ -186,6 +200,11 @@ const ContextMenu = ({
       ],
       [Method.FIX]: [
         { action: Action.CLASS_NAME, commandKind: CommandKind.FixClassName },
+        {
+          action: Action.ONTOLOGY,
+          commandKind: CommandKind.FixClassOntology,
+          callbackFactory: ontologiesCallback,
+        },
       ],
       [Method.EXPLAIN]: [
         {
@@ -345,6 +364,8 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     clearGraph: () => {
       dispatch(newLocalStorageDiagram());
     },
+    onSaveOntology: (selection: EntitySelection, ontologies: Ontology[]) =>
+      onSaveOntology(selection, ontologies)(dispatch),
   };
 };
 
