@@ -167,7 +167,7 @@ const ContextMenu = ({
   const relationships = selectedRelationships(graph, selection);
   const selectionType = whichSelection();
   const entries = Object.entries(selectionToActions[selectionType]);
-  const toRelationshipClassName = toRelationshipClassNameFactory(nodes);
+  const toRelationshipClassName = toRelationshipClassNameFactory(graph.nodes);
 
   return open ? (
     <div
