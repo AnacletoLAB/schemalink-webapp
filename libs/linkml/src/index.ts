@@ -13,6 +13,8 @@ import {
   SpiresType,
   Attribute,
   BasicType,
+  EnumType,
+  enumToPermissibleValues,
 } from './lib/types';
 import {
   findNodeFactory,
@@ -101,6 +103,22 @@ export const fromGraph = (
         return undefined;
     }
   };
+  const enums = [
+    ...(nodes
+      .flatMap((node) =>
+        Object.values(node.properties).map(({ range }) => range)
+      )
+      .filter(
+        (range) => range && Object.values(EnumType).includes(range as EnumType)
+      ) as string[]),
+    ...(relationships
+      .flatMap((relationship) =>
+        Object.values(relationship.properties).map(({ range }) => range)
+      )
+      .filter(
+        (range) => range && Object.values(EnumType).includes(range as EnumType)
+      ) as string[]),
+  ];
 
   return {
     id: `https://example.com/${snakeCasedName}`,
@@ -156,6 +174,25 @@ export const fromGraph = (
         {}
       ),
     },
+    ...(enums.length
+      ? {
+          enums: enums.reduce(
+            (enums, enumType) => ({
+              ...enums,
+              [enumType]: {
+                permissible_values: enumToPermissibleValues(enumType).reduce(
+                  (permissibleValues, value) => ({
+                    ...permissibleValues,
+                    [value]: null,
+                  }),
+                  {}
+                ),
+              },
+            }),
+            {}
+          ),
+        }
+      : {}),
   };
 };
 

@@ -3,6 +3,7 @@ import { toAttributeName } from './naming';
 import {
   BasicType,
   CollectionType,
+  EnumType,
   Attribute as LinkMLAttribute,
   RegexType,
   regexToPattern,
@@ -22,7 +23,9 @@ export const propertiesToAttributes = (
           description,
           required,
         },
-        ...([...Object.values(BasicType)].includes(range as BasicType)
+        ...([...Object.values(BasicType), ...Object.values(EnumType)].includes(
+          range as BasicType
+        )
           ? { range }
           : {}),
         ...(collectionType

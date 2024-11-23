@@ -34,6 +34,7 @@ export type LinkML = {
   classes: Record<string, LinkMLClass>;
   imports?: string[];
   license?: string;
+  enums?: Record<string, Record<string, null>>;
 };
 
 export enum SpiresType {
@@ -64,5 +65,16 @@ export const regexToPattern = (regex: RegexType): string => {
   switch (regex) {
     case RegexType.AMERICAN_PHONE_NUMBER:
       return String.raw`^[\\d\\(\\)\\-]+$`;
+  }
+};
+
+export enum EnumType {
+  GENDER = 'Gender',
+}
+
+export const enumToPermissibleValues = (enumType: EnumType): string[] => {
+  switch (enumType) {
+    case EnumType.GENDER:
+      return ['man', 'woman'];
   }
 };

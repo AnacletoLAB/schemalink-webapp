@@ -101,7 +101,12 @@ class ExportModal extends Component<ExportModalProps, ExportModalState> {
                     this.props.diagramName,
                     this.props.graph,
                     spiresType
-                  )
+                  ),
+                  {
+                    styles: {
+                      '!!null': 'empty',
+                    },
+                  }
                 )}
                 diagramName={this.props.diagramName}
               />
