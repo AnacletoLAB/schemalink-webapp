@@ -228,6 +228,12 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
           />
         }
         value={propertyKey}
+        label={
+          attributeValue.range && {
+            content: attributeValue.range,
+            style: { marginRight: '1em' },
+          }
+        }
         onChange={(event) => onKeyChange(event.target.value)}
         transparent
         ref={(elm) => (this.keyInput = elm)}
