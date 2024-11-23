@@ -4,6 +4,7 @@ export interface Attribute {
   description: string;
   multivalued: boolean;
   required: boolean;
+  range?: string;
 }
 
 export interface Entity {
