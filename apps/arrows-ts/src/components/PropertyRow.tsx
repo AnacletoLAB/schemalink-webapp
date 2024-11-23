@@ -1,3 +1,4 @@
+import { BasicType } from '@neo4j-arrows/linkml';
 import {
   Attribute,
   PropertiesSummary,
@@ -15,6 +16,7 @@ import {
   Checkbox,
   AccordionTitle,
   AccordionContent,
+  Dropdown,
 } from 'semantic-ui-react';
 
 interface PropertyRowProps {
@@ -270,6 +272,23 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
                 : { open: false })}
               position="bottom left"
               flowing
+            />
+          </Form.Field>
+          <Form.Field>
+            <label>Range</label>
+            <Dropdown
+              selection
+              value={attributeValue.range}
+              options={Object.values(BasicType).map((type) => {
+                return {
+                  key: type,
+                  text: type,
+                  value: type,
+                };
+              })}
+              onChange={(e, { value }) =>
+                onValueChange({ ...attributeValue, range: value as BasicType })
+              }
             />
           </Form.Field>
           <Form.Field
