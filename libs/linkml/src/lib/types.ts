@@ -50,3 +50,7 @@ export enum BasicType {
   DATE = 'date',
   DATETIME = 'datetime',
 }
+
+export enum CollectionType {
+  LIST = 'list',
+}

@@ -93,7 +93,6 @@ export default class PropertyTable extends Component<
     const addEmptyProperty = () => {
       onSavePropertyValue('', {
         description: '',
-        multivalued: false,
         required: false,
       });
     };

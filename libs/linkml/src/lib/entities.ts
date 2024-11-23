@@ -1,6 +1,6 @@
 import { Attribute } from '@neo4j-arrows/model';
 import { toAttributeName } from './naming';
-import { Attribute as LinkMLAttribute } from './types';
+import { CollectionType, Attribute as LinkMLAttribute } from './types';
 
 export const propertiesToAttributes = (
   attributes: Record<string, Attribute>
@@ -8,12 +8,15 @@ export const propertiesToAttributes = (
   return Object.entries(attributes).reduce(
     (
       attributes: Record<string, LinkMLAttribute>,
-      [key, { description, multivalued, required, range }]
+      [key, { description, collectionType, required, range }]
     ) => ({
       ...attributes,
       [toAttributeName(key)]: {
         description,
-        multivalued: multivalued ?? false,
+        multivalued:
+          !!collectionType &&
+          collectionType !== '' &&
+          [CollectionType.LIST].includes(collectionType),
         required: required ?? false,
         range,
       },

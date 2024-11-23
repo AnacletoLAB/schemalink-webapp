@@ -2,7 +2,7 @@ export type Id = string; // TODO this should be a branded type
 
 export interface Attribute {
   description: string;
-  multivalued: boolean;
+  collectionType?: string;
   required: boolean;
   range?: string;
 }

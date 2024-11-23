@@ -1,4 +1,4 @@
-import { BasicType } from '@neo4j-arrows/linkml';
+import { BasicType, CollectionType } from '@neo4j-arrows/linkml';
 import {
   Attribute,
   PropertiesSummary,
@@ -298,22 +298,26 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
               onChange={(e, { value }) =>
                 onValueChange({ ...attributeValue, range: value as BasicType })
               }
+              disabled={valueDisabled}
             />
           </Form.Field>
-          <Form.Field
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-            }}
-          >
-            <label>Multivalued</label>
-            <Checkbox
-              checked={attributeValue.multivalued}
-              onChange={(event, data) =>
+          <Form.Field>
+            <label>Collection Type</label>
+            <Dropdown
+              selection
+              clearable
+              value={attributeValue.collectionType}
+              options={Object.values(CollectionType).map((type) => {
+                return {
+                  key: type,
+                  text: type,
+                  value: type,
+                };
+              })}
+              onChange={(e, { value }) =>
                 onValueChange({
                   ...attributeValue,
-                  multivalued: !!data.checked,
+                  collectionType: value as BasicType,
                 })
               }
               disabled={valueDisabled}
