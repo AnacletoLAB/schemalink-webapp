@@ -212,6 +212,21 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
 
     const keyField = (
       <Input
+        action={
+          <Icon
+            style={{
+              visibility:
+                (this.state.mouseOver && !valueDisabled) || active
+                  ? 'visible'
+                  : 'hidden',
+              height: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+            name="trash alternate outline"
+            onClick={onDeleteProperty}
+          />
+        }
         value={propertyKey}
         onChange={(event) => onKeyChange(event.target.value)}
         transparent
@@ -237,28 +252,16 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
     return (
       <div onMouseEnter={this.onMouseEnter} onMouseLeave={this.onMouseLeave}>
         <AccordionTitle active={active} onClick={(e) => onClick()} collapsing>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <Icon name="dropdown" />
-            <Form.Field style={{ marginBottom: 0 }}>
-              <Popup
-                trigger={keyField}
-                content={keyPopupContent}
-                on="focus"
-                {...(propertySummary.keys.length > 0 ? {} : { open: false })}
-                position="bottom right"
-                flowing
-              />
-            </Form.Field>
-            <Icon
-              style={{
-                visibility:
-                  this.state.mouseOver && !valueDisabled ? 'visible' : 'hidden',
-                marginLeft: 'auto',
-              }}
-              name="trash alternate outline"
-              onClick={onDeleteProperty}
+          <Form.Field style={{ marginBottom: 0 }}>
+            <Popup
+              trigger={keyField}
+              content={keyPopupContent}
+              on="focus"
+              {...(propertySummary.keys.length > 0 ? {} : { open: false })}
+              position="bottom right"
+              flowing
             />
-          </div>
+          </Form.Field>
         </AccordionTitle>
         <AccordionContent active={active}>
           <Form.Field>
