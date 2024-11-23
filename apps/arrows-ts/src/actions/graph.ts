@@ -36,6 +36,7 @@ import {
   ViewTransformation,
   Coordinate,
   Component,
+  Attribute,
 } from '@neo4j-arrows/model';
 import { BoundingBox, calculateBoundingBox } from '@neo4j-arrows/graphics';
 import { lockHandleDragType } from './mouse';
@@ -634,7 +635,7 @@ export const renameProperty = (
 export const setProperty = (
   selection: EntitySelection,
   key: string,
-  value: string
+  value: Attribute
 ): GraphAction => ({
   category: 'GRAPH',
   type: 'SET_PROPERTY',
@@ -673,30 +674,6 @@ export const removeProperty = (
   type: 'REMOVE_PROPERTY',
   selection,
   key,
-});
-
-export const setPropertyMultivalued = (
-  selection: EntitySelection,
-  key: string,
-  multivalued: boolean
-): GraphAction => ({
-  category: 'GRAPH',
-  type: 'SET_PROPERTY_MULTIVALUED',
-  selection,
-  key,
-  multivalued,
-});
-
-export const setPropertyRequired = (
-  selection: EntitySelection,
-  key: string,
-  required: boolean
-): GraphAction => ({
-  category: 'GRAPH',
-  type: 'SET_PROPERTY_REQUIRED',
-  selection,
-  key,
-  required,
 });
 
 export const removeArrowsProperty = (

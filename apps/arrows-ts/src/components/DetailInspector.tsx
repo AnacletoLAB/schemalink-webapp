@@ -29,6 +29,7 @@ import {
   Entity,
   Relationship,
   isRelationship,
+  Attribute,
 } from '@neo4j-arrows/model';
 import { renderCounters } from './EntityCounters';
 import PropertyTable from './PropertyTable';
@@ -64,13 +65,13 @@ interface DetailInspectorProps {
   onMergeOnValues: (selection: EntitySelection, key: string) => void;
   onSavePropertyKey: (
     selection: EntitySelection,
-    oldKey: string | null,
+    oldKey: string,
     newKey: string
   ) => void;
   onSavePropertyValue: (
     selection: EntitySelection,
     key: string,
-    value: string
+    value: Attribute
   ) => void;
   onDeleteArrowsProperty: (selection: EntitySelection, key: string) => void;
   onDeleteProperty: (selection: EntitySelection, key: string) => void;
@@ -83,16 +84,6 @@ interface DetailInspectorProps {
   reverseRelationships: (selection: EntitySelection) => void;
   selectedNodes: Node[];
   selection: EntitySelection;
-  onSavePropertyMultivalued: (
-    selection: EntitySelection,
-    key: string,
-    multivalued: boolean
-  ) => void;
-  onSavePropertyRequired: (
-    selection: EntitySelection,
-    key: string,
-    required: boolean
-  ) => void;
   onSaveDescription: (selection: EntitySelection, description: string) => void;
 }
 
@@ -159,8 +150,6 @@ export default class DetailInspector extends Component<
       onSavePropertyValue,
       onDeleteProperty,
       onSaveOntology,
-      onSavePropertyMultivalued,
-      onSavePropertyRequired,
       onSaveDescription,
     } = this.props;
     const fields = [];
@@ -309,22 +298,15 @@ export default class DetailInspector extends Component<
           onMergeOnValues={(propertyKey: string) =>
             onMergeOnValues(selection, propertyKey)
           }
-          onSavePropertyKey={(
-            oldPropertyKey: string | null,
-            newPropertyKey: string
-          ) => onSavePropertyKey(selection, oldPropertyKey, newPropertyKey)}
-          onSavePropertyValue={(propertyKey: string, propertyValue: string) =>
-            onSavePropertyValue(selection, propertyKey, propertyValue)
+          onSavePropertyKey={(oldPropertyKey: string, newPropertyKey: string) =>
+            onSavePropertyKey(selection, oldPropertyKey, newPropertyKey)
           }
+          onSavePropertyValue={(
+            propertyKey: string,
+            propertyValue: Attribute
+          ) => onSavePropertyValue(selection, propertyKey, propertyValue)}
           onDeleteProperty={(propertyKey: string) =>
             onDeleteProperty(selection, propertyKey)
-          }
-          onSavePropertyMultivalued={(
-            propertyKey: string,
-            multivalued: boolean
-          ) => onSavePropertyMultivalued(selection, propertyKey, multivalued)}
-          onSavePropertyRequired={(propertyKey: string, required: boolean) =>
-            onSavePropertyRequired(selection, propertyKey, required)
           }
         />
       );

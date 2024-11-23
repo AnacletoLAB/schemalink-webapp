@@ -1,17 +1,20 @@
 import React, { Component } from 'react';
 import { Form, Button, Message, Accordion } from 'semantic-ui-react';
 import { PropertyRow } from './PropertyRow';
-import { Properties, PropertiesSummary, Property } from '@neo4j-arrows/model';
+import {
+  Attribute,
+  Properties,
+  PropertiesSummary,
+  Property,
+} from '@neo4j-arrows/model';
 
 interface PropertyTableProps {
   properties: Properties;
   propertySummary: PropertiesSummary;
   onMergeOnValues: (key: string) => void;
-  onSavePropertyKey: (oldKey: string | null, newKey: string) => void;
-  onSavePropertyValue: (key: string, value: string) => void;
+  onSavePropertyKey: (oldKey: string, newKey: string) => void;
+  onSavePropertyValue: (key: string, value: Attribute) => void;
   onDeleteProperty: (key: string) => void;
-  onSavePropertyMultivalued: (key: string, multivalued: boolean) => void;
-  onSavePropertyRequired: (key: string, required: boolean) => void;
 }
 
 interface PropertyTableState {
@@ -71,8 +74,6 @@ export default class PropertyTable extends Component<
       onSavePropertyKey,
       onSavePropertyValue,
       onDeleteProperty,
-      onSavePropertyMultivalued,
-      onSavePropertyRequired,
     } = this.props;
     const {
       properties: localProperties,
@@ -90,7 +91,11 @@ export default class PropertyTable extends Component<
     }
 
     const addEmptyProperty = () => {
-      onSavePropertyValue('', '');
+      onSavePropertyValue('', {
+        description: '',
+        multivalued: false,
+        required: false,
+      });
     };
 
     const onNextProperty = (nextIndex: number) => {
@@ -113,7 +118,7 @@ export default class PropertyTable extends Component<
           )
         ) {
           // switch to global
-          onSavePropertyKey(lastValidKey, value);
+          onSavePropertyKey(lastValidKey ?? '', value);
           this.setState({
             local: false,
             error: null,
@@ -166,14 +171,7 @@ export default class PropertyTable extends Component<
             onNext={() => onNextProperty(index + 1)}
             keyDisabled={!!error && invalidIndex !== index}
             valueDisabled={!!error}
-            multivaluedFieldValue={prop.value ? prop.value.multivalued : false}
-            requiredFieldValue={prop.value ? prop.value.required : false}
-            onMultivaluedChange={(multivalued: boolean) =>
-              onSavePropertyMultivalued(key, multivalued)
-            }
-            onRequiredChange={(required: boolean) =>
-              onSavePropertyRequired(key, required)
-            }
+            attributeValue={prop.value ?? {}}
             active={this.state.activeIndex === index}
             onClick={() =>
               this.setState({

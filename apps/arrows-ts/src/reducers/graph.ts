@@ -25,8 +25,7 @@ import {
   Relationship,
   Node,
   Guides,
-  setPropertyMultivalued,
-  setPropertyRequired,
+  Attribute,
 } from '@neo4j-arrows/model';
 import { Action } from 'redux';
 import undoable, { groupByActionTypes } from 'redux-undo';
@@ -85,25 +84,18 @@ interface KeyValueAction<T> extends CategoryGraph<T> {
   value: string;
 }
 
-interface SetPropertyAction
-  extends SelectionAction<'SET_PROPERTY' | 'SET_ARROWS_PROPERTY'>,
-    KeyValueAction<'SET_PROPERTY' | 'SET_ARROWS_PROPERTY'> {}
+interface SetArrowsPropertyAction
+  extends SelectionAction<'SET_ARROWS_PROPERTY'>,
+    KeyValueAction<'SET_ARROWS_PROPERTY'> {}
 
 interface SetPropertyValuesAction extends CategoryGraph<'SET_PROPERTY_VALUES'> {
   key: string;
   nodePropertyValues: Record<string, string>;
 }
 
-interface SetPropertyMultivaluedAction
-  extends SelectionAction<'SET_PROPERTY_MULTIVALUED'> {
+interface SetPropertyAction extends SelectionAction<'SET_PROPERTY'> {
   key: string;
-  multivalued: boolean;
-}
-
-interface SetPropertyRequiredAction
-  extends SelectionAction<'SET_PROPERTY_REQUIRED'> {
-  key: string;
-  required: boolean;
+  value: Attribute;
 }
 
 interface ImportAction extends CategoryGraph<'IMPORT_NODES_AND_RELATIONSHIPS'> {
@@ -194,6 +186,7 @@ export type GraphAction =
   | SetNodeCaptionAction
   | RenamePropertyAction
   | AccessPropertyAction
+  | SetArrowsPropertyAction
   | SetPropertyAction
   | SetPropertyValuesAction
   | ImportAction
@@ -210,8 +203,6 @@ export type GraphAction =
   | MoveNodesAction
   | DuplicateNodesAndRelationshipsAction
   | StylesAction
-  | SetPropertyMultivaluedAction
-  | SetPropertyRequiredAction
   | SetDescriptionAction;
 
 const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
@@ -483,48 +474,14 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
       };
     }
 
-    case 'SET_PROPERTY_MULTIVALUED': {
-      return {
-        ...state,
-        nodes: state.nodes.map((node) =>
-          nodeSelected(action.selection, node.id)
-            ? setPropertyMultivalued(node, action.key, action.multivalued)
-            : node
-        ),
-        relationships: state.relationships.map((relationship) =>
-          relationshipSelected(action.selection, relationship.id)
-            ? setPropertyMultivalued(
-                relationship,
-                action.key,
-                action.multivalued
-              )
-            : relationship
-        ),
-      };
-    }
-
-    case 'SET_PROPERTY_REQUIRED': {
-      return {
-        ...state,
-        nodes: state.nodes.map((node) =>
-          nodeSelected(action.selection, node.id)
-            ? setPropertyRequired(node, action.key, action.required)
-            : node
-        ),
-        relationships: state.relationships.map((relationship) =>
-          relationshipSelected(action.selection, relationship.id)
-            ? setPropertyRequired(relationship, action.key, action.required)
-            : relationship
-        ),
-      };
-    }
-
     case 'SET_PROPERTY_VALUES': {
       return {
         ...state,
         nodes: state.nodes.map((node) =>
           action.nodePropertyValues.hasOwnProperty(node.id)
-            ? setProperty(node, action.key, action.nodePropertyValues[node.id])
+            ? setProperty(node, action.key, {
+                description: action.nodePropertyValues[node.id],
+              })
             : node
         ),
       };
@@ -737,7 +694,9 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
             if (spec) {
               let augmentedNode = node;
               for (const [key, value] of Object.entries(spec.properties)) {
-                augmentedNode = setProperty(augmentedNode, key, value);
+                augmentedNode = setProperty(augmentedNode, key, {
+                  description: value,
+                });
               }
               return augmentedNode;
             } else {

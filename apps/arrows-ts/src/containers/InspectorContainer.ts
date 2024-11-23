@@ -17,8 +17,6 @@ import {
   deleteSelection,
   setExamples,
   setCardinality,
-  setPropertyMultivalued,
-  setPropertyRequired,
   setDescription,
   onSaveOntology,
 } from '../actions/graph';
@@ -28,6 +26,7 @@ import { getOntologies, getPresentGraph } from '../selectors';
 import { toggleSelection } from '../actions/selection';
 import { Dispatch } from 'redux';
 import {
+  Attribute,
   Cardinality,
   Entity,
   EntitySelection,
@@ -57,7 +56,7 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     onConvertCaptionsToPropertyValues: () => {
       dispatch(convertCaptionsToPropertyValues());
     },
-    onSaveExamples: (selection: EntitySelection, examples: string) => {
+    onSaveExamples: (selection: EntitySelection, examples: string[]) => {
       dispatch(setExamples(selection, examples));
     },
     onSaveType: (selection: EntitySelection, type: string) => {
@@ -82,7 +81,7 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     onSavePropertyValue: (
       selection: EntitySelection,
       key: string,
-      value: string
+      value: Attribute
     ) => {
       dispatch(setProperty(selection, key, value));
     },
@@ -124,20 +123,6 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
       cardinality: Cardinality
     ) => {
       dispatch(setCardinality(selection, cardinality));
-    },
-    onSavePropertyMultivalued: (
-      selection: EntitySelection,
-      key: string,
-      multivalued: boolean
-    ) => {
-      dispatch(setPropertyMultivalued(selection, key, multivalued));
-    },
-    onSavePropertyRequired: (
-      selection: EntitySelection,
-      key: string,
-      required: boolean
-    ) => {
-      dispatch(setPropertyRequired(selection, key, required));
     },
     onSaveDescription: (selection: EntitySelection, description: string) => {
       dispatch(setDescription(selection, description));

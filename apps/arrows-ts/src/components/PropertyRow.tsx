@@ -1,4 +1,8 @@
-import { PropertiesSummary, ValueSummary } from '@neo4j-arrows/model';
+import {
+  Attribute,
+  PropertiesSummary,
+  ValueSummary,
+} from '@neo4j-arrows/model';
 import React, { Component } from 'react';
 import {
   Table,
@@ -15,17 +19,14 @@ import {
 
 interface PropertyRowProps {
   keyDisabled: boolean;
-  multivaluedFieldValue: boolean;
-  requiredFieldValue: boolean;
-  onMultivaluedChange: (multivalued: boolean) => void;
-  onRequiredChange: (required: boolean) => void;
+  attributeValue: Attribute;
   propertyKey: string;
   propertySummary: PropertiesSummary;
   onMergeOnValues: () => void;
   onKeyChange: (key: string) => void;
   valueFieldValue: string;
   valueFieldPlaceHolder: string | null;
-  onValueChange: (value: string) => void;
+  onValueChange: (value: Attribute) => void;
   onDeleteProperty: () => void;
   onNext: () => void;
   setFocusHandler: (action: unknown) => void;
@@ -73,8 +74,7 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
 
   render = () => {
     const {
-      multivaluedFieldValue,
-      requiredFieldValue,
+      attributeValue,
       propertyKey,
       propertySummary,
       onMergeOnValues,
@@ -82,8 +82,6 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
       valueFieldValue,
       valueFieldPlaceHolder,
       onValueChange,
-      onMultivaluedChange,
-      onRequiredChange,
       onDeleteProperty,
       onNext,
       keyDisabled,
@@ -157,7 +155,9 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
             basic
             color="black"
             size="tiny"
-            onClick={() => onValueChange(entry.value)}
+            onClick={() =>
+              onValueChange({ ...attributeValue, description: entry.value })
+            }
           >
             {entry.value}
           </Button>
@@ -223,7 +223,9 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
       <Input
         value={valueFieldValue}
         placeholder={valueFieldPlaceHolder}
-        onChange={(event) => onValueChange(event.target.value)}
+        onChange={(event) =>
+          onValueChange({ ...attributeValue, description: event.target.value })
+        }
         ref={(elm) => (this.valueInput = elm)}
         onKeyPress={(evt: KeyboardEvent) => handleKeyPress('value', evt)}
         onKeyDown={handleKeyDown}
@@ -279,8 +281,13 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
           >
             <label>Multivalued</label>
             <Checkbox
-              checked={multivaluedFieldValue}
-              onChange={(event, data) => onMultivaluedChange(!!data.checked)}
+              checked={attributeValue.multivalued}
+              onChange={(event, data) =>
+                onValueChange({
+                  ...attributeValue,
+                  multivalued: !!data.checked,
+                })
+              }
               disabled={valueDisabled}
             />
           </Form.Field>
@@ -293,8 +300,10 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
           >
             <label>Required</label>
             <Checkbox
-              checked={requiredFieldValue}
-              onChange={(event, data) => onRequiredChange(!!data.checked)}
+              checked={attributeValue.required}
+              onChange={(event, data) =>
+                onValueChange({ ...attributeValue, required: !!data.checked })
+              }
               disabled={valueDisabled}
             />
           </Form.Field>

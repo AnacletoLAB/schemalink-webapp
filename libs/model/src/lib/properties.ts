@@ -210,44 +210,12 @@ export const renameProperty = <T extends Entity>(
 export const setProperty = <T extends Entity>(
   entity: T,
   key: string,
-  value: string
+  value: Partial<Attribute>
 ): T => {
   const properties = { ...entity.properties };
   properties[key] = {
     ...properties[key],
-    description: value,
-  };
-  return {
-    ...entity,
-    properties,
-  };
-};
-
-export const setPropertyMultivalued = <T extends Entity>(
-  entity: T,
-  key: string,
-  multivalued: boolean
-): T => {
-  const properties = { ...entity.properties };
-  properties[key] = {
-    ...properties[key],
-    multivalued,
-  };
-  return {
-    ...entity,
-    properties,
-  };
-};
-
-export const setPropertyRequired = <T extends Entity>(
-  entity: T,
-  key: string,
-  required: boolean
-): T => {
-  const properties = { ...entity.properties };
-  properties[key] = {
-    ...properties[key],
-    required,
+    ...value,
   };
   return {
     ...entity,
