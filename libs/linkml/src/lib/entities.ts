@@ -4,6 +4,8 @@ import {
   BasicType,
   CollectionType,
   Attribute as LinkMLAttribute,
+  RegexType,
+  regexToPattern,
 } from './types';
 
 export const propertiesToAttributes = (
@@ -35,6 +37,9 @@ export const propertiesToAttributes = (
           : {}),
         ...(collectionType === CollectionType.SET
           ? { unique_values: true }
+          : {}),
+        ...(Object.values(RegexType).includes(range as RegexType)
+          ? { pattern: regexToPattern(range as RegexType) }
           : {}),
       },
     }),

@@ -55,3 +55,14 @@ export enum CollectionType {
   LIST = 'list',
   SET = 'set',
 }
+
+export enum RegexType {
+  AMERICAN_PHONE_NUMBER = 'American Phone Number',
+}
+
+export const regexToPattern = (regex: RegexType): string => {
+  switch (regex) {
+    case RegexType.AMERICAN_PHONE_NUMBER:
+      return String.raw`^[\\d\\(\\)\\-]+$`;
+  }
+};
