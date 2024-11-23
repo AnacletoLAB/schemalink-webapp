@@ -172,7 +172,6 @@ export default class PropertyTable extends Component<
             keyDisabled={!!error && invalidIndex !== index}
             valueDisabled={!!error}
             attributeValue={prop.value ?? {}}
-            active={this.state.activeIndex === index}
             onClick={() =>
               this.setState({
                 activeIndex:

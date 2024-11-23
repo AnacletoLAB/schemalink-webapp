@@ -33,7 +33,6 @@ interface PropertyRowProps {
   onNext: () => void;
   setFocusHandler: (action: unknown) => void;
   valueDisabled: boolean;
-  active: boolean;
   onClick: () => void;
 }
 
@@ -88,7 +87,6 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
       onNext,
       keyDisabled,
       valueDisabled,
-      active,
       onClick,
     } = this.props;
     const handleKeyPress = (source: 'key' | 'value', evt: KeyboardEvent) => {
@@ -216,9 +214,7 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
           <Icon
             style={{
               visibility:
-                (this.state.mouseOver && !valueDisabled) || active
-                  ? 'visible'
-                  : 'hidden',
+                this.state.mouseOver && !valueDisabled ? 'visible' : 'hidden',
               height: 'auto',
               display: 'flex',
               alignItems: 'center',
@@ -257,7 +253,11 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
     );
     return (
       <div onMouseEnter={this.onMouseEnter} onMouseLeave={this.onMouseLeave}>
-        <AccordionTitle active={active} onClick={(e) => onClick()} collapsing>
+        <AccordionTitle
+          active={this.state.mouseOver}
+          onClick={(e) => onClick()}
+          collapsing
+        >
           <Form.Field style={{ marginBottom: 0 }}>
             <Popup
               trigger={keyField}
@@ -269,7 +269,7 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
             />
           </Form.Field>
         </AccordionTitle>
-        <AccordionContent active={active}>
+        <AccordionContent active={this.state.mouseOver}>
           <Form.Field>
             <label>Description</label>
             <Popup
