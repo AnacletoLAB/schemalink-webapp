@@ -1,4 +1,9 @@
-import { BasicType, CollectionType, RegexType } from '@neo4j-arrows/linkml';
+import {
+  BasicType,
+  CollectionType,
+  EnumType,
+  RegexType,
+} from '@neo4j-arrows/linkml';
 import {
   Attribute,
   PropertiesSummary,
@@ -297,6 +302,7 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
               options={[
                 ...Object.values(BasicType),
                 ...Object.values(RegexType),
+                ...Object.values(EnumType),
               ].map((type) => {
                 return {
                   key: type,
