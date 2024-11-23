@@ -11,7 +11,7 @@ export type ContextMenuState = {
 export type GptModalState = {
   open: boolean;
   startingPrompt: string;
-  customCallback?: (text: string) => Promise<void>;
+  callback?: (text: string) => Promise<void>;
 };
 
 export type GptExplanationModalState = {
@@ -35,7 +35,7 @@ interface ShowContextMenuAction extends Action<'SHOW_CONTEXT_MENU'> {
 
 interface ShowGptModalAction extends Action<'SHOW_GPT_MODAL'> {
   startingPrompt: string;
-  customCallback?: (text: string) => Promise<void>;
+  callback?: (text: string) => Promise<void>;
 }
 
 interface ShowGptExplanationModalAction
@@ -92,7 +92,7 @@ export default function applicationDialogs(
         gptModal: {
           open: true,
           startingPrompt: action.startingPrompt,
-          customCallback: action.customCallback,
+          callback: action.callback,
         },
       };
 
@@ -102,7 +102,7 @@ export default function applicationDialogs(
         gptModal: {
           open: false,
           startingPrompt: '',
-          customCallback: undefined,
+          callback: undefined,
         },
       };
 
