@@ -12,6 +12,7 @@ import {
   SpiresCoreClasses,
   SpiresType,
   Attribute,
+  BasicType,
 } from './lib/types';
 import {
   findNodeFactory,
@@ -103,7 +104,7 @@ export const fromGraph = (
 
   return {
     id: `https://example.com/${snakeCasedName}`,
-    default_range: 'string',
+    default_range: BasicType.STRING,
     name: snakeCasedName,
     title: name,
     license: 'https://creativecommons.org/publicdomain/zero/1.0/',

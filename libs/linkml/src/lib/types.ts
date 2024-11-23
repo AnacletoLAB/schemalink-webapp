@@ -1,5 +1,5 @@
 export type Attribute = {
-  range?: string;
+  range?: BasicType | string;
   description?: string;
   multivalued?: boolean;
   required?: boolean;
@@ -27,7 +27,7 @@ export type LinkMLClass = {
 
 export type LinkML = {
   id: string;
-  default_range?: string;
+  default_range?: BasicType;
   name: string;
   prefixes: Record<string, string>;
   title: string;
@@ -40,4 +40,13 @@ export enum SpiresType {
   LINKML = 'LinkML',
   RE = 'Spires RE',
   ER = 'Spires ER',
+}
+
+export enum BasicType {
+  STRING = 'string',
+  INTEGER = 'integer',
+  BOOLEAN = 'boolean',
+  FLOAT = 'float',
+  DATE = 'date',
+  DATETIME = 'datetime',
 }
