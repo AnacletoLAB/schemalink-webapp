@@ -16,7 +16,8 @@ export const propertiesToAttributes = (
         multivalued:
           !!collectionType &&
           collectionType !== '' &&
-          [CollectionType.LIST].includes(collectionType),
+          [CollectionType.LIST, CollectionType.SET].includes(collectionType),
+        unique_values: collectionType === CollectionType.SET,
         required: required ?? false,
         range,
       },

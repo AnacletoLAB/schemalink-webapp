@@ -53,4 +53,5 @@ export enum BasicType {
 
 export enum CollectionType {
   LIST = 'list',
+  SET = 'set',
 }
