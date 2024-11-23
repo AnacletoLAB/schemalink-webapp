@@ -9,6 +9,8 @@ import {
   Button,
   Label,
   Checkbox,
+  AccordionTitle,
+  AccordionContent,
 } from 'semantic-ui-react';
 
 interface PropertyRowProps {
@@ -28,6 +30,8 @@ interface PropertyRowProps {
   onNext: () => void;
   setFocusHandler: (action: unknown) => void;
   valueDisabled: boolean;
+  active: boolean;
+  onClick: () => void;
 }
 
 interface PropertyRowState {
@@ -84,6 +88,8 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
       onNext,
       keyDisabled,
       valueDisabled,
+      active,
+      onClick,
     } = this.props;
     const handleKeyPress = (source: 'key' | 'value', evt: KeyboardEvent) => {
       if (evt.key === 'Enter') {
@@ -207,7 +213,6 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
         value={propertyKey}
         onChange={(event) => onKeyChange(event.target.value)}
         transparent
-        className={'property-key'}
         ref={(elm) => (this.keyInput = elm)}
         onKeyPress={(evt: KeyboardEvent) => handleKeyPress('key', evt)}
         onKeyDown={handleKeyDown}
@@ -222,30 +227,38 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
         ref={(elm) => (this.valueInput = elm)}
         onKeyPress={(evt: KeyboardEvent) => handleKeyPress('value', evt)}
         onKeyDown={handleKeyDown}
-        transparent
         disabled={valueDisabled}
       />
     );
     return (
-      <Table.Row
-        onMouseEnter={this.onMouseEnter}
-        onMouseLeave={this.onMouseLeave}
-      >
-        <Table.Cell width={3} collapsing>
-          <Form.Field>
-            <Popup
-              trigger={keyField}
-              content={keyPopupContent}
-              on="focus"
-              {...(propertySummary.keys.length > 0 ? {} : { open: false })}
-              position="bottom right"
-              flowing
+      <div onMouseEnter={this.onMouseEnter} onMouseLeave={this.onMouseLeave}>
+        <AccordionTitle active={active} onClick={(e) => onClick()} collapsing>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Icon name="dropdown" />
+            <Form.Field style={{ marginBottom: 0 }}>
+              <Popup
+                trigger={keyField}
+                content={keyPopupContent}
+                on="focus"
+                {...(propertySummary.keys.length > 0 ? {} : { open: false })}
+                position="bottom right"
+                flowing
+              />
+            </Form.Field>
+            <Icon
+              style={{
+                visibility:
+                  this.state.mouseOver && !valueDisabled ? 'visible' : 'hidden',
+                marginLeft: 'auto',
+              }}
+              name="trash alternate outline"
+              onClick={onDeleteProperty}
             />
-            :
-          </Form.Field>
-        </Table.Cell>
-        <Table.Cell width={3}>
+          </div>
+        </AccordionTitle>
+        <AccordionContent active={active}>
           <Form.Field>
+            <label>Description</label>
             <Popup
               trigger={valueField}
               content={valuePopupContent}
@@ -257,36 +270,36 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
               flowing
             />
           </Form.Field>
-        </Table.Cell>{' '}
-        <Table.Cell width={1}>
-          <Form.Field>
+          <Form.Field
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+            }}
+          >
+            <label>Multivalued</label>
             <Checkbox
               checked={multivaluedFieldValue}
               onChange={(event, data) => onMultivaluedChange(!!data.checked)}
               disabled={valueDisabled}
             />
           </Form.Field>
-        </Table.Cell>
-        <Table.Cell width={1}>
-          <Form.Field>
+          <Form.Field
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+            }}
+          >
+            <label>Required</label>
             <Checkbox
               checked={requiredFieldValue}
               onChange={(event, data) => onRequiredChange(!!data.checked)}
               disabled={valueDisabled}
             />
           </Form.Field>
-        </Table.Cell>
-        <Table.Cell width={1}>
-          <Icon
-            style={{
-              visibility:
-                this.state.mouseOver && !valueDisabled ? 'visible' : 'hidden',
-            }}
-            name="trash alternate outline"
-            onClick={onDeleteProperty}
-          />
-        </Table.Cell>
-      </Table.Row>
+        </AccordionContent>
+      </div>
     );
   };
 }

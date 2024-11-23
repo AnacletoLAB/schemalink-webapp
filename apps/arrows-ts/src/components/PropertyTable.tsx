@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Form, Button, Table, Message } from 'semantic-ui-react';
+import { Form, Button, Message, Accordion } from 'semantic-ui-react';
 import { PropertyRow } from './PropertyRow';
 import { Properties, PropertiesSummary, Property } from '@neo4j-arrows/model';
 
@@ -20,6 +20,7 @@ interface PropertyTableState {
   error: string | null;
   lastValidKey: string | null;
   invalidIndex: number | null;
+  activeIndex?: number;
 }
 
 export default class PropertyTable extends Component<
@@ -173,6 +174,13 @@ export default class PropertyTable extends Component<
             onRequiredChange={(required: boolean) =>
               onSavePropertyRequired(key, required)
             }
+            active={this.state.activeIndex === index}
+            onClick={() =>
+              this.setState({
+                activeIndex:
+                  index !== this.state.activeIndex ? index : undefined,
+              })
+            }
           />
         );
       }
@@ -180,9 +188,17 @@ export default class PropertyTable extends Component<
     return (
       <Form.Field key="propertiesTable">
         <label>Attributes</label>
-        <Table compact collapsing style={{ marginTop: 0 }}>
-          <Table.Body>{rows}</Table.Body>
-        </Table>
+        {!!rows.length && (
+          <Accordion
+            compact
+            collapsing
+            activeIndex={this.state.activeIndex}
+            styled
+            style={{ marginBottom: '1em' }}
+          >
+            {rows}
+          </Accordion>
+        )}
         {error ? <Message negative>{error}</Message> : null}
         <Button
           key="addProperty"
