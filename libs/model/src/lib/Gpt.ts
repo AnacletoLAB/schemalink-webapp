@@ -7,6 +7,7 @@ export enum CommandKind {
   ExplainClass,
   ExplainEntities,
   FixClassName,
+  FixClassOntology,
   FixForTargetRelationship,
 }
 
@@ -59,6 +60,11 @@ interface FixClassName extends Command {
   nodes: string;
 }
 
+interface FixClassOntology extends Command {
+  kind: CommandKind.FixClassOntology;
+  nodes: string;
+}
+
 export type CommandType =
   | AddClassSimilarToClass
   | AddClassAssociatedToClass
@@ -67,7 +73,8 @@ export type CommandType =
   | DivideReifyClass
   | ExplainEntities
   | ExplainClass
-  | FixClassName;
+  | FixClassName
+  | FixClassOntology;
 
 export const computePrompt = (command: CommandType): string => {
   const INTRO = 'From the LinkML schema provided below, ';
@@ -143,5 +150,10 @@ ${OUTRO}
 
 ${command.fullSchema}
 `;
+    case CommandKind.FixClassOntology:
+      return `${INTRO}propose relevant ontologies that could be used to annotate the class named ${command.nodes}.
+Return only the shortened namespace of these ontologies separated by commas.
+
+${command.fullSchema}`;
   }
 };
