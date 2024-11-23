@@ -1,4 +1,4 @@
-import { BasicType, CollectionType } from '@neo4j-arrows/linkml';
+import { BasicType, CollectionType, RegexType } from '@neo4j-arrows/linkml';
 import {
   Attribute,
   PropertiesSummary,
@@ -294,7 +294,10 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
             <Dropdown
               selection
               value={attributeValue.range}
-              options={Object.values(BasicType).map((type) => {
+              options={[
+                ...Object.values(BasicType),
+                ...Object.values(RegexType),
+              ].map((type) => {
                 return {
                   key: type,
                   text: type,
