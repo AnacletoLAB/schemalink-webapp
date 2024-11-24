@@ -47,8 +47,8 @@ enum Method {
 enum Action {
   ASSOCIATION_RELATIONSHIP = 'Association Relationship',
   CLASS = 'Class',
-  CLASS_ATTRIBUTE = 'Class Attribute',
-  CLASS_NAME = 'Class Name',
+  ATTRIBUTE = 'Attribute',
+  NAME = 'Name',
   ONTOLOGY = 'Ontology',
 }
 
@@ -199,7 +199,7 @@ const ContextMenu = ({
         },
       ],
       [Method.FIX]: [
-        { action: Action.CLASS_NAME, commandKind: CommandKind.FixClassName },
+        { action: Action.NAME, commandKind: CommandKind.FixClassName },
         {
           action: Action.ONTOLOGY,
           commandKind: CommandKind.FixClassOntology,
@@ -232,7 +232,7 @@ const ContextMenu = ({
     [Selection.RELATIONSHIP]: {
       [Method.ADD]: [
         {
-          action: Action.CLASS_ATTRIBUTE,
+          action: Action.ATTRIBUTE,
           commandKind: CommandKind.AddAttributeToRelationship,
         },
       ],
@@ -271,7 +271,7 @@ const ContextMenu = ({
                       callbackFactory = defaultCallbackFactory,
                     }) => (
                       <DropdownItem
-                        text={label || action}
+                        text={label || `${selectionType} ${action}`}
                         onClick={() => {
                           const startingPrompt = computePrompt({
                             kind: commandKind,
@@ -298,7 +298,10 @@ const ContextMenu = ({
               <MenuItem
                 name={`${method}${
                   actions[0].action
-                    ? ` ${actions[0].label || actions[0].action}`
+                    ? ` ${
+                        actions[0].label ||
+                        `${selectionType} ${actions[0].action}`
+                      }`
                     : ''
                 }`}
                 onClick={() => {
