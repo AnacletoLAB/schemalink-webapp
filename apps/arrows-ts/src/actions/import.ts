@@ -5,22 +5,32 @@ import {
 } from './graph';
 import { getOntologies, getPresentGraph } from '../selectors';
 import { constructGraphFromFile } from '../storage/googleDriveStorage';
-import { Point, translate, Vector } from '@neo4j-arrows/model';
+import {
+  Graph,
+  Ontology,
+  Point,
+  Node,
+  Relationship,
+  translate,
+  Vector,
+} from '@neo4j-arrows/model';
 import { hideImportDialog } from './applicationDialogs';
 import { shrinkImageUrl } from '@neo4j-arrows/graphics';
 import { Base64 } from 'js-base64';
-import { toGraph } from '@neo4j-arrows/linkml';
+import { LinkML, toGraph } from '@neo4j-arrows/linkml';
 import { load } from 'js-yaml';
+import { Dispatch } from 'redux';
+import { ArrowsState } from '../reducers';
 
-export const tryImport = (dispatch) => {
-  return function (text, separation, ontologies) {
+export const tryImport = (dispatch: Dispatch) => {
+  return function (text: string, separation: number, ontologies: Ontology[]) {
     let importedGraph;
 
     const format = formats.find((format) => format.recognise(text));
     if (format) {
       try {
         importedGraph = format.parse(text, separation, ontologies);
-      } catch (e) {
+      } catch (e: any) {
         return {
           errorMessage: e.toString(),
         };
@@ -38,13 +48,17 @@ export const tryImport = (dispatch) => {
 };
 
 export const interpretClipboardData = (
-  clipboardData,
-  nodeSpacing,
-  ontologies,
-  handlers
+  clipboardData: DataTransfer | null,
+  nodeSpacing: number,
+  ontologies: Ontology[],
+  handlers: {
+    onGraph?: (graph: Graph) => void;
+    onPngImageUrl?: (imageUrl: string) => void;
+    onSvgImageUrl?: (imageUrl: string) => void;
+  }
 ) => {
   const textPlainMimeType = 'text/plain';
-  if (clipboardData.types.includes(textPlainMimeType)) {
+  if (clipboardData?.types.includes(textPlainMimeType)) {
     const text = clipboardData.getData(textPlainMimeType);
     const format = formats.find((format) => format.recognise(text));
     if (format) {
@@ -53,7 +67,7 @@ export const interpretClipboardData = (
           case 'graph':
             // eslint-disable-next-line no-case-declarations
             const importedGraph = format.parse(text, nodeSpacing, ontologies);
-            handlers.onGraph && handlers.onGraph(importedGraph);
+            handlers.onGraph && handlers.onGraph(importedGraph as Graph);
             break;
 
           case 'svg':
@@ -66,18 +80,18 @@ export const interpretClipboardData = (
         console.error(e);
       }
     }
-  } else if (clipboardData.types.includes('Files')) {
+  } else if (clipboardData?.types.includes('Files')) {
     const reader = new FileReader();
     reader.readAsDataURL(clipboardData.files[0]);
     reader.onloadend = function () {
-      const imageUrl = reader.result;
-      handlers.onPngImageUrl && handlers.onPngImageUrl(imageUrl);
+      const imageUrl = reader.result?.toString();
+      imageUrl && handlers.onPngImageUrl && handlers.onPngImageUrl(imageUrl);
     };
   }
 };
 
-export const handlePaste = (pasteEvent) => {
-  return function (dispatch, getState) {
+export const handlePaste = (pasteEvent: ClipboardEvent) => {
+  return function (dispatch: Dispatch, getState: () => ArrowsState) {
     const state = getState();
     const separation = nodeSeparation(state);
     const ontologies = getOntologies(state).ontologies;
@@ -85,10 +99,10 @@ export const handlePaste = (pasteEvent) => {
 
     const clipboardData = pasteEvent.clipboardData;
     interpretClipboardData(clipboardData, separation, ontologies, {
-      onGraph: (graph) => {
+      onGraph: (graph: Graph) => {
         dispatch(importNodesAndRelationships(graph));
       },
-      onPngImageUrl: (imageUrl) => {
+      onPngImageUrl: (imageUrl: string) => {
         if (selection.entities.length > 0) {
           shrinkImageUrl(imageUrl, 1024 * 10).then((shrunkenImageUrl) => {
             dispatch(
@@ -105,7 +119,7 @@ export const handlePaste = (pasteEvent) => {
           });
         }
       },
-      onSvgImageUrl: (imageUrl) => {
+      onSvgImageUrl: (imageUrl: string) => {
         if (selection.entities.length > 0) {
           dispatch(setArrowsProperty(selection, 'class-icon-image', imageUrl));
         } else {
@@ -116,12 +130,38 @@ export const handlePaste = (pasteEvent) => {
   };
 };
 
-const formats = [
+interface Format {
+  outputType: 'graph' | 'svg';
+  recognise: (plainText: string) => boolean;
+  parse: (
+    plainText: string,
+    separation: number,
+    ontologies: Ontology[]
+  ) => { nodes: Node[]; relationships: Relationship[] } | string;
+}
+
+interface GraphFormat extends Format {
+  outputType: 'graph';
+  parse: (
+    plainText: string,
+    separation: number,
+    ontologies: Ontology[]
+  ) => { nodes: Node[]; relationships: Relationship[] };
+}
+
+interface SvgFormat extends Format {
+  outputType: 'svg';
+  parse: (plainText: string) => string;
+}
+
+type FormatType = GraphFormat | SvgFormat;
+
+const formats: FormatType[] = [
   {
     // LinkML
-    recognise: (plainText) => {
+    recognise: (plainText: string) => {
       try {
-        const linkml = load(plainText);
+        const linkml: LinkML = load(plainText) as LinkML;
         const linkmlPrefix = Object.entries(linkml.prefixes).find(
           ([key, value]) => key === 'linkml'
         );
@@ -131,8 +171,8 @@ const formats = [
       }
     },
     outputType: 'graph',
-    parse: (plainText, separation, ontologies) => {
-      const graph = toGraph(load(plainText), ontologies);
+    parse: (plainText: string, separation: number, ontologies: Ontology[]) => {
+      const graph = toGraph(load(plainText) as LinkML, ontologies);
       const nodes = graph.nodes.map((node, index) => ({
         ...node,
         position: new Point(
@@ -160,11 +200,12 @@ const formats = [
   },
   {
     // JSON
-    recognise: (plainText) => new RegExp('^{.*}$', 's').test(plainText.trim()),
+    recognise: (plainText: string) =>
+      new RegExp('^{.*}$', 's').test(plainText.trim()),
     outputType: 'graph',
-    parse: (plainText) => {
+    parse: (plainText: string) => {
       const object = JSON.parse(plainText);
-      const graphData = constructGraphFromFile(object);
+      const graphData: { graph: Graph } = constructGraphFromFile(object);
       const { nodes, relationships } = graphData.graph;
       const left = Math.min(...nodes.map((node) => node.position.x));
       const top = Math.min(...nodes.map((node) => node.position.y));
@@ -178,7 +219,7 @@ const formats = [
   },
   {
     // SVG
-    recognise: (plainText) => {
+    recognise: (plainText: string) => {
       const xmlDocument = new DOMParser().parseFromString(
         plainText.trim(),
         'image/svg+xml'
@@ -186,20 +227,20 @@ const formats = [
       return xmlDocument.documentElement.tagName === 'svg';
     },
     outputType: 'svg',
-    parse: (plainText) => {
+    parse: (plainText: string) => {
       return 'data:image/svg+xml;base64,' + Base64.encode(plainText.trim());
     },
   },
   {
     // plain text
-    recognise: (plainText) => plainText && plainText.length < 10000,
+    recognise: (plainText: string) => !!plainText && plainText.length < 10000,
     outputType: 'graph',
-    parse: (plainText, separation) => {
+    parse: (plainText, separation, ontologies) => {
       const lines = plainText
         .split('\n')
         .filter((line) => line && line.trim().length > 0);
 
-      const nodes = lines.flatMap((line, row) => {
+      const nodes: Node[] = lines.flatMap((line, row) => {
         const cells = line.split('\t');
         return cells.map((cell, column) => {
           return {
@@ -208,18 +249,20 @@ const formats = [
             caption: cell,
             style: {},
             properties: {},
+            entityType: 'node',
+            description: '',
           };
         });
       });
       return {
         nodes,
-        relationships: [],
+        relationships: [] as Relationship[],
       };
     },
   },
 ];
 
-export const nodeSeparation = (state) => {
+export const nodeSeparation = (state: ArrowsState) => {
   const graph = getPresentGraph(state);
   return graph.style.radius * 2.5;
 };

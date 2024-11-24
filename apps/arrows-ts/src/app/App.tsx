@@ -183,7 +183,8 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     loadFromGoogleDrive: (fileId: any) =>
       dispatch(getFileFromGoogleDrive(fileId)),
     handleCopy: () => dispatch(handleCopy()),
-    handlePaste: (clipboardEvent: any) => dispatch(handlePaste(clipboardEvent)),
+    handlePaste: (clipboardEvent: ClipboardEvent) =>
+      dispatch(handlePaste(clipboardEvent)),
     handleImportMessage: (message: any) =>
       dispatch(handleImportMessage(message)),
   };
