@@ -15,7 +15,7 @@ export const propertiesToAttributes = (
   return Object.entries(attributes).reduce(
     (
       attributes: Record<string, LinkMLAttribute>,
-      [key, { description, collectionType, required, range }]
+      [key, { description, collectionType, required, range, dimensions }]
     ) => ({
       ...attributes,
       [toAttributeName(key)]: {
@@ -28,14 +28,11 @@ export const propertiesToAttributes = (
         )
           ? { range }
           : {}),
-        ...(collectionType
+        ...(collectionType &&
+        collectionType !== '' &&
+        [CollectionType.LIST, CollectionType.SET].includes(collectionType)
           ? {
-              multivalued:
-                !!collectionType &&
-                collectionType !== '' &&
-                [CollectionType.LIST, CollectionType.SET].includes(
-                  collectionType
-                ),
+              multivalued: true,
             }
           : {}),
         ...(collectionType === CollectionType.SET
@@ -43,6 +40,11 @@ export const propertiesToAttributes = (
           : {}),
         ...(Object.values(RegexType).includes(range as RegexType)
           ? { pattern: regexToPattern(range as RegexType) }
+          : {}),
+        ...(collectionType === CollectionType.ARRAY && range && dimensions
+          ? {
+              array: { exact_number_dimensions: dimensions },
+            }
           : {}),
       },
     }),

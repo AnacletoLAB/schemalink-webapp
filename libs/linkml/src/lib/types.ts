@@ -55,6 +55,7 @@ export enum BasicType {
 export enum CollectionType {
   LIST = 'list',
   SET = 'set',
+  ARRAY = 'array',
 }
 
 export enum RegexType {

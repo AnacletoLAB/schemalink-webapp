@@ -5,6 +5,7 @@ export interface Attribute {
   collectionType?: string;
   required: boolean;
   range?: string;
+  dimensions?: number;
 }
 
 export interface Entity {
