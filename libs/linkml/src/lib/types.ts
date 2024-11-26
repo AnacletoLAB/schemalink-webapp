@@ -40,8 +40,8 @@ export type LinkML = {
 
 export enum SpiresType {
   LINKML = 'LinkML',
-  RE = 'Spires RE',
-  ER = 'Spires ER',
+  RE = 'SPIRES (RE)',
+  ER = 'SPIRES (ER)',
 }
 
 export enum BasicType {
