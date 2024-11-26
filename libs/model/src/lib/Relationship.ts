@@ -49,18 +49,16 @@ export const setRelationshipType = (
 ) => {
   return {
     ...relationship,
-    cardinality:
-      relationshipType === RelationshipType.ASSOCIATION
-        ? relationship.cardinality ?? Cardinality.ONE_TO_MANY
-        : undefined,
-    ontologies:
-      relationshipType === RelationshipType.ASSOCIATION
-        ? relationship.ontologies
-        : undefined,
-    examples:
-      relationshipType === RelationshipType.ASSOCIATION
-        ? relationship.examples
-        : undefined,
+    ...(relationshipType === RelationshipType.INHERITANCE && {
+      description: undefined,
+      type: undefined,
+      cardinality: undefined,
+      ontologies: undefined,
+      examples: undefined,
+    }),
+    ...(relationshipType === RelationshipType.ASSOCIATION && {
+      cardinality: relationship.cardinality ?? Cardinality.ONE_TO_MANY,
+    }),
     relationshipType,
   };
 };

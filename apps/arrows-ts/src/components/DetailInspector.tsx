@@ -169,18 +169,27 @@ export default class DetailInspector extends Component<
       entities.map((entity: Entity) => entity.description)
     );
 
-    fields.push(
-      <Form.Field key="description">
-        <label>Description</label>
-        <Input
-          value={description || ''}
-          onChange={(event) => onSaveDescription(selection, event.target.value)}
-          placeholder={
-            description === undefined ? '<multiple descriptions>' : null
-          }
-        />
-      </Form.Field>
-    );
+    if (
+      relationships.every(
+        (relationship) =>
+          relationship.relationshipType === RelationshipType.ASSOCIATION
+      )
+    ) {
+      fields.push(
+        <Form.Field key="description">
+          <label>Description</label>
+          <Input
+            value={description || ''}
+            onChange={(event) =>
+              onSaveDescription(selection, event.target.value)
+            }
+            placeholder={
+              description === undefined ? '<multiple descriptions>' : null
+            }
+          />
+        </Form.Field>
+      );
+    }
     if (selectionIncludes.nodes && !selectionIncludes.relationships) {
       const value = commonValue(
         selectedNodes.map((node: Node) => node.caption)
@@ -206,17 +215,6 @@ export default class DetailInspector extends Component<
       );
       const commonCardinality = commonValue(
         relationships.map((relationship) => relationship.cardinality)
-      );
-
-      fields.push(
-        <Form.Field key="_type">
-          <label>Type</label>
-          <Input
-            value={commonType || ''}
-            onChange={(event) => onSaveType(selection, event.target.value)}
-            placeholder={commonType === undefined ? '<multiple types>' : null}
-          />
-        </Form.Field>
       );
 
       fields.push(
@@ -248,6 +246,17 @@ export default class DetailInspector extends Component<
             relationship.relationshipType === RelationshipType.ASSOCIATION
         )
       ) {
+        fields.push(
+          <Form.Field key="_type">
+            <label>Type</label>
+            <Input
+              value={commonType || ''}
+              onChange={(event) => onSaveType(selection, event.target.value)}
+              placeholder={commonType === undefined ? '<multiple types>' : null}
+            />
+          </Form.Field>
+        );
+
         fields.push(
           <Form.Field key="_cardinality">
             <label>Cardinality</label>
