@@ -1,5 +1,4 @@
 import { Ontology } from '@neo4j-arrows/model';
-import { toClassName } from './naming';
 
 const SQLITE = 'sqlite:obo:';
 const BIOONTOLOGY = 'http://purl.bioontology.org/ontology/';
@@ -12,9 +11,7 @@ export const toPrefixes = (ontologies: Ontology[]): Record<string, string> => {
   return ontologies.reduce(
     (prefixes: Record<string, string>, ontology) => ({
       ...prefixes,
-      [toClassName(
-        ontology.id
-      )]: `${BIOONTOLOGY}${ontology.id.toLocaleUpperCase()}`,
+      [ontology.id.toLocaleUpperCase()]: `${BIOONTOLOGY}${ontology.id.toLocaleUpperCase()}_`,
     }),
     {}
   );
