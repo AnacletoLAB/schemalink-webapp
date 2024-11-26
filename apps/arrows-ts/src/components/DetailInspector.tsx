@@ -351,11 +351,13 @@ export default class DetailInspector extends Component<
               example,
             ],
           });
-        const [relevantOntologies, rest] = _.partition(
-          storeOntologies,
-          (ontology) => ['ro', 'so', 'sio'].includes(ontology.id)
-        );
-        const options = [...relevantOntologies, ...rest].map((ontology) => {
+        const options = (
+          isRelationship(entities[0])
+            ? _.partition(storeOntologies, (ontology) =>
+                ['ro', 'so', 'sio'].includes(ontology.id)
+              ).flat()
+            : storeOntologies
+        ).map((ontology) => {
           return {
             key: ontology.id,
             text: ontology.id,
