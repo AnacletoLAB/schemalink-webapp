@@ -45,6 +45,7 @@ export const fromGraph = (
   name: string,
   {
     description = '',
+    license,
     nodes: maybeNodes,
     relationships: maybeRelationships,
   }: Graph,
@@ -127,7 +128,7 @@ export const fromGraph = (
     name: snakeCasedName,
     title: name,
     description,
-    license: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    license,
     prefixes: {
       linkml: 'https://w3id.org/linkml/',
       ontogpt: 'http://w3id.org/ontogpt/',
