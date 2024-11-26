@@ -35,6 +35,7 @@ import {
   fromGraph,
   toGraph,
   toRelationshipClassNameFactory,
+  toYaml,
 } from '@neo4j-arrows/linkml';
 import yaml from 'js-yaml';
 import { generate } from '@neo4j-arrows/api';
@@ -288,7 +289,7 @@ const ContextMenu = ({
                             relationships: relationships.map(
                               toRelationshipClassName
                             ),
-                            fullSchema: yaml.dump(
+                            fullSchema: toYaml(
                               fromGraph(diagramName, graph, SpiresType.LINKML)
                             ),
                           });
@@ -318,7 +319,7 @@ const ContextMenu = ({
                     kind: actions[0].commandKind,
                     nodes: nodes.map(({ caption }) => caption),
                     relationships: relationships.map(toRelationshipClassName),
-                    fullSchema: yaml.dump(
+                    fullSchema: toYaml(
                       fromGraph(diagramName, graph, SpiresType.LINKML)
                     ),
                   });

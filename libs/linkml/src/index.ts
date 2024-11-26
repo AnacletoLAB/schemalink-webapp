@@ -30,6 +30,7 @@ import {
 } from './lib/relationships';
 import { nodeToClass } from './lib/nodes';
 import { toPrefixes } from './lib/ontologies';
+import { dump } from 'js-yaml';
 
 export * from './lib/types';
 export * from './lib/naming';
@@ -367,4 +368,12 @@ export const toGraph = (
     nodes,
     relationships,
   };
+};
+
+export const toYaml = (linkML: LinkML): string => {
+  return dump(linkML, {
+    styles: {
+      '!!null': 'empty',
+    },
+  });
 };
