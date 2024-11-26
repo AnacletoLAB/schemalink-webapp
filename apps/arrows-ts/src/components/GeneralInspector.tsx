@@ -6,13 +6,20 @@ import {
   ButtonGroup,
   Divider,
   Input,
+  Dropdown,
 } from 'semantic-ui-react';
 import { GeneralToolbox } from './GeneralToolbox';
 import GeneralStyling from './GeneralStyling';
 import ThemeCards from './ThemeCards';
 import { renderCounters } from './EntityCounters';
 import { ImageInfo } from '@neo4j-arrows/graphics';
-import { Entity, Graph, SchemaProperties } from '@neo4j-arrows/model';
+import {
+  Entity,
+  Graph,
+  graphsDifferInMoreThanPositions,
+  License,
+  SchemaProperties,
+} from '@neo4j-arrows/model';
 
 type GeneralInspectorProps = {
   graph: Graph;
@@ -28,6 +35,10 @@ type GeneralInspectorProps = {
 };
 
 export default class GeneralInspector extends Component<GeneralInspectorProps> {
+  shouldComponentUpdate(nextProps: Readonly<GeneralInspectorProps>): boolean {
+    return graphsDifferInMoreThanPositions(this.props.graph, nextProps.graph);
+  }
+
   render() {
     const {
       graph,
@@ -70,12 +81,32 @@ export default class GeneralInspector extends Component<GeneralInspectorProps> {
           <Form.Field key="_description">
             <label>Description</label>
             <Input
-              value={graph.description}
+              defaultValue={graph.description}
               onChange={(e, { value }) =>
                 onSchemaPropertiesChange({
                   description: value,
                 })
               }
+            />
+          </Form.Field>
+          <Form.Field key="_license">
+            <label>License</label>
+            <Dropdown
+              selection
+              clearable
+              defaultValue={graph.license}
+              onChange={(e, { value }) =>
+                onSchemaPropertiesChange({
+                  license: value as License,
+                })
+              }
+              options={Object.entries(License).map(([key, value]) => {
+                return {
+                  key,
+                  text: key,
+                  value,
+                };
+              })}
             />
           </Form.Field>
           <Divider
