@@ -22,7 +22,7 @@ import {
   toClassName,
   toRelationshipClassNameFactory,
 } from './lib/naming';
-import { snakeCase } from 'lodash';
+import { camelCase, snakeCase } from 'lodash';
 import {
   relationshipToRelationshipClass,
   relationshipToPredicateClass,
@@ -62,28 +62,86 @@ export const fromGraph = (
     findRelationshipsFromNodeFactory(relationships);
   const toRelationshipClassName = toRelationshipClassNameFactory(nodes);
   const snakeCasedName = snakeCase(name);
-  const getRootClass = (): Record<'Document', LinkMLClass> | undefined => {
+  const getRootClass = (): Record<string, LinkMLClass> | undefined => {
     const core: LinkMLClass = { tree_root: true };
     switch (spiresType) {
-      case SpiresType.RE:
-        return {
-          Document: {
-            ...core,
-            is_a: SpiresCoreClasses.TextWithTriples,
-            slot_usage: {
-              triples: relationships.filter(
-                ({ relationshipType }) =>
-                  relationshipType === RelationshipType.ASSOCIATION
-              )[0]
-                ? {
-                    range: `${toRelationshipClassName(
-                      relationships[0]
-                    )}Relationship`,
-                  }
-                : {},
-            },
-          },
+      case SpiresType.RE: {
+        const toDescription = (relationship: Relationship): string => {
+          const fromNode = findNode(relationship.fromId);
+          const toNode = findNode(relationship.toId);
+
+          return `A document that contains ${fromNode?.caption} to ${toNode?.caption} relationships`;
         };
+
+        const toPrompt = (relationship: Relationship): string => {
+          const fromNode = findNode(relationship.fromId);
+          const toNode = findNode(relationship.toId);
+
+          return `A semi-colon separated list of ${fromNode?.caption} to ${
+            toNode?.caption
+          } relationships${
+            relationship.type !== ''
+              ? `, where the relationship is "${relationship.type}".`
+              : '.'
+          }${
+            relationship.examples && relationship.examples.length
+              ? ` For example: ${relationship.examples.join(', ')}`
+              : ''
+          }`;
+        };
+
+        return relationships
+          .filter(
+            ({ relationshipType }) =>
+              relationshipType === RelationshipType.ASSOCIATION
+          )
+          .reduce(
+            (classes: Record<string, LinkMLClass>, relationship) => {
+              return {
+                ...classes,
+                [`${toRelationshipClassName(relationship)}Document`]: {
+                  is_a: SpiresCoreClasses.TextWithTriples,
+                  description: toDescription(relationship),
+                  slot_usage: {
+                    triples: {
+                      range: `${toRelationshipClassName(
+                        relationship
+                      )}Relationship`,
+                      annotations: { prompt: toPrompt(relationship) },
+                    },
+                  },
+                },
+              };
+            },
+            {
+              Container: {
+                ...core,
+                is_a: SpiresCoreClasses.NamedEntity,
+                description:
+                  'A document that contains relationships between two entities.',
+                attributes: relationships
+                  .filter(
+                    ({ relationshipType }) =>
+                      relationshipType === RelationshipType.ASSOCIATION
+                  )
+                  .reduce((attributes, relationship) => {
+                    return {
+                      ...attributes,
+                      [`${camelCase(
+                        toRelationshipClassName(relationship)
+                      )}Document`]: {
+                        range: `${toRelationshipClassName(
+                          relationship
+                        )}Document`,
+                        description: toDescription(relationship),
+                        annotations: { prompt: toPrompt(relationship) },
+                      },
+                    };
+                  }, {}),
+              },
+            }
+          );
+      }
       case SpiresType.ER:
         return {
           Document: {
