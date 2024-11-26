@@ -36,6 +36,7 @@ export type LinkML = {
   imports?: string[];
   license?: string;
   enums?: Record<string, Record<string, null>>;
+  description: string;
 };
 
 export enum SpiresType {

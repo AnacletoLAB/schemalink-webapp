@@ -58,10 +58,7 @@ export const fromGraph = (
   const toRelationshipClassName = toRelationshipClassNameFactory(nodes);
   const snakeCasedName = snakeCase(name);
   const getRootClass = (): Record<'Document', LinkMLClass> | undefined => {
-    const core: LinkMLClass = {
-      tree_root: true,
-      description,
-    };
+    const core: LinkMLClass = { tree_root: true };
     switch (spiresType) {
       case SpiresType.RE:
         return {
@@ -125,6 +122,7 @@ export const fromGraph = (
     default_range: BasicType.STRING,
     name: snakeCasedName,
     title: name,
+    description,
     license: 'https://creativecommons.org/publicdomain/zero/1.0/',
     prefixes: {
       linkml: 'https://w3id.org/linkml/',
