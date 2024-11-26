@@ -4,6 +4,7 @@ export type Attribute = {
   multivalued?: boolean;
   required?: boolean;
   annotations?: Record<string, string>;
+  identifier?: boolean;
 };
 
 export enum SpiresCoreClasses {
