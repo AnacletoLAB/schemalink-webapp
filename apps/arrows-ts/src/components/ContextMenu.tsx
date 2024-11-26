@@ -18,6 +18,11 @@ import {
   computePrompt,
   selectedNodes,
   selectedRelationships,
+  RelationshipType,
+  Relationship,
+  Node,
+  Entity,
+  isRelationship,
 } from '@neo4j-arrows/model';
 import {
   hideContextMenu,
@@ -79,6 +84,8 @@ interface ContextMenuProps {
   diagramName: string;
   graph: Graph;
   selection: EntitySelection;
+  nodes: Node[];
+  relationships: Relationship[];
   onClose: () => void;
   ontologies: Ontology[];
   onSaveOntology: (selection: EntitySelection, ontologies: Ontology[]) => void;
@@ -103,16 +110,20 @@ const ContextMenu = ({
   openGtpExplanationModal,
   openGtpModal,
   selection,
+  nodes,
+  relationships,
   separation,
   x,
   y,
 }: ContextMenuProps) => {
   const whichSelection = () => {
-    if (selection.entities.length === 0) {
+    const entities = [...nodes, ...relationships];
+
+    if (entities.length === 0) {
       return Selection.NONE;
     }
 
-    if (selection.entities.length > 10) {
+    if (entities.length > 10) {
       return Selection.ALL;
     }
 
@@ -241,8 +252,6 @@ const ContextMenu = ({
     [Selection.NONE]: {},
   };
 
-  const nodes = selectedNodes(graph, selection);
-  const relationships = selectedRelationships(graph, selection);
   const selectionType = whichSelection();
   const entries = Object.entries(selectionToActions[selectionType]);
   const toRelationshipClassName = toRelationshipClassNameFactory(graph.nodes);
@@ -342,7 +351,22 @@ const mapStateToProps = (state: ArrowsState) => {
     graph: state.graph.present,
     diagramName: state.diagramName,
     ontologies: state.ontologies.ontologies,
-    selection: state.selection,
+    selection: {
+      ...state.selection,
+      entities: state.selection.entities.filter(
+        (entity: Entity) =>
+          !isRelationship(entity) ||
+          entity.relationshipType !== RelationshipType.INHERITANCE
+      ),
+    },
+    nodes: selectedNodes(state.graph.present, state.selection),
+    relationships: selectedRelationships(
+      state.graph.present,
+      state.selection
+    ).filter(
+      ({ relationshipType }) =>
+        relationshipType !== RelationshipType.INHERITANCE
+    ),
     separation: nodeSeparation(state),
   };
 };
