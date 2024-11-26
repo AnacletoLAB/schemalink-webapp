@@ -11,7 +11,6 @@ import {
   reverseRelationships,
   duplicateSelection,
   convertCaptionsToPropertyValues,
-  inlineRelationships,
   mergeOnPropertyValues,
   mergeNodes,
   deleteSelection,
@@ -109,9 +108,6 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     },
     mergeNodes: (selection: EntitySelection) => {
       dispatch(mergeNodes(selection));
-    },
-    inlineRelationships: (selection: EntitySelection) => {
-      dispatch(inlineRelationships(selection));
     },
     onSelect: (entities: Pick<Entity, 'id' | 'entityType'>[]) => {
       dispatch(toggleSelection(entities, 'replace'));

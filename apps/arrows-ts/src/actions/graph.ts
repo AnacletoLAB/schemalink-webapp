@@ -22,7 +22,6 @@ import {
   selectedNodes,
   selectedRelationshipIdMap,
   selectedRelationshipIds,
-  selectedRelationships,
   translate,
   Vector,
   Id,
@@ -902,30 +901,6 @@ export const reverseRelationships = (
   type: 'REVERSE_RELATIONSHIPS',
   selection,
 });
-
-export const inlineRelationships = (selection: EntitySelection) => {
-  return function (dispatch: Dispatch, getState: () => ArrowsState) {
-    const state = getState();
-    const graph = getPresentGraph(state);
-    const relationshipSpecs = selectedRelationships(graph, selection).map(
-      (relationship) => {
-        const targetNode = graph.nodes.find(
-          (node) => node.id === relationship.toId
-        );
-        return {
-          addPropertiesNodeId: relationship.fromId,
-          properties: targetNode?.properties,
-          removeNodeId: relationship.toId,
-        };
-      }
-    );
-    dispatch({
-      category: 'GRAPH',
-      type: 'INLINE_RELATIONSHIPS',
-      relationshipSpecs,
-    });
-  };
-};
 
 export const importNodesAndRelationships = (importedGraph: Graph) => {
   return function (dispatch: Dispatch, getState: () => ArrowsState) {

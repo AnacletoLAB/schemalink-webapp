@@ -43,7 +43,6 @@ import _ from 'lodash';
 interface DetailInspectorProps {
   cachedImages: Record<string, ImageInfo>;
   graph: Graph;
-  inlineRelationships: (selection: EntitySelection) => void;
   inspectorVisible: boolean;
   mergeNodes: (selection: EntitySelection) => void;
   ontologies: OntologyState;
@@ -139,7 +138,6 @@ export default class DetailInspector extends Component<
       onDelete,
       onDeleteArrowsProperty,
       reverseRelationships,
-      inlineRelationships,
       mergeNodes,
       selectedNodes,
       onSelect,
@@ -487,9 +485,6 @@ export default class DetailInspector extends Component<
             graph={graph}
             selection={selection}
             onReverseRelationships={reverseRelationships}
-            onInlineRelationships={(selection: EntitySelection) => {
-              return inlineRelationships(selection);
-            }}
             onMergeNodes={mergeNodes}
             onDuplicate={onDuplicate}
             onDelete={onDelete}

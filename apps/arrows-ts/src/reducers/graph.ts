@@ -141,15 +141,6 @@ interface MergeNodesAction extends CategoryGraph<'MERGE_NODES'> {
   mergeSpecs: MergeSpecs[];
 }
 
-interface InlineRelationshipsAction
-  extends CategoryGraph<'INLINE_RELATIONSHIPS'> {
-  relationshipSpecs: {
-    removeNodeId: Id;
-    addPropertiesNodeId: Id;
-    properties: Record<string, string>;
-  }[];
-}
-
 interface GettingGraphAction extends CategoryGraph<'GETTING_GRAPH_SUCCEEDED'> {
   storedGraph: Graph;
 }
@@ -198,7 +189,6 @@ export type GraphAction =
   | SetRelationshipTypeAction
   | MergeNodesAction
   | KeyValueAction<'SET_GRAPH_STYLE'>
-  | InlineRelationshipsAction
   | GettingGraphAction
   | MoveNodesAction
   | DuplicateNodesAndRelationshipsAction
@@ -674,42 +664,6 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
           relationshipSelected(action.selection, relationship.id)
             ? reverse(relationship)
             : relationship
-        ),
-      };
-
-    case 'INLINE_RELATIONSHIPS':
-      return {
-        ...state,
-        nodes: state.nodes
-          .filter(
-            (node) =>
-              !action.relationshipSpecs.some(
-                (spec) => spec.removeNodeId === node.id
-              )
-          )
-          .map((node) => {
-            const spec = action.relationshipSpecs.find(
-              (spec) => spec.addPropertiesNodeId === node.id
-            );
-            if (spec) {
-              let augmentedNode = node;
-              for (const [key, value] of Object.entries(spec.properties)) {
-                augmentedNode = setProperty(augmentedNode, key, {
-                  description: value,
-                });
-              }
-              return augmentedNode;
-            } else {
-              return node;
-            }
-          }),
-        relationships: state.relationships.filter(
-          (relationship) =>
-            !action.relationshipSpecs.some(
-              (spec) =>
-                spec.removeNodeId === relationship.fromId ||
-                spec.removeNodeId === relationship.toId
-            )
         ),
       };
 
