@@ -3,7 +3,7 @@ export enum CommandKind {
   AddClassAssociatedToClass,
   AddAttributeToRelationship,
   AddClassesSimilarToEntities,
-  DivideReifyClass,
+  ReifyClass,
   ExplainClass,
   ExplainEntities,
   FixClassName,
@@ -39,8 +39,8 @@ interface AddClassesSimilarToEntities extends Command {
   relationships?: string[];
 }
 
-interface DivideReifyClass extends Command {
-  kind: CommandKind.DivideReifyClass;
+interface ReifyClass extends Command {
+  kind: CommandKind.ReifyClass;
   nodes: string;
 }
 
@@ -70,7 +70,7 @@ export type CommandType =
   | AddClassAssociatedToClass
   | AddClassesSimilarToEntities
   | AddAttributeToRelationship
-  | DivideReifyClass
+  | ReifyClass
   | ExplainEntities
   | ExplainClass
   | FixClassName
@@ -139,7 +139,7 @@ ${command.fullSchema}`;
         ...(command.relationships || []),
       ]}.
 The explanation should include details on its role within the schema and any examples provided.`;
-    case CommandKind.DivideReifyClass:
+    case CommandKind.ReifyClass:
       return `${INTRO}reify any attributes that you consider "reifiable" in the class named ${command.nodes}.
 This means creating a new class for each reified attribute and removing them from the class named ${command.nodes}.
 Ensure that the new class(es) fits within the context.
