@@ -4,8 +4,13 @@ import { otherNodeId } from './Relationship';
 import { Node } from './Node';
 import { Relationship } from './Relationship';
 
+export enum License {
+  CREATIVE_COMMONS_1_0 = 'https://creativecommons.org/publicdomain/zero/1.0/',
+}
+
 export interface SchemaProperties {
   description?: string;
+  license?: License;
 }
 
 export interface Graph extends SchemaProperties {
@@ -91,7 +96,9 @@ export const graphsDifferInMoreThanPositions = (
   return (
     nodesDifferInMoreThanPositions(graph1.nodes, graph2.nodes) ||
     graph1.relationships !== graph2.relationships ||
-    graph1.style !== graph2.style
+    graph1.style !== graph2.style ||
+    graph1.description !== graph2.description ||
+    graph1.license !== graph2.license
   );
 };
 
