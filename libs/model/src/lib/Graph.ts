@@ -4,17 +4,19 @@ import { otherNodeId } from './Relationship';
 import { Node } from './Node';
 import { Relationship } from './Relationship';
 
-export interface Graph {
+export interface SchemaProperties {
+  description?: string;
+}
+
+export interface Graph extends SchemaProperties {
   nodes: Node[];
   relationships: Relationship[];
-  description: string;
   style: any;
 }
 export const emptyGraph = (): Graph => {
   return {
     nodes: [],
     relationships: [],
-    description: '',
     style: completeWithDefaults({}),
   };
 };

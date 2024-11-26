@@ -26,6 +26,7 @@ import {
   Node,
   Guides,
   Attribute,
+  SchemaProperties,
 } from '@neo4j-arrows/model';
 import { Action } from 'redux';
 import undoable, { groupByActionTypes } from 'redux-undo';
@@ -34,8 +35,9 @@ interface CategoryGraph<T> extends Action<T> {
   category: 'GRAPH';
 }
 
-interface DescriptionAction extends CategoryGraph<'SET_GRAPH_DESCRIPTION'> {
-  description: string;
+interface SetSchemaPropertiesAction
+  extends CategoryGraph<'SET_SCHEMA_PROPERTIES'> {
+  properties: SchemaProperties;
 }
 
 interface CreateNodeAction extends CategoryGraph<'CREATE_NODE'> {
@@ -170,7 +172,7 @@ interface StylesAction extends CategoryGraph<'SET_GRAPH_STYLES'> {
 export type GraphAction =
   | CategoryGraph<'NEW_GOOGLE_DRIVE_DIAGRAM' | 'NEW_LOCAL_STORAGE_DIAGRAM'>
   | CreateNodeAction
-  | DescriptionAction
+  | SetSchemaPropertiesAction
   | SetOntologiesAction
   | SetExamplesAction
   | SetCardinalityAction
@@ -201,8 +203,11 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
     case 'NEW_LOCAL_STORAGE_DIAGRAM':
       return emptyGraph();
 
-    case 'SET_GRAPH_DESCRIPTION': {
-      return { ...state, description: action.description };
+    case 'SET_SCHEMA_PROPERTIES': {
+      return {
+        ...state,
+        ...action.properties,
+      };
     }
 
     case 'CREATE_NODE': {

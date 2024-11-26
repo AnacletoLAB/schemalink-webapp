@@ -36,6 +36,7 @@ import {
   Coordinate,
   Component,
   Attribute,
+  SchemaProperties,
 } from '@neo4j-arrows/model';
 import { BoundingBox, calculateBoundingBox } from '@neo4j-arrows/graphics';
 import { lockHandleDragType } from './mouse';
@@ -552,10 +553,12 @@ export const setCardinality = (
   cardinality,
 });
 
-export const setGraphDescription = (description: string): GraphAction => ({
+export const setSchemaProperties = (
+  properties: SchemaProperties
+): GraphAction => ({
   category: 'GRAPH',
-  type: 'SET_GRAPH_DESCRIPTION',
-  description,
+  type: 'SET_SCHEMA_PROPERTIES',
+  properties,
 });
 
 export const mergeOnPropertyValues = (

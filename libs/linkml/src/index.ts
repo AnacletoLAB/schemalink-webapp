@@ -43,7 +43,11 @@ type LinkMLGraph = {
 
 export const fromGraph = (
   name: string,
-  { description, nodes: maybeNodes, relationships: maybeRelationships }: Graph,
+  {
+    description = '',
+    nodes: maybeNodes,
+    relationships: maybeRelationships,
+  }: Graph,
   spiresType: SpiresType = SpiresType.RE
 ): LinkML => {
   const nodes = maybeNodes.filter(({ caption }) => caption);

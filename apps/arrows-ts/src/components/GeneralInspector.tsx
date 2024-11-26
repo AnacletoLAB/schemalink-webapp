@@ -12,7 +12,7 @@ import GeneralStyling from './GeneralStyling';
 import ThemeCards from './ThemeCards';
 import { renderCounters } from './EntityCounters';
 import { ImageInfo } from '@neo4j-arrows/graphics';
-import { Entity, Graph } from '@neo4j-arrows/model';
+import { Entity, Graph, SchemaProperties } from '@neo4j-arrows/model';
 
 type GeneralInspectorProps = {
   graph: Graph;
@@ -21,7 +21,7 @@ type GeneralInspectorProps = {
   onApplyTheme: (style: any) => void;
   styleMode: string;
   onSelect: (entities: Entity[]) => void;
-  onDescriptionChange: (description: string) => void;
+  onSchemaPropertiesChange: (properties: SchemaProperties) => void;
   onPlusNodeClick: () => void;
   onStyleTheme: () => void;
   onStyleCustomize: () => void;
@@ -36,7 +36,7 @@ export default class GeneralInspector extends Component<GeneralInspectorProps> {
       onApplyTheme,
       styleMode,
       onSelect,
-      onDescriptionChange,
+      onSchemaPropertiesChange,
     } = this.props;
 
     const styleContent =
@@ -71,7 +71,11 @@ export default class GeneralInspector extends Component<GeneralInspectorProps> {
             <label>Description</label>
             <Input
               value={graph.description}
-              onChange={(e, { value }) => onDescriptionChange(value)}
+              onChange={(e, { value }) =>
+                onSchemaPropertiesChange({
+                  description: value,
+                })
+              }
             />
           </Form.Field>
           <Divider

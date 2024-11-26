@@ -1,7 +1,7 @@
 import { connect } from 'react-redux';
 import {
   createNode,
-  setGraphDescription,
+  setSchemaProperties,
   setGraphStyle,
   setGraphStyles,
 } from '../actions/graph';
@@ -11,7 +11,7 @@ import { styleCustomize, styleTheme } from '../actions/applicationLayout';
 import { toggleSelection } from '../actions/selection';
 import { ArrowsState } from '../reducers';
 import { Dispatch } from 'redux';
-import { Entity } from '@neo4j-arrows/model';
+import { Entity, SchemaProperties } from '@neo4j-arrows/model';
 
 const mapStateToProps = (state: ArrowsState) => {
   return {
@@ -42,8 +42,8 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     onApplyTheme: (style: any) => {
       dispatch(setGraphStyles(style));
     },
-    onDescriptionChange: (description: string) => {
-      dispatch(setGraphDescription(description));
+    onSchemaPropertiesChange: (properties: SchemaProperties) => {
+      dispatch(setSchemaProperties(properties));
     },
   };
 };
