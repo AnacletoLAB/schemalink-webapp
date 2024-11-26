@@ -172,8 +172,8 @@ export const themes: Theme[] = [
           // },
           caption: '',
           properties: {
-            SKU: { description: '750045', required: false },
-            unit: { description: '100', required: false },
+            SKU: { description: '750045', required: false, identifier: false },
+            unit: { description: '100', required: false, identifier: false },
           },
           style: {},
           description: '',
@@ -188,7 +188,7 @@ export const themes: Theme[] = [
           // },
           caption: '',
           properties: {
-            stock: { description: 'true', required: false },
+            stock: { description: 'true', required: false, identifier: false },
           },
           style: {},
           description: '',
@@ -393,14 +393,17 @@ export const themes: Theme[] = [
             released: {
               description: '2006',
               required: false,
+              identifier: false,
             },
             tagline: {
               description: 'Break The Codes',
               required: false,
+              identifier: false,
             },
             title: {
               description: 'The Da Vinci Code',
               required: false,
+              identifier: false,
             },
           },
           description: '',

@@ -94,6 +94,7 @@ export default class PropertyTable extends Component<
       onSavePropertyValue('', {
         description: '',
         required: false,
+        identifier: false,
       });
     };
 

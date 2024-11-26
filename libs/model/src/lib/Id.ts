@@ -4,6 +4,7 @@ export interface Attribute {
   description: string;
   collectionType?: string;
   required: boolean;
+  identifier: boolean;
   range?: string;
   dimensions?: number;
 }
