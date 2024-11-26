@@ -371,9 +371,17 @@ export const toGraph = (
 };
 
 export const toYaml = (linkML: LinkML): string => {
-  return dump(linkML, {
-    styles: {
-      '!!null': 'empty',
-    },
-  });
+  return (
+    dump(linkML, {
+      styles: {
+        '!!null': 'empty',
+      },
+    })
+      // TODO: remove this once unique_values is supported by LinkML
+      // See https://github.com/SchemaLink/webapp/issues/49.
+      .replace(
+        'unique_values: true',
+        '# unique_values: true --> not supported yet'
+      )
+  );
 };
