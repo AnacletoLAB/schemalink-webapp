@@ -378,6 +378,22 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
               disabled={valueDisabled}
             />
           </Form.Field>
+          <Form.Field
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+            }}
+          >
+            <label>Identifier</label>
+            <Checkbox
+              checked={attributeValue.identifier}
+              onChange={(event, data) =>
+                onValueChange({ ...attributeValue, identifier: !!data.checked })
+              }
+              disabled={valueDisabled}
+            />
+          </Form.Field>
         </AccordionContent>
       </div>
     );
