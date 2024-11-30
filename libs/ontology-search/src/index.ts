@@ -38,20 +38,38 @@ export const ontologies = async (size = 20): Promise<Ontology[]> => {
 
 export const terms = async (
   ontology: Ontology,
-  size = 20
+  page = 0
 ): Promise<string[]> => {
-  return fetch(`${ONTOLOGIES_LIST}/${ontology.id}/terms?size=${size}`).then(
-    (response) =>
-      response.json().then((data: OntologyTermsJson) => {
-        return data._embedded.terms
-          .filter(({ obo_id }) =>
-            obo_id
-              .toLocaleLowerCase()
-              .startsWith(ontology.id.toLocaleLowerCase())
-          )
-          .map(({ label }) => label);
-      })
+  return fetch(
+    `${ONTOLOGIES_LIST}/${ontology.id}/terms?size=1000&page=${page}`
+  ).then((response) =>
+    response.json().then((data: OntologyTermsJson) => {
+      return data._embedded.terms
+        .filter(({ obo_id }) =>
+          obo_id.toLocaleLowerCase().startsWith(ontology.id.toLocaleLowerCase())
+        )
+        .map(({ label }) => label);
+    })
   );
+};
+
+export const nTerms = async (
+  ontology: Ontology,
+  n: number
+): Promise<string[]> => {
+  const totalPages = await fetch(
+    `${ONTOLOGIES_LIST}/${ontology.id}/terms?size=1000`
+  ).then((response) =>
+    response.json().then((data: OntologyTermsJson) => data.page.totalPages)
+  );
+  let page = 0;
+  let newTerms = await terms(ontology, page);
+  while (page < totalPages && newTerms.length < n) {
+    page++;
+    const moreTerms = await terms(ontology, page);
+    newTerms = [...newTerms, ...moreTerms];
+  }
+  return newTerms;
 };
 
 export const properties = async (

@@ -41,6 +41,7 @@ type OntologyPropertiesEmbedded = { properties: Property[] };
 
 export type OntologyTermsJson = {
   _embedded: OntologyTermsEmbedded;
+  page: Page;
 };
 
 export type OntologyPropertiesJson = {

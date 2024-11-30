@@ -37,6 +37,7 @@ import {
   Component,
   Attribute,
   SchemaProperties,
+  hardcodedOntologies,
 } from '@neo4j-arrows/model';
 import { BoundingBox, calculateBoundingBox } from '@neo4j-arrows/graphics';
 import { lockHandleDragType } from './mouse';
@@ -53,7 +54,7 @@ import {
 import {
   MAX_PAGE_SIZE,
   properties,
-  terms,
+  nTerms,
 } from '@neo4j-arrows/ontology-search';
 
 export const createNode =
@@ -974,30 +975,42 @@ export const onSaveOntology = (
   ontologies: Ontology[]
 ) => {
   return function (dispatch: Dispatch) {
+    const hardcodedOntologiesIds = hardcodedOntologies.map(
+      (ontology) => ontology.id
+    );
     dispatch(setOntology(selection, ontologies));
     dispatch(loadOntologyExamplesRequest());
     Promise.all(
-      ontologies.map((ontology: Ontology) =>
-        terms(ontology, MAX_PAGE_SIZE).then((terms) => {
-          return { ...ontology, terms };
-        })
-      )
+      ontologies
+        .filter((ontology) => !hardcodedOntologiesIds.includes(ontology.id))
+        .map((ontology: Ontology) =>
+          nTerms(ontology, 10).then((terms) => {
+            return { ...ontology, terms };
+          })
+        )
     )
       .then((resolvedOntologies) => {
         dispatch(loadOntologyExamplesSuccess(resolvedOntologies));
       })
-      .catch((error) => dispatch(loadOntologyExamplesFailure()));
+      .catch((error) => {
+        console.error(error);
+        dispatch(loadOntologyExamplesFailure());
+      });
     dispatch(loadOntologyExamplesRequest());
     Promise.all(
-      ontologies.map((ontology: Ontology) =>
-        properties(ontology, MAX_PAGE_SIZE).then((properties) => {
-          return { ...ontology, properties };
-        })
-      )
+      ontologies
+        .filter((ontology) => !hardcodedOntologiesIds.includes(ontology.id))
+        .map((ontology: Ontology) =>
+          properties(ontology, MAX_PAGE_SIZE).then((properties) => {
+            return { ...ontology, properties };
+          })
+        )
     )
       .then((resolvedOntologies) => {
         dispatch(loadOntologyExamplesSuccess(resolvedOntologies));
       })
-      .catch((error) => dispatch(loadOntologyExamplesFailure()));
+      .catch((error) => {
+        console.error(error);
+        dispatch(loadOntologyExamplesFailure())});
   };
 };

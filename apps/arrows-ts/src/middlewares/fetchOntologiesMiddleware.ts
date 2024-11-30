@@ -7,9 +7,13 @@ import {
   loadOntologyExamplesSuccess,
 } from '../actions/ontologies';
 import { Action, Dispatch, Store } from 'redux';
-import { Graph, backupOntologies } from '@neo4j-arrows/model';
 import {
-  terms,
+  Graph,
+  backupOntologies,
+  hardcodedOntologies,
+} from '@neo4j-arrows/model';
+import {
+  nTerms,
   ontologies,
   properties,
   MAX_PAGE_SIZE,
@@ -28,6 +32,9 @@ export const fetchOntologiesMiddleware =
     const result = next(action);
 
     if (action.type === 'GETTING_GRAPH') {
+      const hardcodedOntologiesIds = hardcodedOntologies.map(
+        (ontology) => ontology.id
+      );
       store.dispatch(loadOntologiesRequest());
       ontologies(MAX_PAGE_SIZE)
         .then((ontologies) => {
@@ -37,8 +44,11 @@ export const fetchOntologiesMiddleware =
           Promise.all(
             graph.nodes
               .flatMap((node) => node.ontologies ?? [])
+              .filter(
+                (ontology) => !hardcodedOntologiesIds.includes(ontology.id)
+              )
               .map((ontology) =>
-                terms(ontology, MAX_PAGE_SIZE).then((terms) => {
+                nTerms(ontology, 10).then((terms) => {
                   return { ...ontology, terms };
                 })
               )
@@ -46,11 +56,15 @@ export const fetchOntologiesMiddleware =
             .then((resolvedOntologies) => {
               store.dispatch(loadOntologyExamplesSuccess(resolvedOntologies));
             })
-            .catch((error) => store.dispatch(loadOntologyExamplesFailure()));
+            .catch((error) => {
+              console.error(error);
+              store.dispatch(loadOntologyExamplesFailure());
+            });
           store.dispatch(loadOntologyExamplesRequest());
           Promise.all(
             graph.relationships
               .flatMap((relationship) => relationship.ontologies ?? [])
+              .filter((ontology) => !hardcodedOntologies.includes(ontology))
               .map((ontology) =>
                 properties(ontology, MAX_PAGE_SIZE).then((properties) => {
                   return { ...ontology, properties };
@@ -60,9 +74,15 @@ export const fetchOntologiesMiddleware =
             .then((resolvedOntologies) => {
               store.dispatch(loadOntologyExamplesSuccess(resolvedOntologies));
             })
-            .catch((error) => store.dispatch(loadOntologyExamplesFailure()));
+            .catch((error) => {
+              console.error(error);
+              store.dispatch(loadOntologyExamplesFailure());
+            });
         })
-        .catch((error) => onFailedLoadOntologies());
+        .catch((error) => {
+          console.error(error);
+          onFailedLoadOntologies();
+        });
     }
 
     return result;
