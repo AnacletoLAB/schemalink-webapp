@@ -48,9 +48,9 @@ class HelpModal extends Component<HelpModalProps> {
       <Modal size="small" open={this.props.showModal} onClose={this.onCancel}>
         <Modal.Header>Help</Modal.Header>
         <Modal.Content scrolling>
-          <Header size="small">New to arrows.app?</Header>
+          <Header size="small">New to SchemaLink?</Header>
           <p>
-            Learn about arrows.app by visiting{' '}
+            SchemaLink is based on arrows.app. Learn about arrows.app by visiting{' '}
             <a
               href="https://neo4j.com/labs/arrows"
               target="_blank"

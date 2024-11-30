@@ -67,7 +67,7 @@ export class DiagramNameEditor extends Component<
     return (
       <React.Fragment>
         <Menu.Item onClick={this.onClick}>
-          <DocumentTitle title={this.props.diagramName + ' - Arrows'}>
+          <DocumentTitle title={this.props.diagramName + ' - SchemaLink'}>
             <span style={{ fontWeight: 'bold' }}>{this.props.diagramName}</span>
           </DocumentTitle>
         </Menu.Item>

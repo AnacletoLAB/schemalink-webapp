@@ -8,7 +8,6 @@ import InspectorChooser from '../containers/InspectorChooser';
 import { computeCanvasSize, inspectorWidth } from '@neo4j-arrows/model';
 import ExportContainer from '../containers/ExportContainer';
 import HelpModal from '../components/HelpModal';
-import FooterContainer from '../containers/FooterContainer';
 import LocalStoragePickerContainer from '../containers/LocalStoragePickerContainer';
 import SaveAsContainer from '../containers/SaveAsContainer';
 import ImportContainer from '../containers/ImportContainer';
@@ -110,7 +109,6 @@ class App extends Component<AppProps> {
           <GraphContainer />
           {inspector}
         </section>
-        <FooterContainer />
         <ContextMenu />
         <GptModal />
         <GptExplanationModal />
