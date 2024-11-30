@@ -197,8 +197,6 @@ export const handleImportMessage = (message) => {
     return {
       type: 'IGNORE',
     };
-  console.log('Message!', message.data);
-
   const data = JSON.parse(message.data);
   const graph = constructGraphFromFile(data).graph;
   const diagramName = data.diagramName || defaultName;

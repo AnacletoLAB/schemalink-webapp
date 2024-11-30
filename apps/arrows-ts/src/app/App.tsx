@@ -146,7 +146,6 @@ class App extends Component<AppProps> {
 
   handleCopy(ev: ClipboardEvent) {
     if (ignoreTarget(ev)) return;
-    console.log('copying');
     this.props.handleCopy(ev);
   }
 

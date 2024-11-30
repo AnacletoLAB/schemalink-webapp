@@ -67,7 +67,6 @@ export class RoutedRelationshipBundle {
 
     if (relationships[0].startAttachment || relationships[0].endAttachment) {
       if (relationships[0].startAttachment && relationships[0].endAttachment) {
-        console.log('recti');
         for (let i = 0; i < relationships.length; i++) {
           const dimensions = arrowDimensions[i];
           const relationship = relationships[i];
@@ -83,7 +82,6 @@ export class RoutedRelationshipBundle {
           );
         }
       } else {
-        console.log('elbow', relationships);
         for (let i = 0; i < relationships.length; i++) {
           const dimensions = arrowDimensions[i];
           const relationship = relationships[i];
