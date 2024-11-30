@@ -7,7 +7,7 @@ import {
   loadOntologyExamplesSuccess,
 } from '../actions/ontologies';
 import { Action, Dispatch, Store } from 'redux';
-import { Graph, ontologies as hardcodedOntologies } from '@neo4j-arrows/model';
+import { Graph, backupOntologies } from '@neo4j-arrows/model';
 import {
   terms,
   ontologies,
@@ -22,7 +22,7 @@ export const fetchOntologiesMiddleware =
     const onFailedLoadOntologies = () => {
       store.dispatch(loadOntologiesFailure());
       store.dispatch(loadOntologyExamplesRequest());
-      store.dispatch(loadOntologyExamplesSuccess(hardcodedOntologies));
+      store.dispatch(loadOntologyExamplesSuccess(backupOntologies));
     };
 
     const result = next(action);

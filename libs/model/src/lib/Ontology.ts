@@ -5,9 +5,33 @@ export type Ontology = {
   namespace: string;
   terms?: string[];
   properties?: string[];
+  annotator: string;
 };
 
-export const ontologies: Ontology[] = [
+export const hardcodedOntologies: Ontology[] = [
+  {
+    id: 'HGNC',
+    name: 'Gene',
+    description: 'Identifiers for representing genes.',
+    namespace: 'http://identifiers.org/hgnc/',
+    terms: [
+      'BRCA1',
+      'RELA',
+      'ZNF1',
+      'ZNF2',
+      'IL7',
+      'alpha-1-B glycoprotein',
+      'keratinocyte differentiation factor 1',
+      'MS4A10',
+      'paired like homeobox 2B',
+      'Wnt ligand secretion mediator',
+    ],
+    properties: [],
+    annotator: 'bioportal:hgnc-nr',
+  },
+];
+
+export const backupOntologies: Ontology[] = [
   {
     id: 'HPO',
     name: 'Phenotype',
@@ -19,6 +43,8 @@ export const ontologies: Ontology[] = [
       'HP:0000118 - Phenotypic abnormality',
       'HP:0000478 - Abnormality of the eye',
     ],
+    annotator: 'sqlite:obo:HPO',
+    properties: ['has_symptom', 'has_onset', 'has_severity'],
   },
   {
     id: 'GO',
@@ -31,6 +57,8 @@ export const ontologies: Ontology[] = [
       'GO:0005575 - Cellular Component',
       'GO:0008150 - Biological Process',
     ],
+    annotator: 'sqlite:obo:GO',
+    properties: ['is_a', 'part_of', 'regulates'],
   },
   {
     id: 'Mondo',
@@ -42,6 +70,8 @@ export const ontologies: Ontology[] = [
       'MONDO:0005148 - Diabetes mellitus',
       'MONDO:0004992 - Breast cancer',
     ],
+    annotator: 'sqlite:obo:Mondo',
+    properties: ['has_symptom', 'has_cause', 'has_treatment'],
   },
   {
     id: 'VO',
@@ -53,6 +83,8 @@ export const ontologies: Ontology[] = [
       'VO:0000002 - Inactivated vaccine',
       'VO:0000003 - Live attenuated vaccine',
     ],
+    annotator: 'sqlite:obo:VO',
+    properties: ['has_antigen', 'has_adjuvant', 'has_route_of_administration'],
   },
   {
     id: 'ChEBI',
@@ -65,6 +97,8 @@ export const ontologies: Ontology[] = [
       'CHEBI:27732 - Aspirin',
       'CHEBI:6801 - Ethanol',
     ],
+    annotator: 'sqlite:obo:ChEBI',
+    properties: ['has_formula', 'has_mass', 'has_charge'],
   },
   {
     id: 'Uberon',
@@ -77,6 +111,8 @@ export const ontologies: Ontology[] = [
       'UBERON:0002107 - Liver',
       'UBERON:0001264 - Brain',
     ],
+    annotator: 'sqlite:obo:Uberon',
+    properties: ['is_part_of', 'has_function', 'has_location'],
   },
   {
     id: 'CL',
@@ -88,6 +124,8 @@ export const ontologies: Ontology[] = [
       'CL:0000084 - T-lymphocyte',
       'CL:0000236 - Neutrophil',
     ],
+    annotator: 'sqlite:obo:CL',
+    properties: ['has_marker', 'has_origin', 'has_function'],
   },
   {
     id: 'PR',
@@ -100,6 +138,8 @@ export const ontologies: Ontology[] = [
       'PR:000000002 - Hemoglobin',
       'PR:000000003 - Myoglobin',
     ],
+    annotator: 'sqlite:obo:PR',
+    properties: ['has_sequence', 'has_function', 'has_modification'],
   },
   {
     id: 'SO',
@@ -108,6 +148,8 @@ export const ontologies: Ontology[] = [
       'Terms representing features and properties of nucleic acid used in biological sequence annotation.',
     namespace: 'http://purl.obolibrary.org/obo/SO_',
     terms: ['SO:0000001 - Gene', 'SO:0000002 - mRNA', 'SO:0000003 - Protein'],
+    annotator: 'sqlite:obo:SO',
+    properties: ['has_length', 'has_structure', 'has_variant'],
   },
   {
     id: 'PW',
@@ -119,6 +161,8 @@ export const ontologies: Ontology[] = [
       'PW:0000002 - Signaling pathway',
       'PW:0000003 - Cell cycle pathway',
     ],
+    annotator: 'sqlite:obo:PW',
+    properties: ['has_step', 'has_participant', 'has_regulation'],
   },
   {
     id: 'RO',
@@ -131,12 +175,8 @@ export const ontologies: Ontology[] = [
       'RO:0000052 - part of',
       'RO:0002202 - positively regulates',
     ],
+    annotator: 'sqlite:obo:RO',
+    properties: ['is_a', 'inverse_of', 'transitive_over'],
   },
-  {
-    id: 'HGNC',
-    name: 'Gene',
-    description: 'Terms and properties representing genes.',
-    namespace: 'http://identifiers.org/hgnc/',
-    terms: ['HGNC:5 - TP53', 'HGNC:6 - BRCA1', 'HGNC:7 - EGFR'],
-  },
+  ...hardcodedOntologies,
 ];

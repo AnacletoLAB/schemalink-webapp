@@ -1,5 +1,5 @@
 import { Ontology } from '@neo4j-arrows/model';
-import { ontologies as hardcodedOntologies } from '@neo4j-arrows/model';
+import { hardcodedOntologies, backupOntologies } from '@neo4j-arrows/model';
 import { Action } from 'redux';
 
 interface OntologiesSuccessAction
@@ -29,9 +29,17 @@ const ontologies = (
     case 'LOAD_ONTOLOGIES_REQUEST':
       return { ...state, isFetching: true };
     case 'LOAD_ONTOLOGIES_SUCCESS':
-      return { ...state, ontologies: action.ontologies, isFetching: false };
+      return {
+        ...state,
+        ontologies: [
+          ...[...action.ontologies, ...hardcodedOntologies].map((ontology) => {
+            return { ...ontology, annotator: `sqlite:obo:${ontology.id}` };
+          }),
+        ],
+        isFetching: false,
+      };
     case 'LOAD_ONTOLOGIES_FAILURE':
-      return { ...state, ontologies: hardcodedOntologies, isFetching: false };
+      return { ...state, ontologies: backupOntologies, isFetching: false };
     case 'LOAD_ONTOLOGY_EXAMPLES_REQUEST':
       return { ...state, isFetching: true };
     case 'LOAD_ONTOLOGY_EXAMPLES_SUCCESS':
@@ -58,7 +66,7 @@ const ontologies = (
         isFetching: false,
       };
     case 'LOAD_ONTOLOGY_EXAMPLES_FAILURE':
-      return { ...state, ontologies: hardcodedOntologies, isFetching: false };
+      return { ...state, ontologies: backupOntologies, isFetching: false };
     default:
       return state;
   }
