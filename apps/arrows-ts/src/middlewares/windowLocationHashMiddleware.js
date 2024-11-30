@@ -1,7 +1,6 @@
 export const importJsonRegex = /^#\/import\/json=(.*)/;
 export const localUrlNoIdRegex = /^#\/local$/;
 export const localUrlRegex = /^#\/local\/id=(.*)/;
-export const googleDriveUrlRegex = /^#\/googledrive\/ids=(.*)/;
 
 export const windowLocationHashMiddleware = (store) => (next) => (action) => {
   const oldStorage = store.getState().storage;
@@ -10,11 +9,6 @@ export const windowLocationHashMiddleware = (store) => (next) => (action) => {
 
   if (oldStorage !== newStorage && newStorage.status === 'READY') {
     switch (newStorage.mode) {
-      case 'GOOGLE_DRIVE':
-        if (newStorage.fileId) {
-          window.location.hash = `#/googledrive/ids=${newStorage.fileId}`;
-        }
-        break;
       case 'DATABASE':
         window.location.hash = `#/neo4j`;
         break;

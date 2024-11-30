@@ -170,7 +170,7 @@ interface StylesAction extends CategoryGraph<'SET_GRAPH_STYLES'> {
 }
 
 export type GraphAction =
-  | CategoryGraph<'NEW_GOOGLE_DRIVE_DIAGRAM' | 'NEW_LOCAL_STORAGE_DIAGRAM'>
+  | CategoryGraph<'NEW_LOCAL_STORAGE_DIAGRAM'>
   | CreateNodeAction
   | SetSchemaPropertiesAction
   | SetOntologiesAction
@@ -199,7 +199,6 @@ export type GraphAction =
 
 const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
   switch (action.type) {
-    case 'NEW_GOOGLE_DRIVE_DIAGRAM':
     case 'NEW_LOCAL_STORAGE_DIAGRAM':
       return emptyGraph();
 

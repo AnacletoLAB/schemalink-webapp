@@ -43,9 +43,7 @@ export const indexableText = (graph: Graph) => {
     lines.push(...indexablePropertyText(relationship));
   });
 
-  const text = lines.join('\n');
-  // size limit is 128K according to https://developers.google.com/drive/api/v3/file
-  return text.substr(0, 128000);
+  return lines.join('\n');
 };
 
 const addUsedCodePoints = (set: Set<number>, s: string) => {

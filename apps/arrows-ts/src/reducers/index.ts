@@ -14,7 +14,6 @@ import applicationDialogs, {
   ApplicationDialogsState,
 } from './applicationDialogs';
 import features, { FeaturesState } from './features';
-import googleDrive from './googleDrive';
 import cachedImages from './cachedImages';
 import ontologies, { OntologyState } from './ontologies';
 import { ImageInfo } from '@neo4j-arrows/graphics';
@@ -35,7 +34,6 @@ export type ArrowsState = {
   actionMemos: ActionMemosState;
   applicationDialogs: ApplicationDialogsState;
   features: FeaturesState;
-  googleDrive: any;
   cachedImages: Record<string, ImageInfo>;
   ontologies: OntologyState;
 };
@@ -54,7 +52,6 @@ const arrowsApp = combineReducers<ArrowsState>({
   actionMemos,
   applicationDialogs,
   features,
-  googleDrive,
   cachedImages,
   ontologies,
 });

@@ -11,7 +11,6 @@ import { getVisualGraph } from '../selectors/index';
 import { BoundingBox } from '@neo4j-arrows/graphics';
 
 const observedActionTypes = [
-  'NEW_GOOGLE_DRIVE_DIAGRAM',
   'NEW_LOCAL_STORAGE_DIAGRAM',
   'CREATE_NODE',
   'MOVE_NODES',

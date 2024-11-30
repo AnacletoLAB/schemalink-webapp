@@ -11,7 +11,6 @@ import 'semantic-ui-css/semantic.min.css';
 import { viewportMiddleware } from './middlewares/viewportMiddleware';
 import { storageMiddleware } from './middlewares/storageMiddleware';
 import { windowLocationHashMiddleware } from './middlewares/windowLocationHashMiddleware';
-import { initGoogleDriveApi } from './actions/googleDrive';
 import { windowResized } from './actions/applicationLayout';
 import {
   initRecentStorage,
@@ -40,7 +39,6 @@ const store = createStore(
   reducer,
   composeEnhancers(applyMiddleware(...middleware))
 );
-initGoogleDriveApi(store);
 store.dispatch(windowResized(window.innerWidth, window.innerHeight));
 store.dispatch(initRecentStorage(store.getState()));
 

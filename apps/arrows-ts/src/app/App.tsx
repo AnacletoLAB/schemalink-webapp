@@ -7,10 +7,7 @@ import HeaderContainer from '../containers/HeaderContainer';
 import InspectorChooser from '../containers/InspectorChooser';
 import { computeCanvasSize, inspectorWidth } from '@neo4j-arrows/model';
 import ExportContainer from '../containers/ExportContainer';
-import GoogleSignInModal from '../components/editors/GoogleSignInModal';
 import HelpModal from '../components/HelpModal';
-import GoogleDrivePicker from '../components/GoogleDrivePickerWrapper';
-import { getFileFromGoogleDrive, pickDiagramCancel } from '../actions/storage';
 import FooterContainer from '../containers/FooterContainer';
 import LocalStoragePickerContainer from '../containers/LocalStoragePickerContainer';
 import SaveAsContainer from '../containers/SaveAsContainer';
@@ -32,10 +29,8 @@ export interface AppProps {
   showSaveAsDialog: boolean;
   showExportDialog: boolean;
   showImportDialog: boolean;
-  pickingFromGoogleDrive: boolean;
   pickingFromLocalStorage: boolean;
   onCancelPicker: any;
-  loadFromGoogleDrive: any;
   canvasHeight: number;
   fireAction: any;
   handleCopy: (ev: ClipboardEvent) => void;
@@ -63,21 +58,12 @@ class App extends Component<AppProps> {
       showSaveAsDialog,
       showExportDialog,
       showImportDialog,
-      pickingFromGoogleDrive,
       pickingFromLocalStorage,
-      onCancelPicker,
-      loadFromGoogleDrive,
     } = this.props;
 
     const saveAsModal = showSaveAsDialog ? <SaveAsContainer /> : null;
     const exportModal = showExportDialog ? <ExportContainer /> : null;
     const importModal = showImportDialog ? <ImportContainer /> : null;
-    const googleDriveModal = pickingFromGoogleDrive ? (
-      <GoogleDrivePicker
-        onCancelPicker={onCancelPicker}
-        onFilePicked={loadFromGoogleDrive}
-      />
-    ) : null;
     const localStorageModal = pickingFromLocalStorage ? (
       <LocalStoragePickerContainer />
     ) : null;
@@ -111,9 +97,7 @@ class App extends Component<AppProps> {
         {saveAsModal}
         {exportModal}
         {importModal}
-        {googleDriveModal}
         {localStorageModal}
-        <GoogleSignInModal />
         <HelpModal />
         <HeaderContainer />
         <section
@@ -166,7 +150,6 @@ class App extends Component<AppProps> {
 const mapStateToProps = (state: ArrowsState) => ({
   inspectorVisible: state.applicationLayout.inspectorVisible,
   canvasHeight: computeCanvasSize(state.applicationLayout).height,
-  pickingFromGoogleDrive: state.storage.status === 'PICKING_FROM_GOOGLE_DRIVE',
   pickingFromLocalStorage:
     state.storage.status === 'PICKING_FROM_LOCAL_STORAGE',
   showSaveAsDialog: state.applicationDialogs.showSaveAsDialog,
@@ -179,8 +162,6 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     onWindowResized: () =>
       dispatch(windowResized(window.innerWidth, window.innerHeight)),
     onCancelPicker: () => dispatch(pickDiagramCancel()),
-    loadFromGoogleDrive: (fileId: any) =>
-      dispatch(getFileFromGoogleDrive(fileId)),
     handleCopy: () => dispatch(handleCopy()),
     handlePaste: (clipboardEvent: ClipboardEvent) =>
       dispatch(handlePaste(clipboardEvent)),

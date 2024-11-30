@@ -1,4 +1,3 @@
-import { renameGoogleDriveStore, saveFile } from '../actions/googleDrive';
 import { getPresentGraph } from '../selectors';
 import { ActionCreators as UndoActionCreators } from 'redux-undo';
 import {
@@ -6,16 +5,11 @@ import {
   saveGraphToLocalStorage,
 } from '../actions/localStorage';
 import {
-  postedFileOnGoogleDrive,
   postedFileToLocalStorage,
-  postingGraph,
-  putGraph,
   puttingGraph,
   puttingGraphSucceeded,
 } from '../actions/storage';
-import { fetchGraphFromDrive } from '../storage/googleDriveStorage';
 
-const driveUpdateInterval = 1000; // ms
 const localUpdateInterval = 500; // ms
 let waiting;
 
@@ -40,38 +34,13 @@ export const storageMiddleware = (store) => (next) => (action) => {
   const newState = hideGraphHistory(store.getState());
   const storage = newState.storage;
   const graph = newState.graph;
-  const cachedImages = newState.cachedImages;
   const diagramName = newState.diagramName;
 
   if (action.type === 'RENAME_DIAGRAM') {
     switch (storage.mode) {
-      case 'GOOGLE_DRIVE':
-        renameGoogleDriveStore(storage.fileId, action.diagramName);
-        break;
-
       case 'LOCAL_STORAGE':
         saveGraphToLocalStorage(storage.fileId, { graph, diagramName });
         break;
-    }
-  }
-
-  if (storage.mode === 'GOOGLE_DRIVE' && newState.googleDrive.signedIn) {
-    switch (storage.status) {
-      case 'GET': {
-        const fileId = storage.fileId;
-        store.dispatch(fetchGraphFromDrive(fileId));
-        break;
-      }
-
-      case 'POST': {
-        store.dispatch(postingGraph());
-        const onFileSaved = (fileId) => {
-          store.dispatch(postedFileOnGoogleDrive(fileId));
-        };
-
-        saveFile(graph, cachedImages, null, newState.diagramName, onFileSaved);
-        break;
-      }
     }
   }
 
@@ -103,35 +72,6 @@ export const storageMiddleware = (store) => (next) => (action) => {
             saveGraphToLocalStorage(storage.fileId, { graph, diagramName });
             store.dispatch(puttingGraphSucceeded());
           }, localUpdateInterval);
-        }
-        break;
-
-      case 'GOOGLE_DRIVE':
-        if (oldState.graph !== newState.graph) {
-          if (oldState.storage.status !== 'PUT') {
-            store.dispatch(putGraph());
-          }
-
-          deBounce(() => {
-            store.dispatch(puttingGraph());
-
-            saveFile(
-              graph,
-              cachedImages,
-              storage.fileId,
-              newState.diagramName,
-              (fileId) => {
-                if (fileId !== storage.fileId) {
-                  console.warn(
-                    'Unexpected change of fileId from %o to %o',
-                    storage.fileId,
-                    fileId
-                  );
-                }
-                store.dispatch(puttingGraphSucceeded());
-              }
-            );
-          }, driveUpdateInterval);
         }
         break;
     }

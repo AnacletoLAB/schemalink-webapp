@@ -4,7 +4,6 @@ export const defaultName = 'Untitled schema';
 
 interface DiagramNameWithName
   extends Action<
-    | 'SAVE_AS_GOOGLE_DRIVE_DIAGRAM'
     | 'SAVE_AS_LOCAL_STORAGE_DIAGRAM'
     | 'GETTING_DIAGRAM_NAME_SUCCEEDED'
     | 'RENAME_DIAGRAM'
@@ -13,7 +12,7 @@ interface DiagramNameWithName
 }
 
 type DiagramNameAction =
-  | Action<'NEW_GOOGLE_DRIVE_DIAGRAM' | 'NEW_LOCAL_STORAGE_DIAGRAM'>
+  | Action<'NEW_LOCAL_STORAGE_DIAGRAM'>
   | DiagramNameWithName;
 
 const diagramName = (
@@ -21,11 +20,9 @@ const diagramName = (
   action: DiagramNameAction
 ): string => {
   switch (action.type) {
-    case 'NEW_GOOGLE_DRIVE_DIAGRAM':
     case 'NEW_LOCAL_STORAGE_DIAGRAM':
       return defaultName;
 
-    case 'SAVE_AS_GOOGLE_DRIVE_DIAGRAM':
     case 'SAVE_AS_LOCAL_STORAGE_DIAGRAM':
     case 'GETTING_DIAGRAM_NAME_SUCCEEDED':
     case 'RENAME_DIAGRAM':

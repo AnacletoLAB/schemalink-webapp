@@ -39,9 +39,7 @@ class GraphDisplay extends Component {
   }
 
   registerOptionalActions(props) {
-    const supportsUndo = ['GOOGLE_DRIVE', 'LOCAL_STORAGE'].includes(
-      props.storage.mode
-    );
+    const supportsUndo = ['LOCAL_STORAGE'].includes(props.storage.mode);
 
     props.registerAction(UNDO, (() => supportsUndo && props.undo()).bind(this));
     props.registerAction(REDO, (() => supportsUndo && props.redo()).bind(this));

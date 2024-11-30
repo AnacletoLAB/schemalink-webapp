@@ -9,11 +9,9 @@ import {
   showSaveAsDialog,
 } from '../actions/applicationDialogs';
 import {
-  newGoogleDriveDiagram,
   newLocalStorageDiagram,
   openRecentFile,
   pickDiagram,
-  postCurrentDiagramAsNewFileOnGoogleDrive,
 } from '../actions/storage';
 import { ActionCreators as UndoActionCreators } from 'redux-undo';
 
@@ -33,9 +31,6 @@ const mapDispatchToProps = (dispatch) => {
   return {
     onNewDiagram: (mode) => {
       switch (mode) {
-        case 'GOOGLE_DRIVE':
-          dispatch(newGoogleDriveDiagram());
-          break;
         case 'LOCAL_STORAGE':
           dispatch(newLocalStorageDiagram());
           break;
@@ -57,9 +52,6 @@ const mapDispatchToProps = (dispatch) => {
     },
     onExportClick: () => {
       dispatch(showExportDialog());
-    },
-    storeInGoogleDrive: () => {
-      dispatch(postCurrentDiagramAsNewFileOnGoogleDrive());
     },
     onSaveAsClick: () => {
       dispatch(showSaveAsDialog());

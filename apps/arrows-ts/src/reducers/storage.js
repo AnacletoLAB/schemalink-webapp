@@ -1,6 +1,5 @@
 import { generateLocalFileId } from '../storage/localFileId';
 import {
-  googleDriveUrlRegex,
   importJsonRegex,
   localUrlNoIdRegex,
   localUrlRegex,
@@ -20,15 +19,6 @@ export default function storage(
   action
 ) {
   switch (action.type) {
-    case 'POST_CURRENT_DIAGRAM_AS_NEW_FILE_ON_GOOGLE_DRIVE':
-    case 'SAVE_AS_GOOGLE_DRIVE_DIAGRAM':
-    case 'NEW_GOOGLE_DRIVE_DIAGRAM': {
-      return {
-        mode: 'GOOGLE_DRIVE',
-        status: 'POST',
-        fileId: null,
-      };
-    }
     case 'SAVE_AS_LOCAL_STORAGE_DIAGRAM':
     case 'NEW_LOCAL_STORAGE_DIAGRAM': {
       return {
@@ -39,11 +29,6 @@ export default function storage(
     }
     case 'PICK_DIAGRAM': {
       switch (action.mode) {
-        case 'GOOGLE_DRIVE':
-          return {
-            ...state,
-            status: 'PICKING_FROM_GOOGLE_DRIVE',
-          };
         case 'LOCAL_STORAGE':
           return {
             ...state,
@@ -57,13 +42,6 @@ export default function storage(
       return {
         ...state,
         status: 'READY',
-      };
-    }
-    case 'GET_FILE_FROM_GOOGLE_DRIVE': {
-      return {
-        mode: 'GOOGLE_DRIVE',
-        status: 'GET',
-        fileId: action.fileId,
       };
     }
     case 'GET_FILE_FROM_LOCAL_STORAGE': {
@@ -85,12 +63,6 @@ export default function storage(
         status: 'READY',
       };
     }
-    case 'POSTED_FILE_ON_GOOGLE_DRIVE':
-      return {
-        ...state,
-        status: 'READY',
-        fileId: action.fileId,
-      };
     case 'POSTED_FILE_TO_LOCAL_STORAGE':
       return {
         ...state,
@@ -133,7 +105,6 @@ const initialiseStorageFromWindowLocationHash = () => {
   const importJsonMatch = importJsonRegex.exec(hash);
   const localNoIdMatch = localUrlNoIdRegex.exec(hash);
   const localMatch = localUrlRegex.exec(hash);
-  const googleDriveMatch = googleDriveUrlRegex.exec(hash);
 
   if (importJsonMatch) {
     const b64Json = importJsonMatch[1];
@@ -158,16 +129,6 @@ const initialiseStorageFromWindowLocationHash = () => {
       status: 'GET',
       fileId,
     };
-  } else if (googleDriveMatch && googleDriveMatch.length > 1) {
-    const initialFiles = googleDriveMatch[1].split(',');
-    if (initialFiles.length > 0) {
-      const fileId = initialFiles[0];
-      return {
-        mode: 'GOOGLE_DRIVE',
-        status: 'GET',
-        fileId,
-      };
-    }
   } else {
     const recentlyAccessed = loadRecentlyAccessedDiagrams() || [];
     if (recentlyAccessed.length > 0) {
