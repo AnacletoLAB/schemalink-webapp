@@ -271,12 +271,19 @@ export const toGraph = (
   while (!noNewNodes) {
     noNewNodes = true;
     Object.entries(classes).forEach(
-      ([key, { is_a, mixins, attributes, id_prefixes, description }]) => {
+      ([
+        key,
+        { is_a, mixins, attributes, id_prefixes, description, tree_root },
+      ]) => {
         const self = nodes.find(({ caption }) => caption === key);
         const parent = nodes.find(
           ({ caption }) => caption === is_a || (mixins && caption in mixins)
         );
-        if (!self && (is_a === SpiresCoreClasses.NamedEntity || parent)) {
+        if (
+          !tree_root &&
+          !self &&
+          (is_a === SpiresCoreClasses.NamedEntity || parent)
+        ) {
           noNewNodes = false;
           if (parent) {
             nextRelationshipId = relationships.push({
