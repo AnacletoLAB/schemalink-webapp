@@ -15,6 +15,7 @@ import {
   BasicType,
   EnumType,
   enumToPermissibleValues,
+  CollectionType,
 } from './lib/types';
 import {
   findNodeFactory,
@@ -295,7 +296,17 @@ export const toGraph = (
             properties: Object.entries(attributes ?? {}).reduce(
               (
                 properties,
-                [key, { description, required, range, identifier }]
+                [
+                  key,
+                  {
+                    description,
+                    required,
+                    range,
+                    identifier,
+                    multivalued,
+                    array,
+                  },
+                ]
               ) => ({
                 ...properties,
                 [key]: {
@@ -303,6 +314,12 @@ export const toGraph = (
                   required: required ?? false,
                   identifier: identifier ?? false,
                   range,
+                  collectionType: array
+                    ? CollectionType.ARRAY
+                    : multivalued
+                    ? CollectionType.LIST
+                    : undefined,
+                  dimensions: array ? array.exact_number_dimensions : undefined,
                 },
               }),
               {}

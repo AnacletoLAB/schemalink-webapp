@@ -1,3 +1,7 @@
+type Array = {
+  exact_number_dimensions: number;
+};
+
 export type Attribute = {
   range?: BasicType | string;
   description?: string;
@@ -5,6 +9,7 @@ export type Attribute = {
   required?: boolean;
   annotations?: Record<string, string>;
   identifier?: boolean;
+  array?: Array;
 };
 
 export enum SpiresCoreClasses {
