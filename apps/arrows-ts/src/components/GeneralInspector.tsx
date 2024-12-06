@@ -13,13 +13,7 @@ import GeneralStyling from './GeneralStyling';
 import ThemeCards from './ThemeCards';
 import { renderCounters } from './EntityCounters';
 import { ImageInfo } from '@neo4j-arrows/graphics';
-import {
-  Entity,
-  Graph,
-  graphsDifferInMoreThanPositions,
-  License,
-  SchemaProperties,
-} from '@neo4j-arrows/model';
+import { Entity, Graph, License, SchemaProperties } from '@neo4j-arrows/model';
 
 type GeneralInspectorProps = {
   graph: Graph;
@@ -35,10 +29,6 @@ type GeneralInspectorProps = {
 };
 
 export default class GeneralInspector extends Component<GeneralInspectorProps> {
-  shouldComponentUpdate(nextProps: Readonly<GeneralInspectorProps>): boolean {
-    return graphsDifferInMoreThanPositions(this.props.graph, nextProps.graph);
-  }
-
   render() {
     const {
       graph,
