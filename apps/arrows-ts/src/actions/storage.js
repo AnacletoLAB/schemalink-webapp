@@ -9,6 +9,14 @@ export function newLocalStorageDiagram() {
   };
 }
 
+export function clearGraph() {
+  return function (dispatch) {
+    dispatch({
+      type: 'NEW_LOCAL_STORAGE_DIAGRAM',
+    });
+  };
+}
+
 export const saveAsNewDiagram = (newDiagramName) => (dispatch, getState) => {
   const state = getState();
   switch (state.storage.mode) {

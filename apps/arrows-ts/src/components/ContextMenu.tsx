@@ -40,7 +40,7 @@ import {
 import yaml from 'js-yaml';
 import { generate } from '@neo4j-arrows/api';
 import { importNodesAndRelationships, onSaveOntology } from '../actions/graph';
-import { newLocalStorageDiagram } from '../actions/storage';
+import { clearGraph } from '../actions/storage';
 import { nodeSeparation } from '../actions/import';
 
 enum Method {
@@ -390,7 +390,7 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
       dispatch(importNodesAndRelationships(graph));
     },
     clearGraph: () => {
-      dispatch(newLocalStorageDiagram());
+      clearGraph()(dispatch);
     },
     onSaveOntology: (selection: EntitySelection, ontologies: Ontology[]) =>
       onSaveOntology(selection, ontologies)(dispatch),
