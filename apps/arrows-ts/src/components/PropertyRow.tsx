@@ -338,30 +338,32 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
               disabled={valueDisabled}
             />
           </Form.Field>
-          <Form.Field
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-              gap: '4em',
-            }}
-          >
-            <label>Dimensions</label>
-            <Input
-              type="number"
-              value={attributeValue.dimensions}
-              onChange={(event) =>
-                onValueChange({
-                  ...attributeValue,
-                  dimensions: parseInt(event.target.value),
-                })
-              }
-              disabled={
+          {attributeValue.collectionType === CollectionType.ARRAY && (
+            <Form.Field
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                gap: '4em',
+              }}
+            >
+              <label>Dimensions</label>
+              <Input
+                type="number"
+                value={attributeValue.dimensions}
+                onChange={(event) =>
+                  onValueChange({
+                    ...attributeValue,
+                    dimensions: parseInt(event.target.value),
+                  })
+                }
+                disabled={
                 valueDisabled ||
                 attributeValue.collectionType !== CollectionType.ARRAY
               }
-            />
-          </Form.Field>
+              />
+            </Form.Field>
+          )}
           <Form.Field
             style={{
               display: 'flex',
