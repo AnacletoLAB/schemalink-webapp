@@ -16,7 +16,7 @@ export interface GptModalProps {
   onClose: () => void;
   open: boolean;
   startingPrompt: string;
-  callback: (text: string) => Promise<void>;
+  callback?: (text: string) => Promise<void>;
 }
 
 export const GptModal = ({
@@ -32,12 +32,13 @@ export const GptModal = ({
 
   const onClick = async () => {
     setState({ ...state, loading: true });
-    callback(state.prompt !== '' ? state.prompt : startingPrompt).finally(
-      () => {
-        setState({ prompt: '', loading: false });
-        onClose();
-      }
-    );
+    callback &&
+      callback(state.prompt !== '' ? state.prompt : startingPrompt).finally(
+        () => {
+          setState({ prompt: '', loading: false });
+          onClose();
+        }
+      );
   };
 
   return (
@@ -69,7 +70,7 @@ export const GptModal = ({
           icon="checkmark"
           onClick={onClick}
           positive
-          disabled={state.loading}
+          disabled={state.loading || !callback}
         />
       </ModalActions>
     </Modal>

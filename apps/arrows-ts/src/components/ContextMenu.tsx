@@ -337,7 +337,7 @@ const ContextMenu = ({
         <MenuItem
           name={`Open GPT dialog`}
           onClick={() => {
-            openGtpModal();
+            openGtpModal(defaultCallbackFactory(selection));
             onClose();
           }}
         />
