@@ -10,6 +10,8 @@ export type Attribute = {
   annotations?: Record<string, string>;
   identifier?: boolean;
   array?: Array;
+  minimum_cardinality?: number;
+  maximum_cardinality?: number;
 };
 
 export enum SpiresCoreClasses {
