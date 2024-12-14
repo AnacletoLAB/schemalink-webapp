@@ -297,54 +297,30 @@ export default class DetailInspector extends Component<
           } = entities[0] as RelationshipWithCustomCardinality;
           fields.push(
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1em' }}>
-              <Form.Field key="_subject_minimum" style={{ width: '40%' }}>
-                <label>Subject minimum</label>
-                <Input
-                  type="number"
-                  value={subject_minimum}
-                  onChange={(event) =>
-                    onSaveCardinality(selection, Cardinality.CUSTOM, {
-                      subject_minimum: parseInt(event.target.value),
-                    })
-                  }
-                />
-              </Form.Field>
-              <Form.Field key="_subject_maximum" style={{ width: '40%' }}>
-                <label>Subject maximum</label>
-                <Input
-                  type="number"
-                  value={subject_maximum}
-                  onChange={(event) =>
-                    onSaveCardinality(selection, Cardinality.CUSTOM, {
-                      subject_maximum: parseInt(event.target.value),
-                    })
-                  }
-                />
-              </Form.Field>
-              <Form.Field key="_object_minimum" style={{ width: '40%' }}>
-                <label>Object minimum</label>
-                <Input
-                  type="number"
-                  value={object_minimum}
-                  onChange={(event) =>
-                    onSaveCardinality(selection, Cardinality.CUSTOM, {
-                      object_minimum: parseInt(event.target.value),
-                    })
-                  }
-                />
-              </Form.Field>
-              <Form.Field key="_object_maximum" style={{ width: '40%' }}>
-                <label>Object maximum</label>
-                <Input
-                  type="number"
-                  value={object_maximum}
-                  onChange={(event) =>
-                    onSaveCardinality(selection, Cardinality.CUSTOM, {
-                      object_maximum: parseInt(event.target.value),
-                    })
-                  }
-                />
-              </Form.Field>
+              {[
+                { value: subject_minimum, label: 'subject_minimum' },
+                { value: subject_maximum, label: 'subject_maximum' },
+                { value: object_minimum, label: 'object_minimum' },
+                { value: object_maximum, label: 'object_maximum' },
+              ].map(({ value, label }) => (
+                <Form.Field key={label} style={{ width: '40%' }}>
+                  <label>
+                    {label
+                      .split('_')
+                      .map((string) => _.capitalize(string))
+                      .join(' ')}
+                  </label>
+                  <Input
+                    type="number"
+                    value={value}
+                    onChange={(event) =>
+                      onSaveCardinality(selection, Cardinality.CUSTOM, {
+                        [label]: parseInt(event.target.value),
+                      })
+                    }
+                  />
+                </Form.Field>
+              ))}
             </div>
           );
         }
