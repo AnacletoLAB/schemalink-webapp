@@ -36,7 +36,8 @@ const toMinimumCardinality = (
   switch (cardinality) {
     case Cardinality.CUSTOM:
       return customCardinalityGetterFactory(
-        (minimum: number, maximum: number | undefined) => minimum
+        (minimum: number, maximum: number | undefined) =>
+          !maximum || minimum < maximum ? minimum : 0
       )(relationshipMember, customCardinality);
     default:
       return 0;
@@ -50,7 +51,8 @@ const toMaximumCardinality = (
   switch (cardinality) {
     case Cardinality.CUSTOM:
       return customCardinalityGetterFactory(
-        (minimum: number, maximum: number | undefined) => maximum
+        (minimum: number, maximum: number | undefined) =>
+          maximum && minimum < maximum ? maximum : undefined
       )(relationshipMember, customCardinality);
     case Cardinality.ONE_TO_ONE:
       return 1;
