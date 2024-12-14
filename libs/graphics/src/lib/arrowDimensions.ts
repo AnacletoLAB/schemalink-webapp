@@ -27,14 +27,14 @@ export const relationshipArrowDimensions = (
   graph: Graph,
   leftNode: VisualNode
 ): ArrowDimensions => {
+  const { relationshipType, cardinality } = resolvedRelationship.relationship;
   const style = (styleKey: string) =>
     getStyleSelector(resolvedRelationship.relationship, styleKey)(graph);
   const startRadius = resolvedRelationship.from.radius + style('margin-start');
   const endRadius = resolvedRelationship.to.radius + style('margin-end');
   const arrowWidth = style('arrow-width');
   const shaftWidth =
-    resolvedRelationship.relationship.relationshipType ===
-    RelationshipType.INHERITANCE
+    relationshipType === RelationshipType.INHERITANCE
       ? 1
       : style('arrow-width');
   const arrowColor = style('arrow-color');
@@ -46,11 +46,7 @@ export const relationshipArrowDimensions = (
   let hasIngoingArrowHead = false;
   let hasOutgoingArrowHead = false;
 
-  if (
-    resolvedRelationship.relationship.relationshipType ===
-    RelationshipType.ASSOCIATION
-  ) {
-    const cardinality = resolvedRelationship.relationship.cardinality;
+  if (relationshipType === RelationshipType.ASSOCIATION) {
     hasIngoingArrowHead =
       cardinality === Cardinality.MANY_TO_ONE ||
       cardinality === Cardinality.ONE_TO_ONE;
@@ -59,16 +55,11 @@ export const relationshipArrowDimensions = (
       cardinality === Cardinality.ONE_TO_ONE;
   }
 
-  if (
-    resolvedRelationship.relationship.relationshipType ===
-    RelationshipType.INHERITANCE
-  ) {
+  if (relationshipType === RelationshipType.INHERITANCE) {
     hasOutgoingArrowHead = true;
   }
 
-  const fillArrowHeads =
-    resolvedRelationship.relationship.relationshipType ===
-    RelationshipType.ASSOCIATION;
+  const fillArrowHeads = relationshipType === RelationshipType.ASSOCIATION;
   const arrowHeadsWidth = 1;
 
   const separation = style('margin-peer');
