@@ -357,9 +357,7 @@ export const toGraph = (
           const fromNode = {
             ...nodes[fromNodeIndex],
             examples: slot_usage['source'].annotations?.['prompt.examples']
-              ? slot_usage['source'].annotations?.['prompt.examples'].split(
-                  ','
-                )
+              ? slot_usage['source'].annotations?.['prompt.examples'].split(',')
               : [],
           };
           const toNode = {
@@ -370,6 +368,44 @@ export const toGraph = (
           };
           nodes.splice(fromNodeIndex, 1, fromNode);
           nodes.splice(toNodeIndex, 1, toNode);
+          const customCardinality = {
+            source_minimum: slot_usage['source'].minimum_cardinality ?? 0,
+            source_maximum: slot_usage['source'].maximum_cardinality,
+            target_minimum: slot_usage['target'].minimum_cardinality ?? 0,
+            target_maximum: slot_usage['target'].maximum_cardinality,
+          };
+
+          const toCardinality = () => {
+            const {
+              source_minimum,
+              source_maximum,
+              target_minimum,
+              target_maximum,
+            } = customCardinality;
+
+            if (
+              source_minimum > 0 ||
+              target_minimum > 0 ||
+              (source_maximum && source_maximum > 1) ||
+              (target_maximum && target_maximum > 1)
+            ) {
+              return Cardinality.CUSTOM;
+            }
+
+            // From here on, minimums are 0 and maximums (if present) are 1.
+            if (source_maximum) {
+              return target_maximum
+                ? Cardinality.ONE_TO_ONE
+                : Cardinality.ONE_TO_MANY;
+            } else {
+              return target_maximum
+                ? Cardinality.MANY_TO_ONE
+                : Cardinality.MANY_TO_MANY;
+            }
+          };
+
+          const cardinality = toCardinality();
+
           relationships.push({
             relationshipType: RelationshipType.ASSOCIATION,
             fromId: fromNode.id,
@@ -378,7 +414,11 @@ export const toGraph = (
             entityType: 'relationship',
             type: '',
             id: (index + nextRelationshipId).toString(),
-            cardinality: Cardinality.ONE_TO_MANY,
+            cardinality: cardinality,
+            customCardinality:
+              cardinality === Cardinality.CUSTOM
+                ? customCardinality
+                : undefined,
             examples:
               slot_usage['predicate'].annotations?.['prompt.examples'].split(
                 ','
