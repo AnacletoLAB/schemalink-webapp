@@ -90,13 +90,20 @@ export const relationshipToRelationshipClass = (
   const fromNode = nodeIdToNode(relationship.fromId);
   const toNode = nodeIdToNode(relationship.toId);
 
+  const defaultDescription = `A triple${
+    fromNode ? ` where the source is a ${fromNode.caption}` : ''
+  }${fromNode && toNode ? ' and' : ''}${
+    toNode ? ` where the target is a ${toNode.caption}` : ''
+  }.`;
+
   return {
     is_a: SpiresCoreClasses.Triple,
-    description: `A triple${
-      fromNode ? ` where the source is a ${fromNode.caption}` : ''
-    }${fromNode && toNode ? ' and' : ''}${
-      toNode ? ` where the target is a ${toNode.caption}` : ''
-    }${relationship.description ? `. ${relationship.description}` : ''}`,
+    description: `${defaultDescription}${
+      relationship.description !== '' &&
+      relationship.description !== defaultDescription
+        ? ` ${relationship.description}`
+        : ''
+    }`,
     slot_usage: {
       source: nodeToTripleSlot(fromNode, RelationshipMember.SOURCE),
       target: nodeToTripleSlot(toNode, RelationshipMember.TARGET),
