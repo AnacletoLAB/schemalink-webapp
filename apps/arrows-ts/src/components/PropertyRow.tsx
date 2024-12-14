@@ -134,7 +134,7 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
     const keyPopupContent = (
       <Form>
         <Form.Field>
-          <label>other property keys</label>
+          <label>other attribute keys</label>
           <Table basic="very" compact="very">
             <Table.Body>{propertyKeyButtons}</Table.Body>
           </Table>
