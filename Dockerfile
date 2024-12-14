@@ -1,4 +1,5 @@
 FROM node:20.15.1-alpine
+ENV NODE_ENV=production
 
 WORKDIR /app
 
