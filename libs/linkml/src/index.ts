@@ -347,25 +347,25 @@ export const toGraph = (
     .forEach(([key, { slot_usage, description }], index) => {
       if (slot_usage) {
         const fromNodeIndex = nodes.findIndex(
-          (node) => node.caption === slot_usage['subject'].range
+          (node) => node.caption === slot_usage['source'].range
         );
         const toNodeIndex = nodes.findIndex(
-          (node) => node.caption === slot_usage['object'].range
+          (node) => node.caption === slot_usage['target'].range
         );
 
         if (fromNodeIndex >= 0 && toNodeIndex >= 0) {
           const fromNode = {
             ...nodes[fromNodeIndex],
-            examples: slot_usage['subject'].annotations?.['prompt.examples']
-              ? slot_usage['subject'].annotations?.['prompt.examples'].split(
+            examples: slot_usage['source'].annotations?.['prompt.examples']
+              ? slot_usage['source'].annotations?.['prompt.examples'].split(
                   ','
                 )
               : [],
           };
           const toNode = {
             ...nodes[toNodeIndex],
-            examples: slot_usage['object'].annotations?.['prompt.examples']
-              ? slot_usage['object'].annotations?.['prompt.examples'].split(',')
+            examples: slot_usage['target'].annotations?.['prompt.examples']
+              ? slot_usage['target'].annotations?.['prompt.examples'].split(',')
               : [],
           };
           nodes.splice(fromNodeIndex, 1, fromNode);

@@ -288,20 +288,20 @@ export default class DetailInspector extends Component<
         if (commonCardinality === Cardinality.CUSTOM && entities.length === 1) {
           const {
             customCardinality: {
-              subject_minimum,
-              subject_maximum,
-              object_minimum,
-              object_maximum,
+              source_minimum,
+              source_maximum,
+              target_minimum,
+              target_maximum,
             },
             // We know this because of the if statement above
           } = entities[0] as RelationshipWithCustomCardinality;
           fields.push(
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1em' }}>
               {[
-                { value: subject_minimum, label: 'subject_minimum' },
-                { value: subject_maximum, label: 'subject_maximum' },
-                { value: object_minimum, label: 'object_minimum' },
-                { value: object_maximum, label: 'object_maximum' },
+                { value: source_minimum, label: 'source_minimum' },
+                { value: source_maximum, label: 'source_maximum' },
+                { value: target_minimum, label: 'target_minimum' },
+                { value: target_maximum, label: 'target_maximum' },
               ].map(({ value, label }) => (
                 <Form.Field key={label} style={{ width: '40%' }}>
                   <label>

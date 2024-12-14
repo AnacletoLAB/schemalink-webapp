@@ -30,10 +30,10 @@ export function toVisualCardinality(cardinality: Cardinality): string {
 }
 
 export interface CustomCardinality {
-  subject_minimum?: number;
-  subject_maximum?: number;
-  object_minimum?: number;
-  object_maximum?: number;
+  source_minimum?: number;
+  source_maximum?: number;
+  target_minimum?: number;
+  target_maximum?: number;
 }
 
 export interface Relationship extends Entity {

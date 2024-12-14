@@ -5,8 +5,8 @@ import { toClassName } from './naming';
 import { propertiesToAttributes } from './entities';
 
 enum RelationshipMember {
-  SUBJECT = 'subject',
-  OBJECT = 'object',
+  SOURCE = 'source',
+  TARGET = 'target',
 }
 
 const toMinimumCardinality = (
@@ -16,10 +16,10 @@ const toMinimumCardinality = (
   switch (relationship.cardinality) {
     case Cardinality.CUSTOM:
       switch (relationshipMember) {
-        case RelationshipMember.SUBJECT:
-          return relationship.customCardinality?.subject_minimum ?? 0;
-        case RelationshipMember.OBJECT:
-          return relationship.customCardinality?.object_minimum ?? 0;
+        case RelationshipMember.SOURCE:
+          return relationship.customCardinality?.source_minimum ?? 0;
+        case RelationshipMember.TARGET:
+          return relationship.customCardinality?.target_minimum ?? 0;
       }
       break;
     default:
@@ -34,18 +34,18 @@ const toMaximumCardinality = (
   switch (relationship.cardinality) {
     case Cardinality.CUSTOM:
       switch (relationshipMember) {
-        case RelationshipMember.SUBJECT:
-          return relationship.customCardinality?.subject_maximum;
-        case RelationshipMember.OBJECT:
-          return relationship.customCardinality?.object_maximum;
+        case RelationshipMember.SOURCE:
+          return relationship.customCardinality?.source_maximum;
+        case RelationshipMember.TARGET:
+          return relationship.customCardinality?.target_maximum;
       }
       break;
     case Cardinality.ONE_TO_ONE:
       return 1;
     case Cardinality.ONE_TO_MANY:
-      return relationshipMember === RelationshipMember.SUBJECT ? 1 : undefined;
+      return relationshipMember === RelationshipMember.SOURCE ? 1 : undefined;
     case Cardinality.MANY_TO_ONE:
-      return relationshipMember === RelationshipMember.OBJECT ? 1 : undefined;
+      return relationshipMember === RelationshipMember.TARGET ? 1 : undefined;
     default:
       return undefined;
   }
@@ -93,13 +93,13 @@ export const relationshipToRelationshipClass = (
   return {
     is_a: SpiresCoreClasses.Triple,
     description: `A triple${
-      fromNode ? ` where the subject is a ${fromNode.caption}` : ''
+      fromNode ? ` where the source is a ${fromNode.caption}` : ''
     }${fromNode && toNode ? ' and' : ''}${
-      toNode ? ` where the object is a ${toNode.caption}` : ''
+      toNode ? ` where the target is a ${toNode.caption}` : ''
     }${relationship.description ? `. ${relationship.description}` : ''}`,
     slot_usage: {
-      subject: nodeToTripleSlot(fromNode, RelationshipMember.SUBJECT),
-      object: nodeToTripleSlot(toNode, RelationshipMember.OBJECT),
+      source: nodeToTripleSlot(fromNode, RelationshipMember.SOURCE),
+      target: nodeToTripleSlot(toNode, RelationshipMember.TARGET),
       predicate: {
         range: `${toRelationshipClassName(relationship)}Predicate`,
         annotations: {
