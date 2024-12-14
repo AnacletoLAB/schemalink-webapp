@@ -290,6 +290,18 @@ export default class DetailInspector extends Component<
           const { customCardinality } =
             entities[0] as RelationshipWithCustomCardinality;
 
+          const inconsistentSource =
+            !!customCardinality.source_minimum &&
+            !!customCardinality.source_maximum &&
+            customCardinality.source_minimum >=
+              customCardinality.source_maximum;
+
+          const inconsistentTarget =
+            !!customCardinality.target_minimum &&
+            !!customCardinality.target_maximum &&
+            customCardinality.target_minimum >=
+              customCardinality.target_maximum;
+
           const labels: (keyof CustomCardinality)[] = [
             'source_minimum',
             'source_maximum',
@@ -297,10 +309,21 @@ export default class DetailInspector extends Component<
             'target_maximum',
           ];
 
+          const errorMap: Record<keyof CustomCardinality, boolean> = {
+            source_minimum: inconsistentSource,
+            source_maximum: inconsistentSource,
+            target_minimum: inconsistentTarget,
+            target_maximum: inconsistentTarget,
+          };
+
           fields.push(
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1em' }}>
               {labels.map((label) => (
-                <Form.Field key={label} style={{ width: '40%' }}>
+                <Form.Field
+                  key={label}
+                  style={{ width: '40%' }}
+                  error={errorMap[label]}
+                >
                   <label>
                     {label
                       .split('_')
