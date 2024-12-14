@@ -433,6 +433,8 @@ export default class DetailInspector extends Component<
                   )
                 )
               }
+              disabled={isFetching}
+              closeOnChange
             />
           </Form.Field>
         );
@@ -454,6 +456,7 @@ export default class DetailInspector extends Component<
               placeholder={'Provide examples for this entity'}
               loading={isFetching}
               onAddItem={(event, { value }) => onAddExample(value as string)}
+              disabled={isFetching}
             />
           </Form.Field>
         );
