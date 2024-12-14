@@ -286,23 +286,20 @@ export default class DetailInspector extends Component<
         );
 
         if (commonCardinality === Cardinality.CUSTOM && entities.length === 1) {
-          const {
-            customCardinality: {
-              source_minimum,
-              source_maximum,
-              target_minimum,
-              target_maximum,
-            },
-            // We know this because of the if statement above
-          } = entities[0] as RelationshipWithCustomCardinality;
+          // We know this because of the if statement above
+          const { customCardinality } =
+            entities[0] as RelationshipWithCustomCardinality;
+
+          const labels: (keyof CustomCardinality)[] = [
+            'source_minimum',
+            'source_maximum',
+            'target_minimum',
+            'target_maximum',
+          ];
+
           fields.push(
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1em' }}>
-              {[
-                { value: source_minimum, label: 'source_minimum' },
-                { value: source_maximum, label: 'source_maximum' },
-                { value: target_minimum, label: 'target_minimum' },
-                { value: target_maximum, label: 'target_maximum' },
-              ].map(({ value, label }) => (
+              {labels.map((label) => (
                 <Form.Field key={label} style={{ width: '40%' }}>
                   <label>
                     {label
@@ -312,7 +309,7 @@ export default class DetailInspector extends Component<
                   </label>
                   <Input
                     type="number"
-                    value={value}
+                    value={customCardinality[label]}
                     onChange={(event) =>
                       onSaveCardinality(selection, Cardinality.CUSTOM, {
                         [label]: parseInt(event.target.value),
