@@ -318,6 +318,7 @@ export default class DetailInspector extends Component<
                         [label]: parseInt(event.target.value),
                       })
                     }
+                    min={0}
                   />
                 </Form.Field>
               ))}
