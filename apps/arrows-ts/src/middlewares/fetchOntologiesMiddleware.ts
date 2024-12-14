@@ -7,11 +7,7 @@ import {
   loadOntologyExamplesSuccess,
 } from '../actions/ontologies';
 import { Action, Dispatch, Store } from 'redux';
-import {
-  Graph,
-  backupOntologies,
-  hardcodedOntologies,
-} from '@neo4j-arrows/model';
+import { Graph, hardcodedOntologies } from '@neo4j-arrows/model';
 import {
   nTerms,
   ontologies,
@@ -23,12 +19,6 @@ import { ArrowsState } from '../reducers';
 
 export const fetchOntologiesMiddleware =
   (store: Store<ArrowsState>) => (next: Dispatch) => (action: Action) => {
-    const onFailedLoadOntologies = () => {
-      store.dispatch(loadOntologiesFailure());
-      store.dispatch(loadOntologyExamplesRequest());
-      store.dispatch(loadOntologyExamplesSuccess(backupOntologies));
-    };
-
     const result = next(action);
 
     if (action.type === 'GETTING_GRAPH') {
@@ -81,7 +71,7 @@ export const fetchOntologiesMiddleware =
         })
         .catch((error) => {
           console.error(error);
-          onFailedLoadOntologies();
+          store.dispatch(loadOntologiesFailure());
         });
     }
 
