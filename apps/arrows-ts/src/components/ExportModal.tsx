@@ -28,7 +28,8 @@ class ExportModal extends Component<ExportModalProps, ExportModalState> {
   constructor(props: ExportModalProps) {
     super(props);
     this.state = {
-      activeIndex: loadFavoriteExportTab() || 0,
+      // Should point to LinkML tab by default
+      activeIndex: loadFavoriteExportTab() || 4,
     };
   }
 
