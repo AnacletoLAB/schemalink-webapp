@@ -328,6 +328,106 @@ export default class DetailInspector extends Component<
       }
     }
 
+    if (entities.length < 2) {
+      const { ontologies: entityOntologies, examples } = entities[0];
+      const { ontologies: storeOntologies, isFetching } = ontologies;
+      const ontologiesExamples = entityOntologies
+        ? entityOntologies
+            .flatMap((ontology: Ontology) => {
+              const matching = storeOntologies.find(
+                ({ id }) => ontology.id === id
+              );
+              return matching
+                ? entities[0].entityType === 'relationship'
+                  ? matching.properties
+                  : matching.terms
+                : [];
+            })
+            .toSorted((a: string, b: string) => Math.random() - 0.5)
+            .toSpliced(10)
+        : [];
+      const examplesOptions = [
+        ...(examples ?? []),
+        ...ontologiesExamples,
+        ...this.state.additionalExamplesOptions,
+      ].map((example, index) => {
+        return { key: index, text: example, value: example };
+      });
+      const onAddExample = (example: string) =>
+        this.setState({
+          ...this.state,
+          additionalExamplesOptions: [
+            ...this.state.additionalExamplesOptions,
+            example,
+          ],
+        });
+      const options = (
+        isRelationship(entities[0])
+          ? _.partition(storeOntologies, (ontology) =>
+              ['ro', 'so', 'sio'].includes(ontology.id)
+            ).flat()
+          : storeOntologies
+      ).map((ontology) => {
+        return {
+          key: ontology.id,
+          text: ontology.id,
+          value: ontology.id,
+        };
+      });
+
+      fields.push(
+        <Form.Field key="_ontology">
+          <label>Ontologies</label>
+          <Dropdown
+            selection
+            clearable
+            value={
+              entityOntologies
+                ? entityOntologies.map((ontology: Ontology) => ontology.id)
+                : []
+            }
+            multiple
+            loading={isFetching}
+            search
+            placeholder={'Select an ontology'}
+            options={options}
+            onChange={(e, { value }) =>
+              onSaveOntology(
+                selection,
+                storeOntologies.filter((ontology) =>
+                  (value as string[]).includes(ontology.id)
+                )
+              )
+            }
+            disabled={isFetching}
+            closeOnChange
+          />
+        </Form.Field>
+      );
+
+      fields.push(
+        <Form.Field key="_examples">
+          <label>Examples</label>
+          <Dropdown
+            value={examples ?? []}
+            allowAdditions
+            search
+            multiple
+            clearable
+            options={examplesOptions}
+            selection
+            onChange={(event, { value }) =>
+              onSaveExamples(selection, value as string[])
+            }
+            placeholder={'Provide examples for this entity'}
+            loading={isFetching}
+            onAddItem={(event, { value }) => onAddExample(value as string)}
+            disabled={isFetching}
+          />
+        </Form.Field>
+      );
+    }
+
     if (
       (selectionIncludes.relationships || selectionIncludes.nodes) &&
       entities
@@ -361,106 +461,6 @@ export default class DetailInspector extends Component<
           }
         />
       );
-
-      if (entities.length < 2) {
-        const { ontologies: entityOntologies, examples } = entities[0];
-        const { ontologies: storeOntologies, isFetching } = ontologies;
-        const ontologiesExamples = entityOntologies
-          ? entityOntologies
-              .flatMap((ontology: Ontology) => {
-                const matching = storeOntologies.find(
-                  ({ id }) => ontology.id === id
-                );
-                return matching
-                  ? entities[0].entityType === 'relationship'
-                    ? matching.properties
-                    : matching.terms
-                  : [];
-              })
-              .toSorted((a: string, b: string) => Math.random() - 0.5)
-              .toSpliced(10)
-          : [];
-        const examplesOptions = [
-          ...(examples ?? []),
-          ...ontologiesExamples,
-          ...this.state.additionalExamplesOptions,
-        ].map((example, index) => {
-          return { key: index, text: example, value: example };
-        });
-        const onAddExample = (example: string) =>
-          this.setState({
-            ...this.state,
-            additionalExamplesOptions: [
-              ...this.state.additionalExamplesOptions,
-              example,
-            ],
-          });
-        const options = (
-          isRelationship(entities[0])
-            ? _.partition(storeOntologies, (ontology) =>
-                ['ro', 'so', 'sio'].includes(ontology.id)
-              ).flat()
-            : storeOntologies
-        ).map((ontology) => {
-          return {
-            key: ontology.id,
-            text: ontology.id,
-            value: ontology.id,
-          };
-        });
-
-        fields.push(
-          <Form.Field key="_ontology">
-            <label>Ontologies</label>
-            <Dropdown
-              selection
-              clearable
-              value={
-                entityOntologies
-                  ? entityOntologies.map((ontology: Ontology) => ontology.id)
-                  : []
-              }
-              multiple
-              loading={isFetching}
-              search
-              placeholder={'Select an ontology'}
-              options={options}
-              onChange={(e, { value }) =>
-                onSaveOntology(
-                  selection,
-                  storeOntologies.filter((ontology) =>
-                    (value as string[]).includes(ontology.id)
-                  )
-                )
-              }
-              disabled={isFetching}
-              closeOnChange
-            />
-          </Form.Field>
-        );
-
-        fields.push(
-          <Form.Field key="_examples">
-            <label>Examples</label>
-            <Dropdown
-              value={examples ?? []}
-              allowAdditions
-              search
-              multiple
-              clearable
-              options={examplesOptions}
-              selection
-              onChange={(event, { value }) =>
-                onSaveExamples(selection, value as string[])
-              }
-              placeholder={'Provide examples for this entity'}
-              loading={isFetching}
-              onAddItem={(event, { value }) => onAddExample(value as string)}
-              disabled={isFetching}
-            />
-          </Form.Field>
-        );
-      }
     }
 
     fields.push(
