@@ -27,7 +27,11 @@ export const relationshipArrowDimensions = (
   graph: Graph,
   leftNode: VisualNode
 ): ArrowDimensions => {
-  const { relationshipType, cardinality } = resolvedRelationship.relationship;
+  const {
+    relationshipType,
+    cardinality,
+    customCardinality: { source_maximum, target_maximum } = {},
+  } = resolvedRelationship.relationship;
   const style = (styleKey: string) =>
     getStyleSelector(resolvedRelationship.relationship, styleKey)(graph);
   const startRadius = resolvedRelationship.from.radius + style('margin-start');
@@ -49,10 +53,12 @@ export const relationshipArrowDimensions = (
   if (relationshipType === RelationshipType.ASSOCIATION) {
     hasIngoingArrowHead =
       cardinality === Cardinality.MANY_TO_ONE ||
-      cardinality === Cardinality.ONE_TO_ONE;
+      cardinality === Cardinality.ONE_TO_ONE ||
+      target_maximum === 1;
     hasOutgoingArrowHead =
       cardinality === Cardinality.ONE_TO_MANY ||
-      cardinality === Cardinality.ONE_TO_ONE;
+      cardinality === Cardinality.ONE_TO_ONE ||
+      source_maximum === 1;
   }
 
   if (relationshipType === RelationshipType.INHERITANCE) {
