@@ -2,6 +2,7 @@ import {
   importNodesAndRelationships,
   setArrowsProperty,
   setGraphStyle,
+  setSchemaProperties,
 } from './graph';
 import { getOntologies, getPresentGraph } from '../selectors';
 import { constructGraphFromFile } from '../storage/googleDriveStorage';
@@ -42,6 +43,7 @@ export const tryImport = (dispatch: Dispatch) => {
     }
 
     dispatch(importNodesAndRelationships(importedGraph));
+    dispatch(setSchemaProperties({ description: importedGraph.description }));
     dispatch(hideImportDialog());
     return {};
   };
@@ -101,6 +103,7 @@ export const handlePaste = (pasteEvent: ClipboardEvent) => {
     interpretClipboardData(clipboardData, separation, ontologies, {
       onGraph: (graph: Graph) => {
         dispatch(importNodesAndRelationships(graph));
+        dispatch(setSchemaProperties({ description: graph.description }));
       },
       onPngImageUrl: (imageUrl: string) => {
         if (selection.entities.length > 0) {
