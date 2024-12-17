@@ -3,7 +3,6 @@ import { connect } from 'react-redux';
 import { Button, Modal, Header, Divider, Card } from 'semantic-ui-react';
 import { hideHelpDialog } from '../actions/applicationDialogs';
 import { rememberHelpDismissed } from '../actions/localStorage';
-import YouTube from 'react-youtube';
 import {
   DUPLICATE_SELECTION,
   REDO,
@@ -50,36 +49,29 @@ class HelpModal extends Component<HelpModalProps> {
         <Modal.Content scrolling>
           <Header size="small">New to SchemaLink?</Header>
           <p>
-            SchemaLink is based on arrows.app. Learn about arrows.app by visiting{' '}
+            Learn about SchemaLink by visiting{' '}
             <a
-              href="https://neo4j.com/labs/arrows"
+              href="https://anacletolab.github.io/schemalink-docs/"
               target="_blank"
               rel="noreferrer"
             >
-              Neo4j Labs
+              the documentation website
             </a>
-            , or watching this short video:
+            .
           </p>
-          <YouTube
-            videoId="ZHJ-BrKJ8A4"
-            opts={{
-              height: '360',
-              width: '640',
-            }}
-          />
           <Divider />
           <Header size="small">Keyboard shortcuts</Header>
           <Card.Group itemsPerRow={4}>{keyBindings}</Card.Group>
           <Header size="small">Feedback</Header>
           <p>
-            To share great ideas about improving arrows.app or report problems,
+            To share great ideas about improving SchemaLink or report problems,
             please let us know on our{' '}
             <a
-              href="https://feedback.neo4j.com/arrows"
+              href="https://github.com/AnacletoLAB/schemalink-webapp/issues"
               target="_blank"
               rel="noreferrer"
             >
-              feedback board
+              issue board
             </a>
             .
           </p>
@@ -88,7 +80,7 @@ class HelpModal extends Component<HelpModalProps> {
           <p>
             Willing to add features or fix problems yourself? Join us at our{' '}
             <a
-              href="https://github.com/neo4j-labs/arrows.app"
+              href="https://github.com/AnacletoLAB/schemalink-webapp"
               target="_blank"
               rel="noreferrer"
             >

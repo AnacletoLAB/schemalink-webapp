@@ -111,7 +111,7 @@ class Header extends PureComponent {
             <img
               src={arrows_logo}
               style={{ height: '1.5em' }}
-              alt="Arrows.app logo"
+              alt="SchemaLink logo"
             />
           </i>
           <div className="menu transition visible">
