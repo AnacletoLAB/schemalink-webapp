@@ -1,6 +1,6 @@
 # arrows-ts
 
-Arrows.app React-based application, ported to Typescript, built with nx.dev.
+SchemaLink React-based application, ported to Typescript, built with nx.dev.
 
 ## Generation
 
