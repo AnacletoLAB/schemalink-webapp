@@ -39,6 +39,7 @@ export * from './lib/naming';
 type LinkMLNode = Omit<Node, 'style' | 'position'>;
 type LinkMLRelationship = Omit<Relationship, 'style'>;
 type LinkMLGraph = {
+  description: string;
   nodes: LinkMLNode[];
   relationships: LinkMLRelationship[];
 };
@@ -260,7 +261,7 @@ export const fromGraph = (
 };
 
 export const toGraph = (
-  { classes }: LinkML,
+  { classes, description }: LinkML,
   ontologies: Ontology[]
 ): LinkMLGraph => {
   const nodes: LinkMLNode[] = [];
@@ -429,6 +430,7 @@ export const toGraph = (
       }
     });
   return {
+    description,
     nodes,
     relationships,
   };
