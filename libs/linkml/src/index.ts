@@ -274,7 +274,14 @@ export const toGraph = (
     Object.entries(classes).forEach(
       ([
         key,
-        { is_a, mixins, attributes, id_prefixes, description, tree_root },
+        {
+          is_a = SpiresCoreClasses.NamedEntity,
+          mixins,
+          attributes,
+          id_prefixes,
+          description,
+          tree_root,
+        },
       ]) => {
         const self = nodes.find(({ caption }) => caption === key);
         const parent = nodes.find(
