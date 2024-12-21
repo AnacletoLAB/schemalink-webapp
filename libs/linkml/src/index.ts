@@ -280,18 +280,13 @@ export const toGraph = (
           attributes,
           id_prefixes,
           description,
-          tree_root,
         },
       ]) => {
         const self = nodes.find(({ caption }) => caption === key);
         const parent = nodes.find(
           ({ caption }) => caption === is_a || (mixins && caption in mixins)
         );
-        if (
-          !tree_root &&
-          !self &&
-          (is_a === SpiresCoreClasses.NamedEntity || parent)
-        ) {
+        if (!self && (is_a === SpiresCoreClasses.NamedEntity || parent)) {
           noNewNodes = false;
           if (parent) {
             nextRelationshipId = relationships.push({
