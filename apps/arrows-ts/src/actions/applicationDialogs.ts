@@ -86,3 +86,15 @@ export const hideHelpDialog = () => {
     type: 'HIDE_HELP_DIALOG',
   };
 };
+
+export const showAcknowledgementsDialog = () => {
+  return {
+    type: 'SHOW_ACKNOWLEDGEMENTS_DIALOG',
+  };
+};
+
+export const hideAcknowledgementsDialog = () => {
+  return {
+    type: 'HIDE_ACKNOWLEDGEMENTS_DIALOG',
+  };
+};

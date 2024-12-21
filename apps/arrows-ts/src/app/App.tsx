@@ -8,6 +8,7 @@ import InspectorChooser from '../containers/InspectorChooser';
 import { computeCanvasSize, inspectorWidth } from '@neo4j-arrows/model';
 import ExportContainer from '../containers/ExportContainer';
 import HelpModal from '../components/HelpModal';
+import AcknowledgementsModal from '../components/AcknowledgementsModal';
 import LocalStoragePickerContainer from '../containers/LocalStoragePickerContainer';
 import SaveAsContainer from '../containers/SaveAsContainer';
 import ImportContainer from '../containers/ImportContainer';
@@ -98,6 +99,7 @@ class App extends Component<AppProps> {
         {importModal}
         {localStorageModal}
         <HelpModal />
+        <AcknowledgementsModal />
         <HeaderContainer />
         <section
           style={{

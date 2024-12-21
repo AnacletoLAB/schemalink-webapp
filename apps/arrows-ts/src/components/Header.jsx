@@ -115,7 +115,7 @@ class Header extends PureComponent {
             />
           </i>
           <div className="menu transition visible">
-            <div role="option" className="item">
+            <div role="option" aria-selected className="item">
               <i aria-hidden="true" className="dropdown icon" />
               <span className="text">New</span>
               <div className="menu transition">
@@ -123,7 +123,7 @@ class Header extends PureComponent {
                 {newDiagramOptions}
               </div>
             </div>
-            <div role="option" className="item">
+            <div role="option" aria-selected className="item">
               <i aria-hidden="true" className="dropdown icon" />
               <span className="text">Open</span>
               <div className="menu transition">
@@ -136,6 +136,7 @@ class Header extends PureComponent {
             </div>
             <div
               role="option"
+              aria-selected
               className="item"
               onClick={this.props.onSaveAsClick}
             >
@@ -144,6 +145,7 @@ class Header extends PureComponent {
             <div className="divider" />
             <div
               role="option"
+              aria-selected
               className="item"
               onClick={this.props.onImportClick}
             >
@@ -152,10 +154,19 @@ class Header extends PureComponent {
             <div className="divider" />
             <div
               role="option"
+              aria-selected
               className="item"
               onClick={this.props.onHelpClick}
             >
               Help
+            </div>
+            <div
+              role="option"
+              aria-selected
+              className="item"
+              onClick={this.props.onAcknowledgementsClick}
+            >
+              Acknowledgements
             </div>
           </div>
         </div>

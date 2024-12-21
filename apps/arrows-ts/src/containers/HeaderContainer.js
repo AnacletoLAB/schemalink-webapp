@@ -5,6 +5,7 @@ import { renameDiagram } from '../actions/diagramName';
 import {
   showExportDialog,
   showHelpDialog,
+  showAcknowledgementsDialog,
   showImportDialog,
   showSaveAsDialog,
 } from '../actions/applicationDialogs';
@@ -61,6 +62,9 @@ const mapDispatchToProps = (dispatch) => {
     },
     onHelpClick: () => {
       dispatch(showHelpDialog());
+    },
+    onAcknowledgementsClick: () => {
+      dispatch(showAcknowledgementsDialog());
     },
   };
 };

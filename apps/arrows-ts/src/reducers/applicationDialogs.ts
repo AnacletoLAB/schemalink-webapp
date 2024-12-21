@@ -24,6 +24,7 @@ export type ApplicationDialogsState = {
   showSaveAsDialog: boolean;
   showImportDialog: boolean;
   showHelpDialog: boolean;
+  showAcknowledgementsDialog: boolean;
   contextMenu: ContextMenuState;
   gptModal: GptModalState;
   gptExplanationModal: GptExplanationModalState;
@@ -56,6 +57,8 @@ type ApplicationDialogsAction =
       | 'HIDE_IMPORT_DIALOG'
       | 'SHOW_HELP_DIALOG'
       | 'HIDE_HELP_DIALOG'
+      | 'SHOW_ACKNOWLEDGEMENTS_DIALOG'
+      | 'HIDE_ACKNOWLEDGEMENTS_DIALOG'
     >
   | ShowContextMenuAction
   | ShowGptModalAction
@@ -66,6 +69,7 @@ export default function applicationDialogs(
     showExportDialog: false,
     showSaveAsDialog: false,
     showImportDialog: false,
+    showAcknowledgementsDialog: false,
     gptModal: { open: false, startingPrompt: '' },
     gptExplanationModal: { open: false, explanation: '' },
     contextMenu: { open: false, x: 0, y: 0 },
@@ -175,6 +179,18 @@ export default function applicationDialogs(
       return {
         ...state,
         showHelpDialog: false,
+      };
+
+    case 'SHOW_ACKNOWLEDGEMENTS_DIALOG':
+      return {
+        ...state,
+        showAcknowledgementsDialog: true,
+      };
+
+    case 'HIDE_ACKNOWLEDGEMENTS_DIALOG':
+      return {
+        ...state,
+        showAcknowledgementsDialog: false,
       };
 
     default:
