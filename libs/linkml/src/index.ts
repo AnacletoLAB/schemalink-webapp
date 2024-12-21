@@ -244,7 +244,9 @@ export const fromGraph = (
             (enums, enumType) => ({
               ...enums,
               [enumType]: {
-                permissible_values: enumToPermissibleValues(enumType).reduce(
+                permissible_values: enumToPermissibleValues[
+                  enumType as EnumType
+                ].reduce(
                   (permissibleValues, value) => ({
                     ...permissibleValues,
                     [value]: null,

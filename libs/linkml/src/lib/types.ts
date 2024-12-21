@@ -72,20 +72,14 @@ export enum RegexType {
   AMERICAN_PHONE_NUMBER = 'American Phone Number',
 }
 
-export const regexToPattern = (regex: RegexType): string => {
-  switch (regex) {
-    case RegexType.AMERICAN_PHONE_NUMBER:
-      return String.raw`^[\\d\\(\\)\\-]+$`;
-  }
+export const regexToPattern = {
+  [RegexType.AMERICAN_PHONE_NUMBER]: String.raw`^[\\d\\(\\)\\-]+$`,
 };
 
 export enum EnumType {
   GENDER = 'Gender',
 }
 
-export const enumToPermissibleValues = (enumType: EnumType): string[] => {
-  switch (enumType) {
-    case EnumType.GENDER:
-      return ['man', 'woman'];
-  }
+export const enumToPermissibleValues = {
+  [EnumType.GENDER]: ['man', 'woman'],
 };
