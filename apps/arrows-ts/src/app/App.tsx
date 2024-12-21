@@ -111,9 +111,9 @@ class App extends Component<AppProps> {
           <GraphContainer />
           {inspector}
         </section>
-        <ContextMenu />
-        <GptModal />
-        <GptExplanationModal />
+        {import.meta.env.VITE_OPENAI_ENABLED && <ContextMenu />}
+        {import.meta.env.VITE_OPENAI_ENABLED && <GptModal />}
+        {import.meta.env.VITE_OPENAI_ENABLED && <GptExplanationModal />}
       </div>
     );
   }

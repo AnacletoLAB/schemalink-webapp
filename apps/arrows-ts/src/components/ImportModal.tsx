@@ -172,14 +172,18 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
                 hidden
                 onChange={this.fileChange}
               />
-              <Button
-                content="GPT"
-                labelPosition="left"
-                icon="chat"
-                onClick={() => this.setState({ showGpt: !this.state.showGpt })}
-              />
+              {import.meta.env.VITE_OPENAI_ENABLED && (
+                <Button
+                  content="GPT"
+                  labelPosition="left"
+                  icon="chat"
+                  onClick={() =>
+                    this.setState({ showGpt: !this.state.showGpt })
+                  }
+                />
+              )}
             </Form.Field>
-            {this.state.showGpt && (
+            {import.meta.env.VITE_OPENAI_ENABLED && this.state.showGpt && (
               <GptDialog
                 loading={this.state.gptLoading}
                 onChange={(event) =>
@@ -189,7 +193,9 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
               />
             )}
             <TextArea
-              placeholder="Choose a file, talk to the GPT, or paste text here..."
+              placeholder={`Choose a file${
+                import.meta.env.VITE_OPENAI_ENABLED ? ', talk to the GPT' : ''
+              }, or paste text here...`}
               style={{
                 height: 300,
                 fontFamily: 'monospace',
