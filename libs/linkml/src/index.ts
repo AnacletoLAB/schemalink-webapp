@@ -357,19 +357,30 @@ export const toGraph = (
         );
 
         if (fromNodeIndex >= 0 && toNodeIndex >= 0) {
+          const mergeExamples = (
+            node: LinkMLNode,
+            annotations: Record<string, string> | undefined
+          ) => {
+            return [
+              ...new Set([
+                ...(node.examples ?? []),
+                ...(annotations?.['prompt.examples'].split(',') ?? []),
+              ]),
+            ];
+          };
           const fromNode = {
             ...nodes[fromNodeIndex],
-            examples: slot_usage['subject'].annotations?.['prompt.examples']
-              ? slot_usage['subject'].annotations?.['prompt.examples'].split(
-                  ','
-                )
-              : [],
+            examples: mergeExamples(
+              nodes[fromNodeIndex],
+              slot_usage['subject'].annotations
+            ),
           };
           const toNode = {
             ...nodes[toNodeIndex],
-            examples: slot_usage['object'].annotations?.['prompt.examples']
-              ? slot_usage['object'].annotations?.['prompt.examples'].split(',')
-              : [],
+            examples: mergeExamples(
+              nodes[toNodeIndex],
+              slot_usage['object'].annotations
+            ),
           };
           nodes.splice(fromNodeIndex, 1, fromNode);
           nodes.splice(toNodeIndex, 1, toNode);
