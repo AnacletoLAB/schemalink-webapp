@@ -280,6 +280,7 @@ export const toGraph = (
           attributes,
           id_prefixes,
           description,
+          annotations,
         },
       ]) => {
         const self = nodes.find(({ caption }) => caption === key);
@@ -340,6 +341,9 @@ export const toGraph = (
                 id_prefixes && id_prefixes.includes(id.toLocaleUpperCase())
             ),
             description: description ?? '',
+            examples: [
+              ...new Set(annotations?.['prompt.examples']?.split(',')),
+            ],
           });
         }
       }
