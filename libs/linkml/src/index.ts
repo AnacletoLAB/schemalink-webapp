@@ -348,32 +348,34 @@ export const toGraph = (
     .forEach(([key, { slot_usage, description }], index) => {
       if (slot_usage) {
         const fromNodeIndex = nodes.findIndex(
-          (node) => node.caption === slot_usage['source'].range
+          (node) => node.caption === slot_usage['subject'].range
         );
         const toNodeIndex = nodes.findIndex(
-          (node) => node.caption === slot_usage['target'].range
+          (node) => node.caption === slot_usage['object'].range
         );
 
         if (fromNodeIndex >= 0 && toNodeIndex >= 0) {
           const fromNode = {
             ...nodes[fromNodeIndex],
-            examples: slot_usage['source'].annotations?.['prompt.examples']
-              ? slot_usage['source'].annotations?.['prompt.examples'].split(',')
+            examples: slot_usage['subject'].annotations?.['prompt.examples']
+              ? slot_usage['subject'].annotations?.['prompt.examples'].split(
+                  ','
+                )
               : [],
           };
           const toNode = {
             ...nodes[toNodeIndex],
-            examples: slot_usage['target'].annotations?.['prompt.examples']
-              ? slot_usage['target'].annotations?.['prompt.examples'].split(',')
+            examples: slot_usage['object'].annotations?.['prompt.examples']
+              ? slot_usage['object'].annotations?.['prompt.examples'].split(',')
               : [],
           };
           nodes.splice(fromNodeIndex, 1, fromNode);
           nodes.splice(toNodeIndex, 1, toNode);
           const customCardinality = {
-            source_minimum: slot_usage['source'].minimum_cardinality ?? 0,
-            source_maximum: slot_usage['source'].maximum_cardinality,
-            target_minimum: slot_usage['target'].minimum_cardinality ?? 0,
-            target_maximum: slot_usage['target'].maximum_cardinality,
+            source_minimum: slot_usage['subject'].minimum_cardinality ?? 0,
+            source_maximum: slot_usage['subject'].maximum_cardinality,
+            target_minimum: slot_usage['object'].minimum_cardinality ?? 0,
+            target_maximum: slot_usage['object'].maximum_cardinality,
           };
 
           const toCardinality = () => {

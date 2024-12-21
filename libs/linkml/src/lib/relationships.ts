@@ -10,8 +10,8 @@ import { toClassName } from './naming';
 import { propertiesToAttributes } from './entities';
 
 enum RelationshipMember {
-  SOURCE = 'source',
-  TARGET = 'target',
+  SUBJECT = 'subject',
+  OBJECT = 'object',
 }
 
 const customCardinalityGetterFactory =
@@ -21,10 +21,10 @@ const customCardinalityGetterFactory =
     customCardinality: CustomCardinality | undefined
   ) =>
     predicate(
-      member === RelationshipMember.SOURCE
+      member === RelationshipMember.SUBJECT
         ? customCardinality?.source_minimum ?? 0
         : customCardinality?.target_minimum ?? 0,
-      member === RelationshipMember.SOURCE
+      member === RelationshipMember.SUBJECT
         ? customCardinality?.source_maximum
         : customCardinality?.target_maximum
     );
@@ -57,9 +57,9 @@ const toMaximumCardinality = (
     case Cardinality.ONE_TO_ONE:
       return 1;
     case Cardinality.ONE_TO_MANY:
-      return relationshipMember === RelationshipMember.SOURCE ? 1 : undefined;
+      return relationshipMember === RelationshipMember.SUBJECT ? 1 : undefined;
     case Cardinality.MANY_TO_ONE:
-      return relationshipMember === RelationshipMember.TARGET ? 1 : undefined;
+      return relationshipMember === RelationshipMember.OBJECT ? 1 : undefined;
     default:
       return undefined;
   }
@@ -105,9 +105,9 @@ export const relationshipToRelationshipClass = (
   const toNode = nodeIdToNode(relationship.toId);
 
   const defaultDescription = `A triple${
-    fromNode ? ` where the source is a ${fromNode.caption}` : ''
+    fromNode ? ` where the subject is a ${fromNode.caption}` : ''
   }${fromNode && toNode ? ' and' : ''}${
-    toNode ? ` where the target is a ${toNode.caption}` : ''
+    toNode ? ` where the object is a ${toNode.caption}` : ''
   }.`;
 
   return {
@@ -119,8 +119,8 @@ export const relationshipToRelationshipClass = (
         : ''
     }`,
     slot_usage: {
-      source: nodeToTripleSlot(fromNode, RelationshipMember.SOURCE),
-      target: nodeToTripleSlot(toNode, RelationshipMember.TARGET),
+      subject: nodeToTripleSlot(fromNode, RelationshipMember.SUBJECT),
+      object: nodeToTripleSlot(toNode, RelationshipMember.OBJECT),
       predicate: {
         range: `${toRelationshipClassName(relationship)}Predicate`,
         annotations: {
