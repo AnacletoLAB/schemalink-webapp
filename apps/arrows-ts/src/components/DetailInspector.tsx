@@ -7,6 +7,10 @@ import {
   Input,
   ButtonGroup,
   Button,
+  AccordionTitle,
+  AccordionContent,
+  Accordion,
+  Icon,
 } from 'semantic-ui-react';
 import {
   Cardinality,
@@ -91,6 +95,7 @@ interface DetailInspectorProps {
 
 interface DetailInspectorState {
   additionalExamplesOptions: string[];
+  styleActive: boolean;
 }
 
 export default class DetailInspector extends Component<
@@ -99,18 +104,22 @@ export default class DetailInspector extends Component<
 > {
   constructor(props: DetailInspectorProps) {
     super(props);
-    this.state = { additionalExamplesOptions: [] };
+    this.state = { additionalExamplesOptions: [], styleActive: false };
   }
 
   captionInput: any;
 
-  shouldComponentUpdate(nextProps: DetailInspectorProps) {
+  shouldComponentUpdate(
+    nextProps: DetailInspectorProps,
+    nextState: DetailInspectorState
+  ) {
     return (
-      nextProps.inspectorVisible &&
-      (graphsDifferInMoreThanPositions(this.props.graph, nextProps.graph) ||
-        this.props.selection !== nextProps.selection ||
-        this.props.ontologies !== nextProps.ontologies ||
-        this.props.cachedImages !== nextProps.cachedImages)
+      (nextProps.inspectorVisible &&
+        (graphsDifferInMoreThanPositions(this.props.graph, nextProps.graph) ||
+          this.props.selection !== nextProps.selection ||
+          this.props.ontologies !== nextProps.ontologies ||
+          this.props.cachedImages !== nextProps.cachedImages)) ||
+      this.state.styleActive !== nextState.styleActive
     );
   }
 
@@ -153,6 +162,9 @@ export default class DetailInspector extends Component<
       onSaveOntology,
       onSaveDescription,
     } = this.props;
+
+    const { styleActive } = this.state;
+
     const fields = [];
 
     const relationships = selectedRelationships(graph, selection);
@@ -524,17 +536,23 @@ export default class DetailInspector extends Component<
     ];
 
     fields.push(
-      <div>
-        <Divider
-          key="StyleDivider"
-          horizontal
-          clearing
-          style={{ paddingTop: 50 }}
+      <Accordion>
+        <AccordionTitle
+          active={styleActive}
+          onClick={(e) => this.setState({ styleActive: !styleActive })}
         >
-          Style
-        </Divider>
-        {styleFields}
-      </div>
+          <Divider
+            key="StyleDivider"
+            horizontal
+            clearing
+            style={{ paddingTop: 50 }}
+          >
+            <Icon name="dropdown" />
+            Style
+          </Divider>
+        </AccordionTitle>
+        <AccordionContent active={styleActive}>{styleFields}</AccordionContent>
+      </Accordion>
     );
 
     const disabledSubmitButtonToPreventImplicitSubmission = (
