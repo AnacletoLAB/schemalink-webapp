@@ -7,6 +7,10 @@ import {
   Divider,
   Input,
   Dropdown,
+  AccordionTitle,
+  AccordionContent,
+  Accordion,
+  Icon,
 } from 'semantic-ui-react';
 import { GeneralToolbox } from './GeneralToolbox';
 import GeneralStyling from './GeneralStyling';
@@ -28,7 +32,19 @@ type GeneralInspectorProps = {
   onStyleCustomize: () => void;
 };
 
-export default class GeneralInspector extends Component<GeneralInspectorProps> {
+type GeneralInspectorState = {
+  styleActive: boolean;
+};
+
+export default class GeneralInspector extends Component<
+  GeneralInspectorProps,
+  GeneralInspectorState
+> {
+  constructor(props: GeneralInspectorProps) {
+    super(props);
+    this.state = { styleActive: false };
+  }
+
   render() {
     const {
       graph,
@@ -39,6 +55,8 @@ export default class GeneralInspector extends Component<GeneralInspectorProps> {
       onSelect,
       onSchemaPropertiesChange,
     } = this.props;
+
+    const { styleActive } = this.state;
 
     const styleContent =
       styleMode === 'customize' ? (
@@ -99,39 +117,49 @@ export default class GeneralInspector extends Component<GeneralInspectorProps> {
               })}
             />
           </Form.Field>
-          <Divider
-            key="StyleDivider"
-            horizontal
-            clearing
-            style={{ paddingTop: 50 }}
-          >
-            Style
-          </Divider>
-          <div
-            style={{
-              clear: 'both',
-              textAlign: 'center',
-              paddingBottom: 20,
-            }}
-          >
-            <ButtonGroup>
-              <Button
-                onClick={this.props.onStyleTheme}
-                active={styleMode === 'theme'}
-                secondary={styleMode === 'theme'}
+          <Accordion>
+            <AccordionTitle
+              active={styleActive}
+              onClick={(e) => this.setState({ styleActive: !styleActive })}
+            >
+              <Divider
+                key="StyleDivider"
+                horizontal
+                clearing
+                style={{ paddingTop: 50 }}
               >
-                Theme
-              </Button>
-              <Button
-                onClick={this.props.onStyleCustomize}
-                active={styleMode === 'customize'}
-                secondary={styleMode === 'customize'}
+                <Icon name="dropdown" />
+                Style
+              </Divider>
+            </AccordionTitle>
+            <AccordionContent active={styleActive}>
+              <div
+                style={{
+                  clear: 'both',
+                  textAlign: 'center',
+                  paddingBottom: 20,
+                }}
               >
-                Customize
-              </Button>
-            </ButtonGroup>
-          </div>
-          {styleContent}
+                <ButtonGroup>
+                  <Button
+                    onClick={this.props.onStyleTheme}
+                    active={styleMode === 'theme'}
+                    secondary={styleMode === 'theme'}
+                  >
+                    Theme
+                  </Button>
+                  <Button
+                    onClick={this.props.onStyleCustomize}
+                    active={styleMode === 'customize'}
+                    secondary={styleMode === 'customize'}
+                  >
+                    Customize
+                  </Button>
+                </ButtonGroup>
+              </div>
+              {styleContent}
+            </AccordionContent>
+          </Accordion>
         </Form>
       </Segment>
     );
