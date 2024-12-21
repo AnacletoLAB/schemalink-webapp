@@ -483,18 +483,16 @@ export default class DetailInspector extends Component<
       );
     }
 
-    fields.push(
-      <Divider
-        key="StyleDivider"
-        horizontal
-        clearing
-        style={{ paddingTop: 50 }}
-      >
-        Style
-      </Divider>
-    );
+    const groupToRelevantKeys = (group: (typeof styleAttributeGroups)[0]) =>
+      group.attributes
+        .filter((attribute) =>
+          categoriesPresent(selectedNodes, relationships, graph).includes(
+            attribute.appliesTo
+          )
+        )
+        .map((attribute) => attribute.key);
 
-    fields.push(
+    const styleFields = [
       <div
         style={{
           clear: 'both',
@@ -504,27 +502,16 @@ export default class DetailInspector extends Component<
         <ButtonGroup>
           <Button secondary>Customize</Button>
         </ButtonGroup>
-      </div>
-    );
-
-    const relevantCategories = categoriesPresent(
-      selectedNodes,
-      relationships,
-      graph
-    );
-
-    for (const group of styleAttributeGroups) {
-      const relevantKeys = group.attributes
-        .filter((attribute) => relevantCategories.includes(attribute.appliesTo))
-        .map((attribute) => attribute.key);
-      if (relevantKeys.length > 0) {
-        fields.push(
+      </div>,
+      ...styleAttributeGroups
+        .filter((group) => groupToRelevantKeys(group).length > 0)
+        .map((group) => (
           <StyleTable
             key={group.name + 'Style'}
             title={group.name}
             style={combineStyle(entities)}
             graphStyle={graph.style}
-            possibleStyleAttributes={relevantKeys}
+            possibleStyleAttributes={groupToRelevantKeys(group)}
             cachedImages={this.props.cachedImages}
             onSaveStyle={(styleKey: string, styleValue: string) =>
               onSaveArrowsPropertyValue(selection, styleKey, styleValue)
@@ -533,9 +520,22 @@ export default class DetailInspector extends Component<
               onDeleteArrowsProperty(selection, styleKey)
             }
           />
-        );
-      }
-    }
+        )),
+    ];
+
+    fields.push(
+      <div>
+        <Divider
+          key="StyleDivider"
+          horizontal
+          clearing
+          style={{ paddingTop: 50 }}
+        >
+          Style
+        </Divider>
+        {styleFields}
+      </div>
+    );
 
     const disabledSubmitButtonToPreventImplicitSubmission = (
       <button
