@@ -10,41 +10,37 @@ export const nodeToClass = (
   findNode: (id: string) => Node | undefined,
   findRelationshipFromNode: (node: Node) => Relationship[]
 ): LinkMLClass => {
-  const nodeOntologies = node.ontologies ?? [];
+  const { caption, ontologies = [], properties } = node;
   const [parent, ...rest] = findRelationshipFromNode(node)
     .filter(
       (relationship) =>
         relationship.relationshipType === RelationshipType.INHERITANCE
     )
     .map((relationship) => findNode(relationship.toId));
-  const hasIdentifier = Object.values(node.properties).some(
+  const hasIdentifier = Object.values(properties).some(
     ({ identifier }) => identifier
   );
 
   return {
     is_a: parent ? toClassName(parent.caption) : SpiresCoreClasses.NamedEntity,
     description: node.description,
-    mixins: rest
+    mixins: (rest as Node[])
       .filter((parent) => !!parent)
       .map((parent) => toClassName(parent.caption)),
     attributes: {
-      ...propertiesToAttributes(node.properties),
+      ...propertiesToAttributes(properties),
       ...(!hasIdentifier && {
-        [`${snakeCase(node.caption)}`]: {
+        [`${snakeCase(caption)}`]: {
           identifier: true,
           description: `A unique identifier for the ${toClassName(
-            node.caption
+            caption
           )} class.`,
         },
       }),
     },
-    id_prefixes: nodeOntologies.map((ontology) =>
-      ontology.id.toLocaleUpperCase()
-    ),
-    annotations: nodeOntologies.length
-      ? {
-          annotators: toAnnotators(nodeOntologies),
-        }
-      : {},
+    id_prefixes: ontologies.map((ontology) => ontology.id.toLocaleUpperCase()),
+    annotations: {
+      ...(ontologies.length ? { annotators: toAnnotators(ontologies) } : {}),
+    },
   };
 };
