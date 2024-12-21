@@ -10,7 +10,7 @@ export const nodeToClass = (
   findNode: (id: string) => Node | undefined,
   findRelationshipFromNode: (node: Node) => Relationship[]
 ): LinkMLClass => {
-  const { caption, ontologies = [], properties } = node;
+  const { caption, examples, ontologies = [], properties } = node;
   const [parent, ...rest] = findRelationshipFromNode(node)
     .filter(
       (relationship) =>
@@ -41,6 +41,9 @@ export const nodeToClass = (
     id_prefixes: ontologies.map((ontology) => ontology.id.toLocaleUpperCase()),
     annotations: {
       ...(ontologies.length ? { annotators: toAnnotators(ontologies) } : {}),
+      ...(examples && examples.length
+        ? { 'prompt.examples': examples.join(', ') }
+        : {}),
     },
   };
 };
