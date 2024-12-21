@@ -16,6 +16,7 @@ import {
   EnumType,
   enumToPermissibleValues,
   CollectionType,
+  patternToRegexType,
 } from './lib/types';
 import {
   findNodeFactory,
@@ -318,6 +319,7 @@ export const toGraph = (
                     identifier,
                     multivalued,
                     array,
+                    pattern,
                   },
                 ]
               ) => ({
@@ -326,7 +328,9 @@ export const toGraph = (
                   description: description ?? '',
                   required: required ?? false,
                   identifier: identifier ?? false,
-                  range,
+                  range:
+                    range ||
+                    (pattern ? patternToRegexType[pattern] : undefined),
                   collectionType: array
                     ? CollectionType.ARRAY
                     : multivalued

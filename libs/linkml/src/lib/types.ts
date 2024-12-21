@@ -12,6 +12,7 @@ export type Attribute = {
   array?: Array;
   minimum_cardinality?: number;
   maximum_cardinality?: number;
+  pattern?: string;
 };
 
 export enum SpiresCoreClasses {
@@ -74,6 +75,10 @@ export enum RegexType {
 
 export const regexToPattern = {
   [RegexType.AMERICAN_PHONE_NUMBER]: String.raw`^[\\d\\(\\)\\-]+$`,
+};
+
+export const patternToRegexType = {
+  [String.raw`^[\\d\\(\\)\\-]+$`]: RegexType.AMERICAN_PHONE_NUMBER,
 };
 
 export enum EnumType {
