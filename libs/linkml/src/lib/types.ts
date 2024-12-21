@@ -15,6 +15,7 @@ export type Attribute = {
 };
 
 export enum SpiresCoreClasses {
+  CompoundExpression = 'CompoundExpression',
   NamedEntity = 'NamedEntity',
   RelationshipType = 'RelationshipType',
   TextWithEntity = 'TextWithEntity',

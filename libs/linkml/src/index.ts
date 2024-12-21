@@ -347,7 +347,7 @@ export const toGraph = (
   }
   Object.entries(classes)
     .filter(([key, { is_a }]) => is_a === SpiresCoreClasses.Triple)
-    .forEach(([key, { slot_usage, description }], index) => {
+    .forEach(([key, { slot_usage, description }]) => {
       if (slot_usage) {
         const fromNodeIndex = nodes.findIndex(
           (node) => node.caption === slot_usage['subject'].range
@@ -411,14 +411,14 @@ export const toGraph = (
 
           const cardinality = toCardinality();
 
-          relationships.push({
+          nextRelationshipId = relationships.push({
             relationshipType: RelationshipType.ASSOCIATION,
             fromId: fromNode.id,
             toId: toNode.id,
             properties: {},
             entityType: 'relationship',
             type: '',
-            id: (index + nextRelationshipId).toString(),
+            id: nextRelationshipId.toString(),
             cardinality: cardinality,
             customCardinality:
               cardinality === Cardinality.CUSTOM
@@ -433,6 +433,35 @@ export const toGraph = (
         }
       }
     });
+
+  Object.entries(classes)
+    .filter(([key, { is_a }]) => is_a === SpiresCoreClasses.CompoundExpression)
+    .forEach(([key, { attributes }]) => {
+      if (attributes) {
+        const [first, second, ...rest] = Object.entries(attributes);
+        const fromNodeIndex = nodes.findIndex(
+          (node) => node.caption === first[1].range
+        );
+        const toNodeIndex = nodes.findIndex(
+          (node) => node.caption === second[1].range
+        );
+
+        if (fromNodeIndex >= 0 && toNodeIndex >= 0) {
+          nextRelationshipId = relationships.push({
+            relationshipType: RelationshipType.ASSOCIATION,
+            fromId: fromNodeIndex.toString(),
+            toId: toNodeIndex.toString(),
+            properties: {},
+            entityType: 'relationship',
+            type: '',
+            id: nextRelationshipId.toString(),
+            cardinality: Cardinality.ONE_TO_MANY,
+            description: '',
+          });
+        }
+      }
+    });
+
   return {
     description,
     nodes,
