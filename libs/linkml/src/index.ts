@@ -1,9 +1,7 @@
 import {
   Graph,
   RelationshipType,
-  Node,
   Relationship,
-  Cardinality,
   Ontology,
 } from '@neo4j-arrows/model';
 import {
@@ -15,8 +13,7 @@ import {
   BasicType,
   EnumType,
   enumToPermissibleValues,
-  CollectionType,
-  patternToRegexType,
+  LinkMLGraph,
 } from './lib/types';
 import {
   findNodeFactory,
@@ -33,17 +30,10 @@ import {
 import { nodeToClass } from './lib/nodes';
 import { toPrefixes } from './lib/ontologies';
 import { dump } from 'js-yaml';
+import { importCompoundTypes, importNodes, importTriples } from './lib/import';
 
 export * from './lib/types';
 export * from './lib/naming';
-
-type LinkMLNode = Omit<Node, 'style' | 'position'>;
-type LinkMLRelationship = Omit<Relationship, 'style'>;
-type LinkMLGraph = {
-  description: string;
-  nodes: LinkMLNode[];
-  relationships: LinkMLRelationship[];
-};
 
 export const fromGraph = (
   name: string,
@@ -267,232 +257,25 @@ export const toGraph = (
   { classes, description }: LinkML,
   ontologies: Ontology[]
 ): LinkMLGraph => {
-  const nodes: LinkMLNode[] = [];
-  const relationships: LinkMLRelationship[] = [];
-  let nextNodeId = nodes.length;
-  let nextRelationshipId = 0;
-  let noNewNodes = false;
-  while (!noNewNodes) {
-    noNewNodes = true;
-    Object.entries(classes).forEach(
-      ([
-        key,
-        {
-          is_a = SpiresCoreClasses.NamedEntity,
-          mixins,
-          attributes,
-          id_prefixes,
-          description,
-          annotations,
-        },
-      ]) => {
-        const self = nodes.find(({ caption }) => caption === key);
-        const parent = nodes.find(
-          ({ caption }) => caption === is_a || (mixins && caption in mixins)
-        );
-        if (!self && (is_a === SpiresCoreClasses.NamedEntity || parent)) {
-          noNewNodes = false;
-          if (parent) {
-            nextRelationshipId = relationships.push({
-              relationshipType: RelationshipType.INHERITANCE,
-              fromId: nextNodeId.toString(),
-              toId: parent.id,
-              properties: {},
-              entityType: 'relationship',
-              type: '',
-              id: nextRelationshipId.toString(),
-              description: '',
-            });
-          }
-          nextNodeId = nodes.push({
-            id: nextNodeId.toString(),
-            caption: key,
-            properties: Object.entries(attributes ?? {}).reduce(
-              (
-                properties,
-                [
-                  key,
-                  {
-                    description,
-                    required,
-                    range,
-                    identifier,
-                    multivalued,
-                    array,
-                    pattern,
-                  },
-                ]
-              ) => ({
-                ...properties,
-                [key]: {
-                  description: description ?? '',
-                  required: required ?? false,
-                  identifier: identifier ?? false,
-                  range:
-                    range ||
-                    (pattern ? patternToRegexType[pattern] : undefined),
-                  collectionType: array
-                    ? CollectionType.ARRAY
-                    : multivalued
-                    ? CollectionType.LIST
-                    : undefined,
-                  dimensions: array ? array.exact_number_dimensions : undefined,
-                },
-              }),
-              {}
-            ),
-            entityType: 'node',
-            ontologies: ontologies.filter(
-              ({ id }) =>
-                (id_prefixes && id_prefixes.includes(id.toLocaleUpperCase())) ||
-                annotations?.annotators
-                  ?.split(',')
-                  .map((annotator) => annotator.trim())
-                  .filter((annotator) => annotator.startsWith('sqlite:obo:'))
-                  .map((annotator) => annotator.replace('sqlite:obo:', ''))
-                  .includes(id.toLocaleLowerCase())
-            ),
-            description: description || annotations?.prompt || '',
-            examples: [
-              ...new Set(annotations?.['prompt.examples']?.split(',')),
-            ],
-          });
-        }
-      }
-    );
-  }
-  Object.entries(classes)
-    .filter(([key, { is_a }]) => is_a === SpiresCoreClasses.Triple)
-    .forEach(([key, { slot_usage, description }]) => {
-      if (slot_usage) {
-        const fromNodeIndex = nodes.findIndex(
-          (node) => node.caption === slot_usage['subject'].range
-        );
-        const toNodeIndex = nodes.findIndex(
-          (node) => node.caption === slot_usage['object'].range
-        );
-
-        if (fromNodeIndex >= 0 && toNodeIndex >= 0) {
-          const mergeExamples = (
-            node: LinkMLNode,
-            annotations: Record<string, string> | undefined
-          ) => {
-            return [
-              ...new Set([
-                ...(node.examples ?? []),
-                ...(annotations?.['prompt.examples'].split(',') ?? []),
-              ]),
-            ];
-          };
-          const fromNode = {
-            ...nodes[fromNodeIndex],
-            examples: mergeExamples(
-              nodes[fromNodeIndex],
-              slot_usage['subject'].annotations
-            ),
-          };
-          const toNode = {
-            ...nodes[toNodeIndex],
-            examples: mergeExamples(
-              nodes[toNodeIndex],
-              slot_usage['object'].annotations
-            ),
-          };
-          nodes.splice(fromNodeIndex, 1, fromNode);
-          nodes.splice(toNodeIndex, 1, toNode);
-          const customCardinality = {
-            source_minimum: slot_usage['subject'].minimum_cardinality ?? 0,
-            source_maximum: slot_usage['subject'].maximum_cardinality,
-            target_minimum: slot_usage['object'].minimum_cardinality ?? 0,
-            target_maximum: slot_usage['object'].maximum_cardinality,
-          };
-
-          const toCardinality = () => {
-            const {
-              source_minimum,
-              source_maximum,
-              target_minimum,
-              target_maximum,
-            } = customCardinality;
-
-            if (
-              source_minimum > 0 ||
-              target_minimum > 0 ||
-              (source_maximum && source_maximum > 1) ||
-              (target_maximum && target_maximum > 1)
-            ) {
-              return Cardinality.CUSTOM;
-            }
-
-            // From here on, minimums are 0 and maximums (if present) are 1.
-            if (source_maximum) {
-              return target_maximum
-                ? Cardinality.ONE_TO_ONE
-                : Cardinality.ONE_TO_MANY;
-            } else {
-              return target_maximum
-                ? Cardinality.MANY_TO_ONE
-                : Cardinality.MANY_TO_MANY;
-            }
-          };
-
-          const cardinality = toCardinality();
-
-          nextRelationshipId = relationships.push({
-            relationshipType: RelationshipType.ASSOCIATION,
-            fromId: fromNode.id,
-            toId: toNode.id,
-            properties: {},
-            entityType: 'relationship',
-            type: '',
-            id: nextRelationshipId.toString(),
-            cardinality: cardinality,
-            customCardinality:
-              cardinality === Cardinality.CUSTOM
-                ? customCardinality
-                : undefined,
-            examples:
-              slot_usage['predicate'].annotations?.['prompt.examples']?.split(
-                ','
-              ),
-            description: description ?? '',
-          });
-        }
-      }
-    });
-
-  Object.entries(classes)
-    .filter(([key, { is_a }]) => is_a === SpiresCoreClasses.CompoundExpression)
-    .forEach(([key, { attributes }]) => {
-      if (attributes) {
-        const [first, second, ...rest] = Object.entries(attributes);
-        const fromNodeIndex = nodes.findIndex(
-          (node) => node.caption === first[1].range
-        );
-        const toNodeIndex = nodes.findIndex(
-          (node) => node.caption === second[1].range
-        );
-
-        if (fromNodeIndex >= 0 && toNodeIndex >= 0) {
-          nextRelationshipId = relationships.push({
-            relationshipType: RelationshipType.ASSOCIATION,
-            fromId: fromNodeIndex.toString(),
-            toId: toNodeIndex.toString(),
-            properties: {},
-            entityType: 'relationship',
-            type: '',
-            id: nextRelationshipId.toString(),
-            cardinality: Cardinality.MANY_TO_MANY,
-            description: '',
-          });
-        }
-      }
-    });
+  const { nodes, relationships: inheritances } = importNodes(
+    classes,
+    ontologies
+  );
+  const { relationships: triples } = importTriples(
+    classes,
+    nodes,
+    inheritances.length
+  );
+  const { relationships: compoundTypes } = importCompoundTypes(
+    classes,
+    nodes,
+    [...inheritances, ...triples].length
+  );
 
   return {
     description,
     nodes,
-    relationships,
+    relationships: [...inheritances, ...triples, ...compoundTypes],
   };
 };
 

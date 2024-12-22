@@ -1,3 +1,5 @@
+import { Node, Relationship } from '@neo4j-arrows/model';
+
 type Array = {
   exact_number_dimensions: number;
 };
@@ -93,4 +95,12 @@ export enum EnumType {
 
 export const enumToPermissibleValues = {
   [EnumType.GENDER]: ['man', 'woman'],
+};
+
+export type LinkMLNode = Omit<Node, 'style' | 'position'>;
+export type LinkMLRelationship = Omit<Relationship, 'style'>;
+export type LinkMLGraph = {
+  description: string;
+  nodes: LinkMLNode[];
+  relationships: LinkMLRelationship[];
 };
