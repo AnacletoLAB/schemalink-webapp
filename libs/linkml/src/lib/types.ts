@@ -7,12 +7,18 @@ export type Attribute = {
   description?: string;
   multivalued?: boolean;
   required?: boolean;
-  annotations?: Record<string, string>;
+  annotations?: Annotations;
   identifier?: boolean;
   array?: Array;
   minimum_cardinality?: number;
   maximum_cardinality?: number;
   pattern?: string;
+};
+
+type Annotations = {
+  prompt?: string;
+  ['prompt.examples']?: string;
+  annotators?: string;
 };
 
 export enum SpiresCoreClasses {
@@ -32,7 +38,7 @@ export type LinkMLClass = {
   mixins?: SpiresCoreClasses[] | string[];
   slot_usage?: Record<string, Attribute>;
   tree_root?: boolean;
-  annotations?: Record<string, string>;
+  annotations?: Annotations;
 };
 
 export type LinkML = {

@@ -446,7 +446,7 @@ export const toGraph = (
                 ? customCardinality
                 : undefined,
             examples:
-              slot_usage['predicate'].annotations?.['prompt.examples'].split(
+              slot_usage['predicate'].annotations?.['prompt.examples']?.split(
                 ','
               ),
             description: description ?? '',
