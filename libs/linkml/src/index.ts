@@ -476,7 +476,7 @@ export const toGraph = (
             entityType: 'relationship',
             type: '',
             id: nextRelationshipId.toString(),
-            cardinality: Cardinality.ONE_TO_MANY,
+            cardinality: Cardinality.MANY_TO_MANY,
             description: '',
           });
         }
