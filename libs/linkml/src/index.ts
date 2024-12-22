@@ -346,7 +346,7 @@ export const toGraph = (
               ({ id }) =>
                 id_prefixes && id_prefixes.includes(id.toLocaleUpperCase())
             ),
-            description: description ?? '',
+            description: description || annotations?.prompt || '',
             examples: [
               ...new Set(annotations?.['prompt.examples']?.split(',')),
             ],
