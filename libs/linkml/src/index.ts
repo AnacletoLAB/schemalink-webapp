@@ -344,7 +344,13 @@ export const toGraph = (
             entityType: 'node',
             ontologies: ontologies.filter(
               ({ id }) =>
-                id_prefixes && id_prefixes.includes(id.toLocaleUpperCase())
+                (id_prefixes && id_prefixes.includes(id.toLocaleUpperCase())) ||
+                annotations?.annotators
+                  ?.split(',')
+                  .map((annotator) => annotator.trim())
+                  .filter((annotator) => annotator.startsWith('sqlite:obo:'))
+                  .map((annotator) => annotator.replace('sqlite:obo:', ''))
+                  .includes(id.toLocaleLowerCase())
             ),
             description: description || annotations?.prompt || '',
             examples: [
