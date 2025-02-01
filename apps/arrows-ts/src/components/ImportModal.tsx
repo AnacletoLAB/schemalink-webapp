@@ -8,8 +8,7 @@ import {
   TextArea,
   Message,
 } from 'semantic-ui-react';
-import { GptDialog, GptState } from './GptDialog';
-import { generate, validateLinkml } from '@neo4j-arrows/api';
+import { validateLinkml } from '@neo4j-arrows/api';
 
 interface ImportModalProps {
   onCancel: () => void;
@@ -22,7 +21,7 @@ interface ImportModalProps {
   ) => { errorMessage?: string };
 }
 
-interface ImportModalState extends GptState {
+interface ImportModalState {
   errorMessage?: string;
   text: string;
   messageProps: MessageItemProps;
@@ -33,9 +32,6 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
     super(props);
     this.state = {
       text: '',
-      prompt: '',
-      showGpt: false,
-      gptLoading: false,
       errorMessage: undefined,
       messageProps: {
         icon: 'checkmark',
@@ -118,19 +114,6 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
     }
   };
 
-  generate = async () => {
-    this.setState({ gptLoading: true });
-    await generate(
-      this.state.prompt,
-      import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT
-    )
-      .then((text) => {
-        this.setState({ text });
-        this.validateText(text);
-      })
-      .finally(() => this.setState({ gptLoading: false }));
-  };
-
   render() {
     return (
       <Modal
@@ -172,30 +155,9 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
                 hidden
                 onChange={this.fileChange}
               />
-              {import.meta.env.VITE_OPENAI_ENABLED && (
-                <Button
-                  content="GPT"
-                  labelPosition="left"
-                  icon="chat"
-                  onClick={() =>
-                    this.setState({ showGpt: !this.state.showGpt })
-                  }
-                />
-              )}
             </Form.Field>
-            {import.meta.env.VITE_OPENAI_ENABLED && this.state.showGpt && (
-              <GptDialog
-                loading={this.state.gptLoading}
-                onChange={(event) =>
-                  this.setState({ prompt: event.target.value })
-                }
-                onClick={this.generate}
-              />
-            )}
             <TextArea
-              placeholder={`Choose a file${
-                import.meta.env.VITE_OPENAI_ENABLED ? ', talk to the GPT' : ''
-              }, or paste text here...`}
+              placeholder={`Choose a file or paste text here...`}
               style={{
                 height: 300,
                 fontFamily: 'monospace',
