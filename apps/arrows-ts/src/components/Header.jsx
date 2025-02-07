@@ -2,6 +2,7 @@ import React, { PureComponent } from 'react';
 import { Icon, Menu, Button, ButtonGroup } from 'semantic-ui-react';
 import { DiagramNameEditor } from './DiagramNameEditor';
 import arrows_logo from '../images/arrows_logo.svg';
+import { defaultCallbackFactory } from './GptModal';
 
 const storageNames = {
   LOCAL_STORAGE: 'Web Browser storage',
@@ -40,6 +41,15 @@ const storageIcon = (storageMode) => {
 
 class Header extends PureComponent {
   render() {
+    const {
+      onGenerateClick,
+      graph,
+      ontologies,
+      separation,
+      clearGraph,
+      importNodesAndRelationships,
+    } = this.props;
+
     const newDiagramOptions = ['LOCAL_STORAGE'].map((mode) => (
       <div
         key={mode}
@@ -138,6 +148,24 @@ class Header extends PureComponent {
               onClick={this.props.onImportClick}
             >
               Import
+            </div>
+            <div
+              role="option"
+              aria-selected
+              className="item"
+              onClick={() =>
+                onGenerateClick(
+                  defaultCallbackFactory(
+                    ontologies,
+                    graph,
+                    separation,
+                    clearGraph,
+                    importNodesAndRelationships
+                  )
+                )
+              }
+            >
+              Generate
             </div>
             <div className="divider" />
             <div
