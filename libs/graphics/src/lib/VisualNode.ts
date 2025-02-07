@@ -211,7 +211,7 @@ export class VisualNode {
           );
           break;
 
-        default:
+        case 'outside':
           this.outsideComponents.push(
             (this.properties = new PropertiesOutside(
               Object.keys(node.properties),

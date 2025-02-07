@@ -438,7 +438,7 @@ export const styleAttributeGroups = [
       {
         key: 'attribute-position',
         appliesTo: 'NodeOrRelationshipWithProperty',
-        type: 'inside-outside',
+        type: 'inside-outside-hidden',
         defaultValue: 'outside',
       },
       {
@@ -525,6 +525,10 @@ export const styleTypes: Record<string, EditorConfig> = {
     ],
   },
   'inside-outside': { editor: 'dropdown', options: ['inside', 'outside'] },
+  'inside-outside-hidden': {
+    editor: 'dropdown',
+    options: ['inside', 'outside', 'hidden'],
+  },
   'detail-position': {
     editor: 'dropdown',
     options: ['inline', 'above', 'below'],
