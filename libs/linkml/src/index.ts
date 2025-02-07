@@ -184,6 +184,7 @@ export const fromGraph = (
     prefixes: {
       linkml: 'https://w3id.org/linkml/',
       ontogpt: 'http://w3id.org/ontogpt/',
+      rdf: 'https://www.w3.org/1999/02/22-rdf-syntax-ns',
       ...toPrefixes([
         ...nodes.flatMap((node) => node.ontologies ?? []),
         ...relationships.flatMap(
