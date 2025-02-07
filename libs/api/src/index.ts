@@ -1,11 +1,116 @@
+const testLinkML = `
+id: https://example.com/untitled_schema
+default_range: string
+name: untitled_schema
+title: Untitled schema
+description: ''
+prefixes:
+  linkml: https://w3id.org/linkml/
+  ontogpt: http://w3id.org/ontogpt/
+  HGNC: http://identifiers.org/hgnc/
+imports:
+  - ontogpt:core
+  - linkml:types
+classes:
+  PatientToClinicianRelationship:
+    is_a: Triple
+    description: >-
+      A triple where the subject is a Patient and where the object is a
+      Clinician. A relationship representing a treatment plan where the subject
+      is a Patient, and the object is a Clinician.
+    slot_usage:
+      subject:
+        range: Patient
+        annotations:
+          prompt.examples: ''
+        minimum_cardinality: 0
+      object:
+        range: Clinician
+        annotations:
+          prompt.examples: ''
+        minimum_cardinality: 0
+      predicate:
+        range: PatientToClinicianPredicate
+        annotations:
+          prompt.examples: ''
+  PatientToClinicianPredicate:
+    is_a: RelationshipType
+    attributes:
+      label:
+        description: The predicate for the PatientToClinician relationships.
+    id_prefixes: []
+    annotations: {}
+  Patient:
+    is_a: NamedEntity
+    mixins: []
+    attributes:
+      patient_id:
+        description: A unique identifier for the Patient.
+        required: true
+        identifier: true
+      name:
+        description: The name of the patient.
+        required: true
+        identifier: false
+      date_of_birth:
+        description: The date of birth of the patient.
+        required: true
+        identifier: false
+      gender:
+        description: The gender of the patient.
+        required: false
+        identifier: false
+      contact_info:
+        description: The contact information of the patient.
+        required: false
+        identifier: false
+      medical_history:
+        description: A brief medical history of the patient.
+        required: false
+        identifier: false
+    id_prefixes:
+      - HGNC
+    annotations:
+      annotators: sqlite:obo:HGNC
+  Clinician:
+    is_a: NamedEntity
+    mixins: []
+    attributes:
+      clinician_id:
+        description: A unique identifier for the Clinician.
+        required: true
+        identifier: true
+      name:
+        description: The name of the clinician.
+        required: true
+        identifier: false
+      specialty:
+        description: The medical specialty of the clinician (e.g., Cardiology, Pediatrics).
+        required: true
+        identifier: false
+      contact_info:
+        description: The contact information of the clinician.
+        required: false
+        identifier: false
+      years_of_experience:
+        description: The number of years the clinician has been practicing.
+        required: false
+        identifier: false
+    id_prefixes:
+      - HGNC
+    annotations:
+      annotators: sqlite:obo:HGNC
+`;
+
 export const generate = async (
   prompt: string,
   url: string
 ): Promise<string> => {
-  return fetch(url, {
-    body: prompt,
-    method: 'POST',
-  }).then((response) => response.text());
+  // return fetch(url, {
+  //   body: prompt,
+  //   method: 'POST',
+  // }).then((response) => response.text());
+  return Promise.resolve(testLinkML);
 };
 
 export const edit = async (

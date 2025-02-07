@@ -2,6 +2,7 @@ import React, { PureComponent } from 'react';
 import { Icon, Menu, Button, ButtonGroup } from 'semantic-ui-react';
 import { DiagramNameEditor } from './DiagramNameEditor';
 import arrows_logo from '../images/arrows_logo.svg';
+import { defaultCallbackFactory } from './GptModal';
 
 const storageNames = {
   LOCAL_STORAGE: 'Web Browser storage',
@@ -39,26 +40,21 @@ const storageIcon = (storageMode) => {
 };
 
 class Header extends PureComponent {
-  constructor(props) {
-    super(props);
-  }
-
-  // shouldComponentUpdate(nextProps, nextState, nextContext) {
-  //   console.log(this.props.storage, nextProps.storage,
-  //     this.props.storage !== nextProps.storage
-  //   )
-  //   return (
-  //     this.props.recentStorage !== nextProps.recentStorage ||
-  //     this.props.diagramName !== nextProps.diagramName ||
-  //     this.props.storage !== nextProps.storage
-  //   )
-  // }
-
   render() {
+    const {
+      onGenerateClick,
+      graph,
+      ontologies,
+      separation,
+      clearGraph,
+      importNodesAndRelationships,
+    } = this.props;
+
     const newDiagramOptions = ['LOCAL_STORAGE'].map((mode) => (
       <div
         key={mode}
         role="option"
+        aria-selected
         className="item"
         onClick={() => this.props.onNewDiagram(mode)}
       >
@@ -73,6 +69,7 @@ class Header extends PureComponent {
         <div
           key={'recentlyAccessFiles' + i}
           role="option"
+          aria-selected
           className="item"
           onClick={() => this.props.openRecentFile(entry)}
           style={{
@@ -91,6 +88,7 @@ class Header extends PureComponent {
       <div
         key={mode}
         role="option"
+        aria-selected
         className="item"
         onClick={() => this.props.pickFileToOpen(mode)}
       >
@@ -150,6 +148,23 @@ class Header extends PureComponent {
               onClick={this.props.onImportClick}
             >
               Import
+            </div>
+            <div
+              role="option"
+              aria-selected
+              className="item"
+              onClick={onGenerateClick(
+                defaultCallbackFactory(
+                  {},
+                  ontologies,
+                  graph,
+                  separation,
+                  clearGraph,
+                  importNodesAndRelationships
+                )
+              )}
+            >
+              Generate
             </div>
             <div className="divider" />
             <div

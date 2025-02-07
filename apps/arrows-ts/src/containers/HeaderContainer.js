@@ -8,13 +8,17 @@ import {
   showAcknowledgementsDialog,
   showImportDialog,
   showSaveAsDialog,
+  showGptModal,
 } from '../actions/applicationDialogs';
 import {
   newLocalStorageDiagram,
   openRecentFile,
   pickDiagram,
+  clearGraph,
 } from '../actions/storage';
 import { ActionCreators as UndoActionCreators } from 'redux-undo';
+import { nodeSeparation } from '../actions/import';
+import { importNodesAndRelationships } from '../actions/graph';
 
 const mapStateToProps = (state) => {
   return {
@@ -25,6 +29,9 @@ const mapStateToProps = (state) => {
       redo: state.graph.future.length < 1,
     },
     storage: state.storage,
+    graph: state.graph.present,
+    ontologies: state.ontologies.ontologies,
+    separation: nodeSeparation(state),
   };
 };
 
@@ -59,6 +66,15 @@ const mapDispatchToProps = (dispatch) => {
     },
     onImportClick: () => {
       dispatch(showImportDialog());
+    },
+    onGenerateClick: (callback) => {
+      dispatch(showGptModal(callback));
+    },
+    importNodesAndRelationships: (graph) => {
+      dispatch(importNodesAndRelationships(graph));
+    },
+    clearGraph: () => {
+      clearGraph()(dispatch);
     },
     onHelpClick: () => {
       dispatch(showHelpDialog());

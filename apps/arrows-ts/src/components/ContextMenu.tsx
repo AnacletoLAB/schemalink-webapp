@@ -14,7 +14,6 @@ import {
   EntitySelection,
   Graph,
   Ontology,
-  Point,
   computePrompt,
   selectedNodes,
   selectedRelationships,
@@ -30,18 +29,16 @@ import {
   showGptModal,
 } from '../actions/applicationDialogs';
 import {
-  LinkML,
   SpiresType,
   fromGraph,
-  toGraph,
   toRelationshipClassNameFactory,
   toYaml,
 } from '@neo4j-arrows/linkml';
-import yaml from 'js-yaml';
 import { generate } from '@neo4j-arrows/api';
 import { importNodesAndRelationships, onSaveOntology } from '../actions/graph';
 import { clearGraph } from '../actions/storage';
 import { nodeSeparation } from '../actions/import';
+import { CallbackFactory, defaultCallbackFactory } from './GptModal';
 
 enum Method {
   ADD = 'Add',
@@ -65,10 +62,6 @@ enum Selection {
   NONE = 'None',
   RELATIONSHIP = 'Relationship',
 }
-
-type CallbackFactory = (
-  selection: EntitySelection
-) => (text: string) => Promise<void>;
 
 interface ActionKind {
   action?: Action;
@@ -135,63 +128,33 @@ const ContextMenu = ({
     return nodes.length ? Selection.CLASS : Selection.RELATIONSHIP;
   };
 
-  const defaultCallbackFactory: CallbackFactory = (_) => (text) =>
-    generate(text, import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT).then(
-      (returnedSchema) => {
-        const returnedGraph = toGraph(
-          yaml.load(returnedSchema) as LinkML,
-          ontologies
-        );
-        const returnedNodes = returnedGraph.nodes.map((node, index) => ({
-          position: new Point(
-            separation * Math.cos(360 * index),
-            separation * Math.sin(360 * index)
-          ),
-          style: {},
-          ...graph.nodes.find(
-            (n) => n.caption.toLowerCase() === node.caption.toLowerCase()
-          ),
-          ...node,
-        }));
-        const returnedNodesIds = returnedNodes.map(({ id }) => id);
-        const returnedRelationships = returnedGraph.relationships
-          .filter(
-            ({ fromId, toId }) =>
-              returnedNodesIds.includes(fromId) &&
-              returnedNodesIds.includes(toId)
-          )
-          .map((relationship) => ({
-            style: {},
-            ...relationship,
-          }));
+  const explanationCallback: CallbackFactory =
+    (
+      selection,
+      ontologies,
+      graph,
+      separation,
+      clearGraph,
+      importNodesAndRelationships
+    ) =>
+    (text: string) =>
+      generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT).then(
+        (explanation) => {
+          openGtpExplanationModal(explanation);
+        }
+      );
 
-        clearGraph();
-        importNodesAndRelationships({
-          nodes: returnedNodes,
-          relationships: returnedRelationships,
-          description: graph.description,
-          style: graph.style,
-        });
-      }
-    );
-
-  const explanationCallback: CallbackFactory = (_) => (text: string) =>
-    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT).then(
-      (explanation) => {
-        openGtpExplanationModal(explanation);
-      }
-    );
-
-  const ontologiesCallback: CallbackFactory = (selection) => (text: string) =>
-    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT).then(
-      (returnedOntologies) => {
-        const ids = returnedOntologies.split(',').map((id) => id.trim());
-        onSaveOntology(
-          selection,
-          ontologies.filter((ontology) => ids.includes(ontology.id))
-        );
-      }
-    );
+  const ontologiesCallback: CallbackFactory =
+    (selection, ontologies, graph, separation) => (text: string) =>
+      generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT).then(
+        (returnedOntologies) => {
+          const ids = returnedOntologies.split(',').map((id) => id.trim());
+          onSaveOntology(
+            selection,
+            ontologies.filter((ontology) => ids.includes(ontology.id))
+          );
+        }
+      );
 
   const selectionToActions: Record<
     Selection,
@@ -294,7 +257,14 @@ const ContextMenu = ({
                             ),
                           });
                           openGtpModal(
-                            callbackFactory(selection),
+                            callbackFactory(
+                              selection,
+                              ontologies,
+                              graph,
+                              separation,
+                              clearGraph,
+                              importNodesAndRelationships
+                            ),
                             startingPrompt
                           );
                           onClose();
@@ -325,7 +295,12 @@ const ContextMenu = ({
                   });
                   openGtpModal(
                     (actions[0].callbackFactory ?? defaultCallbackFactory)(
-                      selection
+                      selection,
+                      ontologies,
+                      graph,
+                      separation,
+                      clearGraph,
+                      importNodesAndRelationships
                     ),
                     startingPrompt
                   );
@@ -337,7 +312,16 @@ const ContextMenu = ({
         <MenuItem
           name={`Open GPT dialog`}
           onClick={() => {
-            openGtpModal(defaultCallbackFactory(selection));
+            openGtpModal(
+              defaultCallbackFactory(
+                selection,
+                ontologies,
+                graph,
+                separation,
+                clearGraph,
+                importNodesAndRelationships
+              )
+            );
             onClose();
           }}
         />
