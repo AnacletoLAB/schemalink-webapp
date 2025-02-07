@@ -11,6 +11,10 @@ import { ArrowsState } from '../reducers';
 import { Dispatch } from 'redux';
 import { connect } from 'react-redux';
 import { hideGptModal } from '../actions/applicationDialogs';
+import { generate } from '@neo4j-arrows/api';
+import { LinkML, toGraph } from '@neo4j-arrows/linkml';
+import yaml from 'js-yaml';
+import { Graph, Ontology, Point } from '@neo4j-arrows/model';
 
 export interface GptModalProps {
   onClose: () => void;
@@ -18,6 +22,56 @@ export interface GptModalProps {
   startingPrompt: string;
   callback?: (text: string) => Promise<void>;
 }
+
+export type Callback = (text: string) => Promise<void>;
+
+export const defaultCallbackFactory: (
+  ontologies: Ontology[],
+  graph: Graph,
+  separation: number,
+  clearGraph: () => void,
+  importNodesAndRelationships: (graph: Graph) => void
+) => Callback =
+  (ontologies, graph, separation, clearGraph, importNodesAndRelationships) =>
+  (text) =>
+    generate(text, import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT).then(
+      (returnedSchema) => {
+        const returnedGraph = toGraph(
+          yaml.load(returnedSchema) as LinkML,
+          ontologies
+        );
+        const returnedNodes = returnedGraph.nodes.map((node, index) => ({
+          position: new Point(
+            separation * Math.cos(360 * index),
+            separation * Math.sin(360 * index)
+          ),
+          style: {},
+          ...graph.nodes.find(
+            (n) => n.caption.toLowerCase() === node.caption.toLowerCase()
+          ),
+          ...node,
+        }));
+        const returnedNodesIds = returnedNodes.map(({ id }) => id);
+        const returnedRelationships = returnedGraph.relationships
+          .filter(
+            ({ fromId, toId }) =>
+              returnedNodesIds.includes(fromId) &&
+              returnedNodesIds.includes(toId)
+          )
+          .map((relationship) => ({
+            style: {},
+            ...relationship,
+          }));
+
+        clearGraph();
+        importNodesAndRelationships({
+          nodes: returnedNodes,
+          relationships: returnedRelationships,
+          description: graph.description,
+          style: graph.style,
+        });
+      }
+    );
 
 export const GptModal = ({
   onClose,

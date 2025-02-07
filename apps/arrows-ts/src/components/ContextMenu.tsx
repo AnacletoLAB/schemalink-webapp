@@ -14,7 +14,6 @@ import {
   EntitySelection,
   Graph,
   Ontology,
-  Point,
   computePrompt,
   selectedNodes,
   selectedRelationships,
@@ -30,18 +29,16 @@ import {
   showGptModal,
 } from '../actions/applicationDialogs';
 import {
-  LinkML,
   SpiresType,
   fromGraph,
-  toGraph,
   toRelationshipClassNameFactory,
   toYaml,
 } from '@neo4j-arrows/linkml';
-import yaml from 'js-yaml';
 import { generate } from '@neo4j-arrows/api';
 import { importNodesAndRelationships, onSaveOntology } from '../actions/graph';
 import { clearGraph } from '../actions/storage';
 import { nodeSeparation } from '../actions/import';
+import { Callback, defaultCallbackFactory } from './GptModal';
 
 enum Method {
   ADD = 'Add',
@@ -66,14 +63,10 @@ enum Selection {
   RELATIONSHIP = 'Relationship',
 }
 
-type CallbackFactory = (
-  selection: EntitySelection
-) => (text: string) => Promise<void>;
-
 interface ActionKind {
   action?: Action;
   label?: string;
-  callbackFactory?: CallbackFactory;
+  callback?: Callback;
   commandKind: CommandKind;
 }
 
@@ -92,7 +85,7 @@ interface ContextMenuProps {
   onSaveOntology: (selection: EntitySelection, ontologies: Ontology[]) => void;
   openGtpExplanationModal: (explanation: string) => void;
   openGtpModal: (
-    callback?: (text: string) => Promise<void>,
+    callback: (text: string) => Promise<void>,
     startingPrompt?: string
   ) => void;
   separation: number;
@@ -135,54 +128,25 @@ const ContextMenu = ({
     return nodes.length ? Selection.CLASS : Selection.RELATIONSHIP;
   };
 
-  const defaultCallbackFactory: CallbackFactory = (_) => (text) =>
-    generate(text, import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT).then(
-      (returnedSchema) => {
-        const returnedGraph = toGraph(
-          yaml.load(returnedSchema) as LinkML,
-          ontologies
-        );
-        const returnedNodes = returnedGraph.nodes.map((node, index) => ({
-          position: new Point(
-            separation * Math.cos(360 * index),
-            separation * Math.sin(360 * index)
-          ),
-          style: {},
-          ...graph.nodes.find(
-            (n) => n.caption.toLowerCase() === node.caption.toLowerCase()
-          ),
-          ...node,
-        }));
-        const returnedNodesIds = returnedNodes.map(({ id }) => id);
-        const returnedRelationships = returnedGraph.relationships
-          .filter(
-            ({ fromId, toId }) =>
-              returnedNodesIds.includes(fromId) &&
-              returnedNodesIds.includes(toId)
-          )
-          .map((relationship) => ({
-            style: {},
-            ...relationship,
-          }));
+  const defaultCallback = defaultCallbackFactory(
+    ontologies,
+    graph,
+    separation,
+    clearGraph,
+    importNodesAndRelationships
+  );
 
-        clearGraph();
-        importNodesAndRelationships({
-          nodes: returnedNodes,
-          relationships: returnedRelationships,
-          description: graph.description,
-          style: graph.style,
-        });
-      }
-    );
-
-  const explanationCallback: CallbackFactory = (_) => (text: string) =>
+  const explanationCallback: Callback = (text: string) =>
     generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT).then(
       (explanation) => {
         openGtpExplanationModal(explanation);
       }
     );
 
-  const ontologiesCallback: CallbackFactory = (selection) => (text: string) =>
+  const ontologiesCallbackFactory: (
+    selection: EntitySelection,
+    ontologies: Ontology[]
+  ) => Callback = (selection, ontologies) => (text: string) =>
     generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT).then(
       (returnedOntologies) => {
         const ids = returnedOntologies.split(',').map((id) => id.trim());
@@ -215,13 +179,13 @@ const ContextMenu = ({
         {
           action: Action.ONTOLOGY,
           commandKind: CommandKind.FixClassOntology,
-          callbackFactory: ontologiesCallback,
+          callback: ontologiesCallbackFactory(selection, ontologies),
         },
       ],
       [Method.EXPLAIN]: [
         {
           commandKind: CommandKind.ExplainClass,
-          callbackFactory: explanationCallback,
+          callback: explanationCallback,
         },
       ],
       [Method.REIFY]: [{ commandKind: CommandKind.ReifyClass }],
@@ -237,7 +201,7 @@ const ContextMenu = ({
       [Method.EXPLAIN]: [
         {
           commandKind: CommandKind.ExplainEntities,
-          callbackFactory: explanationCallback,
+          callback: explanationCallback,
         },
       ],
     },
@@ -273,35 +237,28 @@ const ContextMenu = ({
             actions.length > 1 ? (
               <Dropdown item text={method}>
                 <DropdownMenu>
-                  {actions.map(
-                    ({
-                      action,
-                      commandKind,
-                      label,
-                      callbackFactory = defaultCallbackFactory,
-                    }) => (
-                      <DropdownItem
-                        text={label || `${selectionType} ${action}`}
-                        onClick={() => {
-                          const startingPrompt = computePrompt({
-                            kind: commandKind,
-                            nodes: nodes.map(({ caption }) => caption),
-                            relationships: relationships.map(
-                              toRelationshipClassName
-                            ),
-                            fullSchema: toYaml(
-                              fromGraph(diagramName, graph, SpiresType.LINKML)
-                            ),
-                          });
-                          openGtpModal(
-                            callbackFactory(selection),
-                            startingPrompt
-                          );
-                          onClose();
-                        }}
-                      />
-                    )
-                  )}
+                  {actions.map(({ action, commandKind, label, callback }) => (
+                    <DropdownItem
+                      text={label || `${selectionType} ${action}`}
+                      onClick={() => {
+                        const startingPrompt = computePrompt({
+                          kind: commandKind,
+                          nodes: nodes.map(({ caption }) => caption),
+                          relationships: relationships.map(
+                            toRelationshipClassName
+                          ),
+                          fullSchema: toYaml(
+                            fromGraph(diagramName, graph, SpiresType.LINKML)
+                          ),
+                        });
+                        openGtpModal(
+                          callback ?? defaultCallback,
+                          startingPrompt
+                        );
+                        onClose();
+                      }}
+                    />
+                  ))}
                 </DropdownMenu>
               </Dropdown>
             ) : (
@@ -324,9 +281,7 @@ const ContextMenu = ({
                     ),
                   });
                   openGtpModal(
-                    (actions[0].callbackFactory ?? defaultCallbackFactory)(
-                      selection
-                    ),
+                    actions[0].callback ?? defaultCallback,
                     startingPrompt
                   );
                   onClose();
@@ -337,7 +292,7 @@ const ContextMenu = ({
         <MenuItem
           name={`Open GPT dialog`}
           onClick={() => {
-            openGtpModal(defaultCallbackFactory(selection));
+            openGtpModal(defaultCallback);
             onClose();
           }}
         />
@@ -378,7 +333,7 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
       dispatch(hideContextMenu());
     },
     openGtpModal: (
-      callback?: (text: string) => Promise<void>,
+      callback: (text: string) => Promise<void>,
       startingPrompt?: string
     ) => {
       dispatch(showGptModal(callback, startingPrompt));
