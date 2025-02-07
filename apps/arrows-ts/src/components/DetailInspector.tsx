@@ -360,7 +360,12 @@ export default class DetailInspector extends Component<
       }
     }
 
-    if (entities.length < 2) {
+    if (
+      entities.length < 2 &&
+      (!isRelationship(entities[0]) ||
+        (isRelationship(entities[0]) &&
+          entities[0].relationshipType === RelationshipType.ASSOCIATION))
+    ) {
       const { ontologies: entityOntologies, examples } = entities[0];
       const { ontologies: storeOntologies, isFetching } = ontologies;
       const ontologiesExamples = entityOntologies
