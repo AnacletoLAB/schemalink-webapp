@@ -144,7 +144,7 @@ export const importTriples = (
             return [
               ...new Set([
                 ...(node.examples ?? []),
-                ...(annotations?.['prompt.examples'].split(',') ?? []),
+                ...(annotations?.['prompt.examples']?.split(',') ?? []),
               ]),
             ];
           };
