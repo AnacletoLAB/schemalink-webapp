@@ -30,7 +30,7 @@ export const nodeToClass = (
     attributes: {
       ...propertiesToAttributes(properties),
       ...(!hasIdentifier && {
-        [`${snakeCase(caption)}`]: {
+        [`${snakeCase(caption)}_id`]: {
           identifier: true,
           description: `A unique identifier for the ${toClassName(
             caption
