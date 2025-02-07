@@ -30,12 +30,21 @@ export const defaultCallbackFactory: (
   graph: Graph,
   separation: number,
   clearGraph: () => void,
-  importNodesAndRelationships: (graph: Graph) => void
+  importNodesAndRelationships: (graph: Graph) => void,
+  renameDiagram: (diagramName: string) => void
 ) => Callback =
-  (ontologies, graph, separation, clearGraph, importNodesAndRelationships) =>
+  (
+    ontologies,
+    graph,
+    separation,
+    clearGraph,
+    importNodesAndRelationships,
+    renameDiagram
+  ) =>
   (text) =>
     generate(text, import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT).then(
       (returnedSchema) => {
+        const diagramName = (yaml.load(returnedSchema) as LinkML).title;
         const returnedGraph = toGraph(
           yaml.load(returnedSchema) as LinkML,
           ontologies
@@ -70,6 +79,7 @@ export const defaultCallbackFactory: (
           description: graph.description,
           style: graph.style,
         });
+        renameDiagram(diagramName);
       }
     );
 

@@ -48,6 +48,7 @@ class Header extends PureComponent {
       separation,
       clearGraph,
       importNodesAndRelationships,
+      setDiagramName,
     } = this.props;
 
     const newDiagramOptions = ['LOCAL_STORAGE'].map((mode) => (
@@ -160,7 +161,8 @@ class Header extends PureComponent {
                     graph,
                     separation,
                     clearGraph,
-                    importNodesAndRelationships
+                    importNodesAndRelationships,
+                    setDiagramName
                   )
                 )
               }

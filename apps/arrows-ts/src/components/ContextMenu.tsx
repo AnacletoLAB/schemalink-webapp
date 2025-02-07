@@ -39,6 +39,7 @@ import { importNodesAndRelationships, onSaveOntology } from '../actions/graph';
 import { clearGraph } from '../actions/storage';
 import { nodeSeparation } from '../actions/import';
 import { Callback, defaultCallbackFactory } from './GptModal';
+import { renameDiagram } from '../actions/diagramName';
 
 enum Method {
   ADD = 'Add',
@@ -90,6 +91,7 @@ interface ContextMenuProps {
   ) => void;
   separation: number;
   importNodesAndRelationships: (graph: Graph) => void;
+  setDiagramName: (diagramName: string) => void;
 }
 
 const ContextMenu = ({
@@ -109,6 +111,7 @@ const ContextMenu = ({
   separation,
   x,
   y,
+  setDiagramName,
 }: ContextMenuProps) => {
   const whichSelection = () => {
     const entities = [...nodes, ...relationships];
@@ -133,7 +136,8 @@ const ContextMenu = ({
     graph,
     separation,
     clearGraph,
-    importNodesAndRelationships
+    importNodesAndRelationships,
+    setDiagramName
   );
 
   const explanationCallback: Callback = (text: string) =>
@@ -349,6 +353,9 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     },
     onSaveOntology: (selection: EntitySelection, ontologies: Ontology[]) =>
       onSaveOntology(selection, ontologies)(dispatch),
+    setDiagramName: (diagramName: string) => {
+      dispatch(renameDiagram(diagramName));
+    },
   };
 };
 
