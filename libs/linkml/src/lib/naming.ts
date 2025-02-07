@@ -19,10 +19,10 @@ export const toRelationshipClassNameFactory = (
 };
 
 const toRelationshipClassName = (
-  { fromId, toId }: Relationship,
+  { fromId, toId, type }: Relationship,
   findNode: (id: string) => Node | undefined
 ): string => {
-  return `${toClassName(findNode(fromId)?.caption ?? 'subject')}To${toClassName(
-    findNode(toId)?.caption ?? 'object'
-  )}`;
+  return `${toClassName(
+    findNode(fromId)?.caption ?? 'subject'
+  )}${type}${toClassName(findNode(toId)?.caption ?? 'object')}`;
 };

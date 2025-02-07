@@ -148,6 +148,13 @@ export const relationshipToPredicateClass = (
           relationship
         )} relationships.`,
       },
+      ...(relationship.type
+        ? {
+            id: {
+              pattern: relationship.type,
+            },
+          }
+        : {}),
     },
     id_prefixes: relationshipOntologies.map((ontology) =>
       ontology.id.toLocaleUpperCase()
