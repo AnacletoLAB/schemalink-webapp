@@ -263,7 +263,7 @@ export default class DetailInspector extends Component<
       ) {
         fields.push(
           <Form.Field key="_type">
-            <label>Type</label>
+            <label>Name</label>
             <Input
               value={commonType || ''}
               onChange={(event) => onSaveType(selection, event.target.value)}
