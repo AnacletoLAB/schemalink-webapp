@@ -1,4 +1,9 @@
-import { Node, Relationship, RelationshipType } from '@neo4j-arrows/model';
+import {
+  Node,
+  Relationship,
+  RelationshipType,
+  RequiredType,
+} from '@neo4j-arrows/model';
 import { LinkMLClass, SpiresCoreClasses } from './types';
 import { toClassName } from './naming';
 import { toAnnotators } from './ontologies';
@@ -18,7 +23,7 @@ export const nodeToClass = (
     )
     .map((relationship) => findNode(relationship.toId));
   const hasIdentifier = Object.values(properties).some(
-    ({ identifier }) => identifier
+    ({ requiredType }) => requiredType === RequiredType.IDENTIFIER
   );
 
   return {

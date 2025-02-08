@@ -1,6 +1,7 @@
 import {
   Attribute,
   CollectionType,
+  RequiredType,
   BasicType,
   EnumType,
   RegexType,
@@ -14,24 +15,14 @@ export const propertiesToAttributes = (
   return Object.entries(attributes).reduce(
     (
       attributes: Record<string, LinkMLAttribute>,
-      [
-        key,
-        {
-          description,
-          collectionType,
-          required,
-          range,
-          dimensions,
-          identifier,
-        },
-      ]
+      [key, { description, collectionType, requiredType, range, dimensions }]
     ) => ({
       ...attributes,
       [toAttributeName(key)]: {
         ...{
           description,
-          required,
-          identifier,
+          required: requiredType !== RequiredType.OPTIONAL,
+          identifier: requiredType === RequiredType.IDENTIFIER,
         },
         ...([...Object.values(BasicType), ...Object.values(EnumType)].includes(
           range as BasicType

@@ -3,6 +3,7 @@ import {
   CollectionType,
   Ontology,
   RelationshipType,
+  RequiredType,
 } from '@neo4j-arrows/model';
 import {
   LinkMLClass,
@@ -84,8 +85,11 @@ export const importNodes = (
                 ...properties,
                 [key]: {
                   description: description ?? '',
-                  required: required ?? false,
-                  identifier: identifier ?? false,
+                  requiredType: identifier
+                    ? RequiredType.IDENTIFIER
+                    : required
+                    ? RequiredType.REQUIRED
+                    : RequiredType.OPTIONAL,
                   range:
                     range ||
                     (pattern ? patternToRegexType[pattern] : undefined),

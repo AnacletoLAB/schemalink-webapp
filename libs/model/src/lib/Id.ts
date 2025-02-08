@@ -1,5 +1,11 @@
 export type Id = string; // TODO this should be a branded type
 
+export enum RequiredType {
+  OPTIONAL = 'optional',
+  REQUIRED = 'required',
+  IDENTIFIER = 'identifier',
+}
+
 export enum CollectionType {
   LIST = 'list',
   SET = 'set',
@@ -26,8 +32,7 @@ export enum EnumType {
 export interface Attribute {
   description: string;
   collectionType?: CollectionType;
-  required: boolean;
-  identifier: boolean;
+  requiredType: RequiredType;
   range?: string;
   dimensions?: number;
 }

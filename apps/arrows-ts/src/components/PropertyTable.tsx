@@ -6,6 +6,7 @@ import {
   Properties,
   PropertiesSummary,
   Property,
+  RequiredType,
 } from '@neo4j-arrows/model';
 
 interface PropertyTableProps {
@@ -93,8 +94,7 @@ export default class PropertyTable extends Component<
     const addEmptyProperty = () => {
       onSavePropertyValue('', {
         description: '',
-        required: false,
-        identifier: false,
+        requiredType: RequiredType.OPTIONAL,
       });
     };
 

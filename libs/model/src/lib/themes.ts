@@ -1,4 +1,5 @@
 import { Graph } from './Graph';
+import { RequiredType } from './Id';
 import { Point } from './Point';
 import { Cardinality, RelationshipType } from './Relationship';
 
@@ -172,8 +173,8 @@ export const themes: Theme[] = [
           // },
           caption: '',
           properties: {
-            SKU: { description: '750045', required: false, identifier: false },
-            unit: { description: '100', required: false, identifier: false },
+            SKU: { description: '750045', requiredType: RequiredType.OPTIONAL },
+            unit: { description: '100', requiredType: RequiredType.OPTIONAL },
           },
           style: {},
           description: '',
@@ -188,7 +189,7 @@ export const themes: Theme[] = [
           // },
           caption: '',
           properties: {
-            stock: { description: 'true', required: false, identifier: false },
+            stock: { description: 'true', requiredType: RequiredType.OPTIONAL },
           },
           style: {},
           description: '',
@@ -392,18 +393,15 @@ export const themes: Theme[] = [
           properties: {
             released: {
               description: '2006',
-              required: false,
-              identifier: false,
+              requiredType: RequiredType.OPTIONAL,
             },
             tagline: {
               description: 'Break The Codes',
-              required: false,
-              identifier: false,
+              requiredType: RequiredType.OPTIONAL,
             },
             title: {
               description: 'The Da Vinci Code',
-              required: false,
-              identifier: false,
+              requiredType: RequiredType.OPTIONAL,
             },
           },
           description: '',

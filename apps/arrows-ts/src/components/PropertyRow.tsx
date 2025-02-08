@@ -5,6 +5,7 @@ import {
   EnumType,
   PropertiesSummary,
   RegexType,
+  RequiredType,
   ValueSummary,
 } from '@neo4j-arrows/model';
 import React, { Component } from 'react';
@@ -16,7 +17,6 @@ import {
   Popup,
   Button,
   Label,
-  Checkbox,
   AccordionTitle,
   AccordionContent,
   Dropdown,
@@ -362,34 +362,23 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
               />
             </Form.Field>
           )}
-          <Form.Field
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-            }}
-          >
+          <Form.Field>
             <label>Required</label>
-            <Checkbox
-              checked={attributeValue.required}
-              onChange={(event, data) =>
-                onValueChange({ ...attributeValue, required: !!data.checked })
-              }
-              disabled={valueDisabled}
-            />
-          </Form.Field>
-          <Form.Field
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-            }}
-          >
-            <label>Identifier</label>
-            <Checkbox
-              checked={attributeValue.identifier}
-              onChange={(event, data) =>
-                onValueChange({ ...attributeValue, identifier: !!data.checked })
+            <Dropdown
+              selection
+              value={attributeValue.requiredType}
+              options={Object.values(RequiredType).map((type) => {
+                return {
+                  key: type,
+                  text: type,
+                  value: type,
+                };
+              })}
+              onChange={(e, { value }) =>
+                onValueChange({
+                  ...attributeValue,
+                  requiredType: value as RequiredType,
+                })
               }
               disabled={valueDisabled}
             />
