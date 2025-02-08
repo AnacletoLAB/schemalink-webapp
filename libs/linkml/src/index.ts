@@ -3,6 +3,8 @@ import {
   RelationshipType,
   Relationship,
   Ontology,
+  BasicType,
+  EnumType,
 } from '@neo4j-arrows/model';
 import {
   LinkMLClass,
@@ -10,8 +12,6 @@ import {
   SpiresCoreClasses,
   SpiresType,
   Attribute,
-  BasicType,
-  EnumType,
   enumToPermissibleValues,
   LinkMLGraph,
 } from './lib/types';

@@ -1,6 +1,10 @@
-import { Cardinality, Ontology, RelationshipType } from '@neo4j-arrows/model';
 import {
+  Cardinality,
   CollectionType,
+  Ontology,
+  RelationshipType,
+} from '@neo4j-arrows/model';
+import {
   LinkMLClass,
   LinkMLNode,
   LinkMLRelationship,

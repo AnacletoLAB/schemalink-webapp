@@ -1,4 +1,10 @@
-import { Node, Relationship } from '@neo4j-arrows/model';
+import {
+  BasicType,
+  EnumType,
+  Node,
+  RegexType,
+  Relationship,
+} from '@neo4j-arrows/model';
 
 type Array = {
   exact_number_dimensions: number;
@@ -62,25 +68,6 @@ export enum SpiresType {
   ER = 'SPIRES (ER)',
 }
 
-export enum BasicType {
-  STRING = 'string',
-  INTEGER = 'integer',
-  BOOLEAN = 'boolean',
-  FLOAT = 'float',
-  DATE = 'date',
-  DATETIME = 'datetime',
-}
-
-export enum CollectionType {
-  LIST = 'list',
-  SET = 'set',
-  ARRAY = 'array',
-}
-
-export enum RegexType {
-  AMERICAN_PHONE_NUMBER = 'American Phone Number',
-}
-
 export const regexToPattern = {
   [RegexType.AMERICAN_PHONE_NUMBER]: String.raw`^[\\d\\(\\)\\-]+$`,
 };
@@ -88,11 +75,6 @@ export const regexToPattern = {
 export const patternToRegexType = {
   [String.raw`^[\\d\\(\\)\\-]+$`]: RegexType.AMERICAN_PHONE_NUMBER,
 };
-
-export enum EnumType {
-  GENDER = 'Gender',
-}
-
 export const enumToPermissibleValues = {
   [EnumType.GENDER]: ['man', 'woman'],
 };

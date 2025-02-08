@@ -1,13 +1,12 @@
-import { Attribute } from '@neo4j-arrows/model';
-import { toAttributeName } from './naming';
 import {
-  BasicType,
+  Attribute,
   CollectionType,
+  BasicType,
   EnumType,
-  Attribute as LinkMLAttribute,
   RegexType,
-  regexToPattern,
-} from './types';
+} from '@neo4j-arrows/model';
+import { toAttributeName } from './naming';
+import { Attribute as LinkMLAttribute, regexToPattern } from './types';
 
 export const propertiesToAttributes = (
   attributes: Record<string, Attribute>
@@ -40,7 +39,7 @@ export const propertiesToAttributes = (
           ? { range }
           : {}),
         ...(collectionType &&
-        collectionType !== '' &&
+        collectionType.length &&
         [CollectionType.LIST, CollectionType.SET].includes(collectionType)
           ? {
               multivalued: true,

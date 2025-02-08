@@ -1,8 +1,31 @@
 export type Id = string; // TODO this should be a branded type
 
+export enum CollectionType {
+  LIST = 'list',
+  SET = 'set',
+  ARRAY = 'array',
+}
+
+export enum BasicType {
+  STRING = 'string',
+  INTEGER = 'integer',
+  BOOLEAN = 'boolean',
+  FLOAT = 'float',
+  DATE = 'date',
+  DATETIME = 'datetime',
+}
+
+export enum RegexType {
+  AMERICAN_PHONE_NUMBER = 'American Phone Number',
+}
+
+export enum EnumType {
+  GENDER = 'Gender',
+}
+
 export interface Attribute {
   description: string;
-  collectionType?: string;
+  collectionType?: CollectionType;
   required: boolean;
   identifier: boolean;
   range?: string;

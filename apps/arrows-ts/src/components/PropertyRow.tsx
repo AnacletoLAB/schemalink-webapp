@@ -1,12 +1,10 @@
 import {
+  Attribute,
   BasicType,
   CollectionType,
   EnumType,
-  RegexType,
-} from '@neo4j-arrows/linkml';
-import {
-  Attribute,
   PropertiesSummary,
+  RegexType,
   ValueSummary,
 } from '@neo4j-arrows/model';
 import React, { Component } from 'react';
@@ -332,7 +330,7 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
               onChange={(e, { value }) =>
                 onValueChange({
                   ...attributeValue,
-                  collectionType: value as BasicType,
+                  collectionType: value as CollectionType,
                 })
               }
               disabled={valueDisabled}
@@ -358,9 +356,9 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
                   })
                 }
                 disabled={
-                valueDisabled ||
-                attributeValue.collectionType !== CollectionType.ARRAY
-              }
+                  valueDisabled ||
+                  attributeValue.collectionType !== CollectionType.ARRAY
+                }
               />
             </Form.Field>
           )}
