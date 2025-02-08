@@ -150,25 +150,27 @@ class Header extends PureComponent {
             >
               Import
             </div>
-            <div
-              role="option"
-              aria-selected
-              className="item"
-              onClick={() =>
-                onGenerateClick(
-                  defaultCallbackFactory(
-                    ontologies,
-                    graph,
-                    separation,
-                    clearGraph,
-                    importNodesAndRelationships,
-                    setDiagramName
+            {import.meta.env.VITE_OPENAI_ENABLED && (
+              <div
+                role="option"
+                aria-selected
+                className="item"
+                onClick={() =>
+                  onGenerateClick(
+                    defaultCallbackFactory(
+                      ontologies,
+                      graph,
+                      separation,
+                      clearGraph,
+                      importNodesAndRelationships,
+                      setDiagramName
+                    )
                   )
-                )
-              }
-            >
-              Generate
-            </div>
+                }
+              >
+                Generate
+              </div>
+            )}
             <div className="divider" />
             <div
               role="option"
