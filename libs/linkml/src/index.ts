@@ -293,5 +293,9 @@ export const toYaml = (linkML: LinkML): string => {
         'unique_values: true',
         '# unique_values: true --> not supported yet'
       )
+      // Add a newline before each class name (except the first one).
+      .replace(/(\n\s+[^\n]*)(\n\s+[A-Z][a-z])/g, '$1\n$2')
+      // Add a newline before each first-level object
+      .replace(/(\n\S)/g, '\n$1')
   );
 };
