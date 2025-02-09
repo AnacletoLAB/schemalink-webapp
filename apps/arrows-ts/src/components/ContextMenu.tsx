@@ -54,6 +54,7 @@ enum Action {
   ATTRIBUTE = 'Attribute',
   NAME = 'Name',
   ONTOLOGY = 'Ontology',
+  CARDINALITY = 'Cardinality',
 }
 
 enum Selection {
@@ -214,6 +215,12 @@ const ContextMenu = ({
         {
           action: Action.ATTRIBUTE,
           commandKind: CommandKind.AddAttributeToRelationship,
+        },
+      ],
+      [Method.FIX]: [
+        {
+          action: Action.CARDINALITY,
+          commandKind: CommandKind.FixRelationshipCardinality,
         },
       ],
     },

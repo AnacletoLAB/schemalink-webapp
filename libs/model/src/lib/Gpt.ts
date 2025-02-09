@@ -8,7 +8,7 @@ export enum CommandKind {
   ExplainEntities,
   FixClassName,
   FixClassOntology,
-  FixForTargetRelationship,
+  FixRelationshipCardinality,
 }
 
 interface Command {
@@ -30,6 +30,11 @@ interface AddClassAssociatedToClass extends Command {
 
 interface AddAttributeToRelationship extends Command {
   kind: CommandKind.AddAttributeToRelationship;
+  relationships: string;
+}
+
+interface FixRelationshipCardinality extends Command {
+  kind: CommandKind.FixRelationshipCardinality;
   relationships: string;
 }
 
@@ -74,7 +79,8 @@ export type CommandType =
   | ExplainEntities
   | ExplainClass
   | FixClassName
-  | FixClassOntology;
+  | FixClassOntology
+  | FixRelationshipCardinality;
 
 export const computePrompt = (command: CommandType): string => {
   const INTRO = 'From the LinkML schema provided below, ';
@@ -153,6 +159,13 @@ ${command.fullSchema}
     case CommandKind.FixClassOntology:
       return `${INTRO}propose relevant ontologies that could be used to annotate the class named ${command.nodes}.
 Return only the shortened namespace of these ontologies separated by commas.
+
+${command.fullSchema}`;
+    case CommandKind.FixRelationshipCardinality:
+      return `${INTRO} if you retain it necessary, update/improve the cardinality of the association named
+${command.relationships}, specified using the minimum_cardinality and maximum_cardinality attributes.
+Ensure the new cardinalities enhance clarity and are coherent to the association semantics.
+${OUTRO}
 
 ${command.fullSchema}`;
   }
