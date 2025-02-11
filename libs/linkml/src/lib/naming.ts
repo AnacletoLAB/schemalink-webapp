@@ -22,7 +22,7 @@ const toRelationshipClassName = (
   { fromId, toId, type }: Relationship,
   findNode: (id: string) => Node | undefined
 ): string => {
-  return `${toClassName(
-    findNode(fromId)?.caption ?? 'subject'
-  )}${type}${toClassName(findNode(toId)?.caption ?? 'object')}`;
+  return `${toClassName(findNode(fromId)?.caption ?? 'subject')}${toClassName(
+    type
+  )}${toClassName(findNode(toId)?.caption ?? 'object')}`;
 };
