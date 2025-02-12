@@ -211,12 +211,21 @@ export const importTriples = (
           };
 
           const cardinality = toCardinality();
+          const attributes = Object.entries(slot_usage)
+            .filter(
+              ([key, value_]) =>
+                !['object', 'subject', 'predicate'].includes(key)
+            )
+            .reduce((acc, [key, value]) => {
+              acc[key] = value;
+              return acc;
+            }, {} as Record<string, Attribute>);
 
           index = triples.push({
             relationshipType: RelationshipType.ASSOCIATION,
             fromId: fromNode.id,
             toId: toNode.id,
-            properties: {},
+            properties: attributesToProperties(attributes),
             entityType: 'relationship',
             type: '',
             id: index.toString(),
