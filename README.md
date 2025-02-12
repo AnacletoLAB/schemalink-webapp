@@ -1,6 +1,6 @@
 # [SchemaLink](https://schemalink.anacleto.di.unimi.it/)
 
-<img src="https://schemalink.anacleto.di.unimi.it/arrows_logo.svg" alt="SchemaLink logo" width="300" />
+<img src="./apps/arrows-ts/public/arrows_logo.svg" alt="SchemaLink logo" width="300" />
 
 Web-based tool for drawing schemas, powered by
 [AnacletoLAB](https://anacletolab.di.unimi.it/).
