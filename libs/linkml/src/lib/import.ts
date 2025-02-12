@@ -220,6 +220,10 @@ export const importTriples = (
               acc[key] = value;
               return acc;
             }, {} as Record<string, Attribute>);
+          const predicateClassName = slot_usage['predicate'].range;
+          const predicate = predicateClassName
+            ? classes[predicateClassName]
+            : undefined;
 
           index = triples.push({
             relationshipType: RelationshipType.ASSOCIATION,
@@ -227,7 +231,7 @@ export const importTriples = (
             toId: toNode.id,
             properties: attributesToProperties(attributes),
             entityType: 'relationship',
-            type: '',
+            type: predicate?.attributes?.['id']?.pattern ?? '',
             id: index.toString(),
             cardinality: cardinality,
             customCardinality:
