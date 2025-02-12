@@ -6,6 +6,7 @@ import {
   RequiredType,
 } from '@neo4j-arrows/model';
 import {
+  Attribute,
   LinkMLClass,
   LinkMLNode,
   LinkMLRelationship,
@@ -21,6 +22,43 @@ interface ImportNodesReturnType {
 interface ImportRelationshipsReturnType {
   relationships: LinkMLRelationship[];
 }
+
+const attributesToProperties = (attributes?: Record<string, Attribute>) =>
+  Object.entries(attributes ?? {}).reduce(
+    (
+      properties,
+      [
+        key,
+        {
+          description,
+          required,
+          range,
+          identifier,
+          multivalued,
+          array,
+          pattern,
+        },
+      ]
+    ) => ({
+      ...properties,
+      [key]: {
+        description: description ?? '',
+        requiredType: identifier
+          ? RequiredType.IDENTIFIER
+          : required
+          ? RequiredType.REQUIRED
+          : RequiredType.OPTIONAL,
+        range: range || (pattern ? patternToRegexType[pattern] : undefined),
+        collectionType: array
+          ? CollectionType.ARRAY
+          : multivalued
+          ? CollectionType.LIST
+          : undefined,
+        dimensions: array ? array.exact_number_dimensions : undefined,
+      },
+    }),
+    {}
+  );
 
 export const importNodes = (
   classes: Record<string, LinkMLClass>,
@@ -66,43 +104,7 @@ export const importNodes = (
           nextNodeId = nodes.push({
             id: nextNodeId.toString(),
             caption: key,
-            properties: Object.entries(attributes ?? {}).reduce(
-              (
-                properties,
-                [
-                  key,
-                  {
-                    description,
-                    required,
-                    range,
-                    identifier,
-                    multivalued,
-                    array,
-                    pattern,
-                  },
-                ]
-              ) => ({
-                ...properties,
-                [key]: {
-                  description: description ?? '',
-                  requiredType: identifier
-                    ? RequiredType.IDENTIFIER
-                    : required
-                    ? RequiredType.REQUIRED
-                    : RequiredType.OPTIONAL,
-                  range:
-                    range ||
-                    (pattern ? patternToRegexType[pattern] : undefined),
-                  collectionType: array
-                    ? CollectionType.ARRAY
-                    : multivalued
-                    ? CollectionType.LIST
-                    : undefined,
-                  dimensions: array ? array.exact_number_dimensions : undefined,
-                },
-              }),
-              {}
-            ),
+            properties: attributesToProperties(attributes),
             entityType: 'node',
             ontologies: ontologies.filter(
               ({ id }) =>
