@@ -69,11 +69,11 @@ export enum SpiresType {
 }
 
 export const regexToPattern = {
-  [RegexType.AMERICAN_PHONE_NUMBER]: String.raw`^[\\d\\(\\)\\-]+$`,
+  [RegexType.AMERICAN_PHONE_NUMBER]: '^[\\d\\(\\)\\-]+$',
 };
 
 export const patternToRegexType = {
-  [String.raw`^[\\d\\(\\)\\-]+$`]: RegexType.AMERICAN_PHONE_NUMBER,
+  '^[\\d\\(\\)\\-]+$': RegexType.AMERICAN_PHONE_NUMBER,
 };
 export const enumToPermissibleValues = {
   [EnumType.GENDER]: ['man', 'woman'],

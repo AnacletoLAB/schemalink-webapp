@@ -297,5 +297,7 @@ export const toYaml = (linkML: LinkML): string => {
       .replace(/(\n\s+[^\n]*)(\n\s+[A-Z][a-z])/g, '$1\n$2')
       // Add a newline before each first-level object
       .replace(/(\n\S)/g, '\n$1')
+      // Add double quotes to all patterns
+      .replace(/pattern: ([^\n]*)/g, "pattern: '$1'")
   );
 };
