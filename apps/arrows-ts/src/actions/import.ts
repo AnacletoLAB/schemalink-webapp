@@ -22,15 +22,21 @@ import { LinkML, toGraph } from '@neo4j-arrows/linkml';
 import { load } from 'js-yaml';
 import { Dispatch } from 'redux';
 import { ArrowsState } from '../reducers';
+import { defaultName } from '../reducers/diagramName';
+import { renameDiagram } from './diagramName';
 
 export const tryImport = (dispatch: Dispatch) => {
   return function (text: string, separation: number, ontologies: Ontology[]) {
     let importedGraph;
+    let diagramName = defaultName;
 
     const format = formats.find((format) => format.recognise(text));
     if (format) {
       try {
         importedGraph = format.parse(text, separation, ontologies);
+        if (format.outputType === 'graph' && format.getDiagramName) {
+          diagramName = format.getDiagramName(text);
+        }
       } catch (e: any) {
         return {
           errorMessage: e.toString(),
@@ -43,6 +49,7 @@ export const tryImport = (dispatch: Dispatch) => {
     }
 
     dispatch(importNodesAndRelationships(importedGraph));
+    dispatch(renameDiagram(diagramName));
     dispatch(setSchemaProperties({ description: importedGraph.description }));
     dispatch(hideImportDialog());
     return {};
@@ -150,6 +157,7 @@ interface GraphFormat extends Format {
     separation: number,
     ontologies: Ontology[]
   ) => { nodes: Node[]; relationships: Relationship[] };
+  getDiagramName?: (plainText: string) => string;
 }
 
 interface SvgFormat extends Format {
@@ -199,6 +207,9 @@ const formats: FormatType[] = [
         nodes: originNodes,
         relationships,
       };
+    },
+    getDiagramName: (plainText: string) => {
+      return (load(plainText) as LinkML).title;
     },
   },
   {
