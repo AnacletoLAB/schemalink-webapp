@@ -10,6 +10,7 @@ export default defineConfig({
     port: 4200,
     host: '0.0.0.0',
     fs: { allow: ['../../node_modules/semantic-ui-css/themes/default/assets'] },
+    allowedHosts: ['schemalink.anacleto.di.unimi.it'],
   },
 
   preview: {
