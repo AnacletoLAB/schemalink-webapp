@@ -1,8 +1,9 @@
 import React, { PureComponent } from 'react';
-import { Icon, Menu, Button, ButtonGroup } from 'semantic-ui-react';
+import { Icon, Menu, Button, ButtonGroup, Dropdown } from 'semantic-ui-react';
 import { DiagramNameEditor } from './DiagramNameEditor';
 import arrows_logo from '../images/arrows_logo.svg';
 import { defaultCallbackFactory } from './GptModal';
+
 
 const storageNames = {
   LOCAL_STORAGE: 'Web Browser storage',
@@ -40,8 +41,162 @@ const storageIcon = (storageMode) => {
 };
 
 class Header extends PureComponent {
+  state = { 
+    open: false,
+    canGenerate: false,
+    reason: '',
+    userPolicy: null,
+  };
+
+  componentDidMount() {
+    this.checkGeneratePermission();
+
+    if (this.props.userData?.username) {
+      this.fetchUserPolicy();
+    }
+  }
+
+  componentDidUpdate(prevProps) {
+    const prevUsername = prevProps.userData?.username;
+    const currentUsername = this.props.userData?.username;
+
+    if (prevUsername !== currentUsername) {
+      this.checkGeneratePermission();
+    }
+  }
+
+  checkGeneratePermission = async () => {
+    const { userData } = this.props;
+    if (!userData || !userData.username){
+      this.setState({
+        canGenerate: false,
+        reason: "You must be logged in to perform this operation.",
+      });
+      return;
+    }
+
+    const response = await fetch("http://localhost:8000/canPerformOperation/", {
+      method: "POST",
+      credentials: "include",
+      body: JSON.stringify({ username: userData.username, operation: "Generate" }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const result = await response.json();
+    console.log("Authorization result generate", result);
+
+    this.setState({
+      canGenerate: result.allowed === true,
+      reason: result.allowed !== true ? (result.reason || "You do not have permission to perform this operation.") : undefined,
+      userPolicy: result.policy?.toLowerCase() || null
+    });
+  };
+
+  toggleDropdown = () => {
+    this.setState({ open: !this.state.open });
+  };
+
+  handleLogout = async () => {
+    const confirmed = window.confirm("Are you sure you want to logout?");
+    
+    if (!confirmed) return;
+  
+    try {
+      const response = await fetch("http://localhost:8000/auth/logout/", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+  
+      if (response.ok) {
+        console.log('Logout successful');
+        this.props.onLogout();
+        this.setState({
+          canGenerate: false,
+          reason: 'You must be logged in to perform this operation.',
+          userPolicy: null,
+        });
+      } else {
+        const errorData = await response.json();
+        console.error("Logout failed: ", errorData);
+        alert('Logout error: ' + (errorData.detail || 'Unknown error.'));
+      }
+    } catch (error) {
+      console.error('Request error: ', error);
+      alert('Logout error: ' + (error.message || 'Communication error with the server.'));
+    }
+  };
+
+  handleDeleteAccount = async () => {
+    const confirmed = window.confirm("Are you sure you want to delete your account?");
+    
+    if (!confirmed) return;
+  
+    try {
+      const response = await fetch("http://localhost:8000/auth/delete-account/", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+  
+      if (response.ok) {
+        console.log('Delete account successful');
+        this.props.onDeleteAccount();
+      } else {
+        const errorData = await response.json();
+        console.error("Delete account failed: ", errorData);
+        alert('Delete account error: ' + (errorData.detail || 'Unknown error.'));
+      }
+    } catch (error) {
+      console.error('Request error: ', error);
+      alert('Delete account error: ' + (error.message || 'Communication error with the server.'));
+    }
+  };
+  
+  handleContribute = async () => {
+    const confirmed = window.confirm("Would you like to contribute your schema to AI store?");
+    
+    if (!confirmed) return;
+  
+    try {
+       const graph = this.props.graph;
+
+      if ((!graph.nodes || graph.nodes.length === 0) && (!graph.relationships || graph.relationships.length === 0)) {
+      alert('Contribute error: the graph is empty.');
+      return;
+    }
+
+      const jsonGraph = JSON.stringify(this.props.graph, null, 2);
+
+      const response = await fetch("http://localhost:8000/contribute/", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+        username: this.props.userData.username,
+        diagramName: this.props.diagramName,
+        graphJson: jsonGraph,
+      }),
+      });
+  
+      if (response.ok) {
+        console.log('Schema sent successfully');
+        alert('Your schema has been sent successfully. Thank you for your contribution!');
+      } else {
+        const errorData = await response.json();
+        console.error("Contribute failed: ", errorData);
+        alert('Contribute error: ' + (errorData.detail || 'Unknown error.'));
+      }
+    } catch (error) {
+      console.error('Request error: ', error);
+      alert('Contribute error: ' + (error.message || 'Communication error with the server.'));
+    }
+  };
+
   render() {
     const {
+      isAuthenticated,
+      userData,
       onGenerateClick,
       graph,
       ontologies,
@@ -155,18 +310,28 @@ class Header extends PureComponent {
                 role="option"
                 aria-selected
                 className="item"
-                onClick={() =>
-                  onGenerateClick(
-                    defaultCallbackFactory(
-                      ontologies,
-                      graph,
-                      separation,
-                      clearGraph,
-                      importNodesAndRelationships,
-                      setDiagramName
-                    )
-                  )
+                onClick={() => {
+                  if (isAuthenticated && this.state.canGenerate) {
+                    onGenerateClick(
+                      defaultCallbackFactory(
+                        ontologies,
+                        graph,
+                        separation,
+                        clearGraph,
+                        importNodesAndRelationships,
+                        setDiagramName
+                      )
+                    );
+                  }
+                }}
+                title={
+                  this.state.canGenerate
+                    ? ''
+                    : this.state.reason || 'You do not have permission to perform this operation.'
                 }
+                style={{
+                  opacity: (!isAuthenticated || !this.state.canGenerate) ? 0.5 : 1,
+                }}
               >
                 Generate
               </div>
@@ -214,6 +379,45 @@ class Header extends PureComponent {
         </Menu.Item>
         <Menu.Menu position={'right'}>
           <Menu.Item>
+          {this.props.isAuthenticated ? (
+            <Dropdown
+              trigger={
+                <Button
+                  icon="user"
+                  basic
+                  color="black"
+                  content={userData.username}
+                />
+              }
+              pointing="top right"
+              className="link item"
+            >
+              <Dropdown.Menu>
+                {userData.username !== "schemalink" && (
+                  <Dropdown.Item onClick={this.props.onInfoAccountClick}>Info Account</Dropdown.Item>
+                )}
+                {userData.username !== "schemalink" && (
+                  <Dropdown.Item onClick={this.props.onSubscribeToPolicyClick}>Policies</Dropdown.Item>
+                )}
+                {userData.username === "schemalink" && (
+                  <Dropdown.Item onClick={this.props.onViewUsersClick}>View users</Dropdown.Item>
+                )}
+                <Dropdown.Item onClick={this.handleLogout}>Logout</Dropdown.Item>
+                {userData.username !== "schemalink" && (
+                    <Dropdown.Item onClick={this.handleDeleteAccount}>Delete Account</Dropdown.Item>
+                )}
+              </Dropdown.Menu>
+            </Dropdown>
+          ) : (
+            <Button
+              onClick={this.props.onAuthClick}
+              icon="user"
+              basic
+              color="black"
+              content="Login / Register"
+            />
+          )}
+            <span style={{ marginRight: '10px' }}></span>
             <Button
               onClick={this.props.onExportClick}
               icon="download"
@@ -221,6 +425,35 @@ class Header extends PureComponent {
               color="black"
               content="Download / Export"
             />
+            <div>
+              <span style={{ marginRight: '10px' }}></span>
+              <Button
+                onClick={() => {
+                  if (['gold', 'platinum'].includes(this.state.userPolicy)) {
+                    this.handleContribute();
+                  }
+                }}
+                icon="database"
+                basic
+                color="black"
+                style={{
+                  opacity: ['gold', 'platinum'].includes(this.state.userPolicy) ? 1 : 0.5,
+                  cursor: 'pointer',
+              }}
+                content={
+                  <span style={{ color: ['gold', 'platinum'].includes(this.state.userPolicy) ? 'inherit' : 'gray' }}>
+                    Contribute
+                  </span>
+                }
+                title={
+                  !this.props.userData
+                    ? 'Please log in to contribute.'
+                    : !['gold', 'platinum'].includes(this.state.userPolicy)
+                    ? 'Only gold and platinum users can contribute.'
+                    : ''
+                }
+              />
+            </div>
           </Menu.Item>
           <Menu.Item
             title="Open/Close Inspector"

@@ -3,6 +3,12 @@ import Header from '../components/Header';
 import { toggleInspector } from '../actions/applicationLayout';
 import { renameDiagram } from '../actions/diagramName';
 import {
+  logout,
+  delete_account,
+  showAuthDialog,
+  showViewUsersDialog,
+  showSubscribeToPolicyDialog,
+  showInfoAccountDialog,
   showExportDialog,
   showHelpDialog,
   showAcknowledgementsDialog,
@@ -19,9 +25,11 @@ import {
 import { ActionCreators as UndoActionCreators } from 'redux-undo';
 import { nodeSeparation } from '../actions/import';
 import { importNodesAndRelationships } from '../actions/graph';
+import { on } from 'events';
 
 const mapStateToProps = (state) => {
   return {
+    isAuthenticated: state.applicationDialogs.isAuthenticated,
     recentStorage: state.recentStorage,
     diagramName: state.diagramName,
     undoRedoDisabled: {
@@ -57,6 +65,24 @@ const mapDispatchToProps = (dispatch) => {
     redo: () => dispatch(UndoActionCreators.redo()),
     showInspector: () => {
       dispatch(toggleInspector());
+    },
+    onLogout: () => {
+      dispatch(logout());
+    },
+    onDeleteAccount: () => {
+      dispatch(delete_account());
+    },
+    onAuthClick: () => {
+      dispatch(showAuthDialog());
+    },
+    onViewUsersClick: () => {
+      dispatch(showViewUsersDialog());
+    },
+    onSubscribeToPolicyClick: () => {
+      dispatch(showSubscribeToPolicyDialog());
+    },
+    onInfoAccountClick: () => {
+      dispatch(showInfoAccountDialog());
     },
     onExportClick: () => {
       dispatch(showExportDialog());

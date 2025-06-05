@@ -20,6 +20,12 @@ export type GptExplanationModalState = {
 };
 
 export type ApplicationDialogsState = {
+  isAuthenticated: boolean,
+  userData: any;
+  showAuthDialog: boolean;
+  showViewUsersDialog: boolean;
+  showSubscribeToPolicyDialog: boolean;
+  showInfoAccountDialog: boolean;
   showExportDialog: boolean;
   showSaveAsDialog: boolean;
   showImportDialog: boolean;
@@ -46,6 +52,17 @@ interface ShowGptExplanationModalAction
 
 type ApplicationDialogsAction =
   | Action<
+      | 'LOGIN_SUCCESS'
+      | 'LOGOUT_SUCCESS'
+      | 'DELETE_ACCOUNT_SUCCESS'
+      | 'SHOW_AUTH_DIALOG'
+      | 'HIDE_AUTH_DIALOG'
+      | 'SHOW_VIEW_USERS_DIALOG'
+      | 'HIDE_VIEW_USERS_DIALOG'
+      | 'SHOW_SUBSCRIBE_TO_POLICY_DIALOG'
+      | 'HIDE_SUBSCRIBE_TO_POLICY_DIALOG'
+      | 'SHOW_INFO_ACCOUNT_DIALOG'
+      | 'HIDE_INFO_ACCOUNT_DIALOG'
       | 'SHOW_EXPORT_DIALOG'
       | 'HIDE_EXPORT_DIALOG'
       | 'HIDE_GPT_MODAL'
@@ -66,6 +83,12 @@ type ApplicationDialogsAction =
 
 export default function applicationDialogs(
   state: ApplicationDialogsState = {
+    isAuthenticated: false,
+    userData: null,
+    showAuthDialog: false,
+    showViewUsersDialog: false,
+    showSubscribeToPolicyDialog: false,
+    showInfoAccountDialog: false,
     showExportDialog: false,
     showSaveAsDialog: false,
     showImportDialog: false,
@@ -78,6 +101,75 @@ export default function applicationDialogs(
   action: ApplicationDialogsAction
 ): ApplicationDialogsState {
   switch (action.type) {
+    case 'LOGIN_SUCCESS':
+      return {
+        ...state,
+        isAuthenticated: true,
+        userData: action.payload.userData,
+      };
+
+    case 'LOGOUT_SUCCESS':
+      return {
+        ...state,
+        isAuthenticated: false,
+        userData: null,
+      };
+
+      case 'DELETE_ACCOUNT_SUCCESS':
+        return {
+          ...state,
+          isAuthenticated: false,
+          userData: null,
+        };
+
+    case 'SHOW_AUTH_DIALOG':
+      return {
+        ...state,
+        showAuthDialog: true,
+      };
+
+    case 'HIDE_AUTH_DIALOG':
+      return {
+        ...state,
+        showAuthDialog: false,
+      };
+
+    case 'SHOW_VIEW_USERS_DIALOG':
+      return {
+        ...state,
+        showViewUsersDialog: true,
+      };
+
+    case 'HIDE_VIEW_USERS_DIALOG':
+      return {
+        ...state,
+        showViewUsersDialog: false,
+      };
+
+    case 'SHOW_SUBSCRIBE_TO_POLICY_DIALOG':
+      return {
+        ...state,
+        showSubscribeToPolicyDialog: true,
+      };
+
+    case 'HIDE_SUBSCRIBE_TO_POLICY_DIALOG':
+      return {
+        ...state,
+        showSubscribeToPolicyDialog: false,
+      };
+
+    case 'SHOW_INFO_ACCOUNT_DIALOG':
+      return {
+        ...state,
+        showInfoAccountDialog: true,
+      };
+    
+    case 'HIDE_INFO_ACCOUNT_DIALOG':
+      return {
+        ...state,
+        showInfoAccountDialog: false,
+      };
+
     case 'SHOW_EXPORT_DIALOG':
       return {
         ...state,
@@ -97,6 +189,7 @@ export default function applicationDialogs(
           open: true,
           startingPrompt: action.startingPrompt,
           callback: action.callback,
+          operationName: action.operationName,
         },
       };
 
@@ -191,6 +284,15 @@ export default function applicationDialogs(
       return {
         ...state,
         showAcknowledgementsDialog: false,
+      };
+
+    case 'UPDATE_USER_DATA':
+      return {
+        ...state,
+        userData: {
+          ...state.userData,
+          ...action.payload
+        }
       };
 
     default:

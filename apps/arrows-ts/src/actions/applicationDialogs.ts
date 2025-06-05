@@ -1,5 +1,72 @@
 import { Point } from '@neo4j-arrows/model';
 
+export const loginSuccess = (userData) => {
+  return {
+    type: 'LOGIN_SUCCESS',
+    payload: { userData },
+  };
+};
+
+export const logout = () => {
+  return {
+    type: 'LOGOUT_SUCCESS',
+  };
+};
+
+export const delete_account = () => {
+  return {
+    type: 'DELETE_ACCOUNT_SUCCESS',
+  };
+};
+
+export const showViewUsersDialog = () => {
+  return {
+    type: 'SHOW_VIEW_USERS_DIALOG',
+  };
+};
+
+export const hideViewUsersDialog = () => {
+  return {
+    type: 'HIDE_VIEW_USERS_DIALOG',
+  };
+};
+
+export const showSubscribeToPolicyDialog = () => {
+  return {
+    type: 'SHOW_SUBSCRIBE_TO_POLICY_DIALOG',
+  };
+};
+
+export const hideSubscribeToPolicyDialog = () => {
+  return {
+    type: 'HIDE_SUBSCRIBE_TO_POLICY_DIALOG',
+  };
+};
+
+export const showInfoAccountDialog = () => {
+  return {
+    type: 'SHOW_INFO_ACCOUNT_DIALOG',
+  };
+};
+
+export const hideInfoAccountDialog = () => {
+  return {
+    type: 'HIDE_INFO_ACCOUNT_DIALOG',
+  };
+};
+
+export const showAuthDialog = () => {
+  return {
+    type: 'SHOW_AUTH_DIALOG',
+  };
+};
+
+export const hideAuthDialog = () => {
+  return {
+    type: 'HIDE_AUTH_DIALOG',
+  };
+};
+
 export const showExportDialog = () => {
   return {
     type: 'SHOW_EXPORT_DIALOG',
@@ -14,12 +81,14 @@ export const hideExportDialog = () => {
 
 export const showGptModal = (
   callback?: (text: string) => Promise<void>,
-  startingPrompt?: string
+  startingPrompt?: string,
+  operationName?: string
 ) => {
   return {
     type: 'SHOW_GPT_MODAL',
     startingPrompt,
     callback,
+    operationName
   };
 };
 
@@ -98,3 +167,8 @@ export const hideAcknowledgementsDialog = () => {
     type: 'HIDE_ACKNOWLEDGEMENTS_DIALOG',
   };
 };
+
+export const updateUserData = (updatedData: Partial<UserData>) => ({
+  type: 'UPDATE_USER_DATA',
+  payload: updatedData
+});

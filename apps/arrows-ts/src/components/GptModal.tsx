@@ -21,6 +21,8 @@ export interface GptModalProps {
   open: boolean;
   startingPrompt: string;
   callback?: (text: string) => Promise<void>;
+  userData: { username: string };
+  operationName?: string;
 }
 
 export type Callback = (text: string) => Promise<void>;
@@ -88,6 +90,8 @@ export const GptModal = ({
   open,
   startingPrompt,
   callback,
+  userData,
+  operationName,
 }: GptModalProps) => {
   const [state, setState] = useState({
     prompt: '',
@@ -96,13 +100,35 @@ export const GptModal = ({
 
   const onClick = async () => {
     setState({ ...state, loading: true });
-    callback &&
-      callback(state.prompt !== '' ? state.prompt : startingPrompt).finally(
-        () => {
-          setState({ prompt: '', loading: false });
-          onClose();
-        }
-      );
+
+    try {
+      if (callback) {
+        await callback(state.prompt !== '' ? state.prompt : startingPrompt);
+      }
+
+      console.log('User operation:', operationName);
+      
+      await fetch('http://localhost:8000/api/user-operation/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: userData.username,
+          operationName: operationName || 'Generate',
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log("Risposta ricevuta dalla fetch:", data);
+          if (data.thresholdReached) {
+            alert(`You have ${data.data.policyThreshold} operations remaining under the '${data.data.policyName}' policy. Once you reach ${data.data.policyMaxAccess} operations, your subscription will expire.`);
+          }
+        });
+    } catch (error) {
+      console.error('Error during /api/user-operation/:', error);
+    } finally {
+      setState({ prompt: '', loading: false });
+      onClose();
+    }
   };
 
   return (
@@ -144,6 +170,8 @@ export const GptModal = ({
 const mapStateToProps = (state: ArrowsState) => {
   return {
     ...state.applicationDialogs.gptModal,
+    userData: state.applicationDialogs.userData,
+    operationName: state.applicationDialogs.gptModal.operationName,
   };
 };
 

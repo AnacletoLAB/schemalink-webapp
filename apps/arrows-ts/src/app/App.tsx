@@ -7,6 +7,10 @@ import HeaderContainer from '../containers/HeaderContainer';
 import InspectorChooser from '../containers/InspectorChooser';
 import { computeCanvasSize, inspectorWidth } from '@neo4j-arrows/model';
 import ExportContainer from '../containers/ExportContainer';
+import AuthContainer from '../containers/AuthContainer';
+import ViewUsersContainer from '../containers/ViewUsersContainer';
+import SubscribeToPolicyContainer from '../containers/SubscribeToPolicyContainer';
+import InfoAccountContainer from '../containers/InfoAccountContainer';
 import HelpModal from '../components/HelpModal';
 import AcknowledgementsModal from '../components/AcknowledgementsModal';
 import LocalStoragePickerContainer from '../containers/LocalStoragePickerContainer';
@@ -27,6 +31,10 @@ import GptExplanationModal from '../components/GptExplanationModal';
 export interface AppProps {
   inspectorVisible: boolean;
   showSaveAsDialog: boolean;
+  showAuthDialog: boolean;
+  showViewUsersDialog: boolean;
+  showSubscribeToPolicyDialog: boolean;
+  showInfoAccountDialog: boolean;
   showExportDialog: boolean;
   showImportDialog: boolean;
   pickingFromLocalStorage: boolean;
@@ -56,6 +64,10 @@ class App extends Component<AppProps> {
     const {
       inspectorVisible,
       showSaveAsDialog,
+      showAuthDialog,
+      showViewUsersDialog,
+      showSubscribeToPolicyDialog,
+      showInfoAccountDialog,
       showExportDialog,
       showImportDialog,
       pickingFromLocalStorage,
@@ -63,6 +75,10 @@ class App extends Component<AppProps> {
 
     const saveAsModal = showSaveAsDialog ? <SaveAsContainer /> : null;
     const exportModal = showExportDialog ? <ExportContainer /> : null;
+    const authModal = showAuthDialog ? <AuthContainer /> : null;
+    const viewUsersModal = showViewUsersDialog ? <ViewUsersContainer /> : null; 
+    const subscribeToPolicyModal = showSubscribeToPolicyDialog ? <SubscribeToPolicyContainer /> : null; 
+    const infoAccountModal = showInfoAccountDialog ? <InfoAccountContainer /> : null;
     const importModal = showImportDialog ? <ImportContainer /> : null;
     const localStorageModal = pickingFromLocalStorage ? (
       <LocalStoragePickerContainer />
@@ -95,12 +111,16 @@ class App extends Component<AppProps> {
         }}
       >
         {saveAsModal}
+        {authModal}
+        {viewUsersModal}
+        {subscribeToPolicyModal}
+        {infoAccountModal}
         {exportModal}
         {importModal}
         {localStorageModal}
         <HelpModal />
         <AcknowledgementsModal />
-        <HeaderContainer />
+        <HeaderContainer userData={this.props.userData}/>
         <section
           style={{
             flex: 2,
@@ -111,7 +131,7 @@ class App extends Component<AppProps> {
           <GraphContainer />
           {inspector}
         </section>
-        {import.meta.env.VITE_OPENAI_ENABLED && <ContextMenu />}
+        {import.meta.env.VITE_OPENAI_ENABLED && <ContextMenu userData={this.props.userData} />}
         {import.meta.env.VITE_OPENAI_ENABLED && <GptModal />}
         {import.meta.env.VITE_OPENAI_ENABLED && <GptExplanationModal />}
       </div>
@@ -153,8 +173,13 @@ const mapStateToProps = (state: ArrowsState) => ({
   pickingFromLocalStorage:
     state.storage.status === 'PICKING_FROM_LOCAL_STORAGE',
   showSaveAsDialog: state.applicationDialogs.showSaveAsDialog,
+  showAuthDialog: state.applicationDialogs.showAuthDialog,
+  showViewUsersDialog: state.applicationDialogs.showViewUsersDialog,
+  showSubscribeToPolicyDialog: state.applicationDialogs.showSubscribeToPolicyDialog,
+  showInfoAccountDialog: state.applicationDialogs.showInfoAccountDialog,
   showExportDialog: state.applicationDialogs.showExportDialog,
   showImportDialog: state.applicationDialogs.showImportDialog,
+  userData: state.applicationDialogs.userData,
 });
 
 const mapDispatchToProps = (dispatch: Dispatch) => {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { connect } from 'react-redux';
 import { Dispatch } from 'redux';
 import { ArrowsState } from '../reducers';
@@ -88,7 +88,8 @@ interface ContextMenuProps {
   openGtpExplanationModal: (explanation: string) => void;
   openGtpModal: (
     callback: (text: string) => Promise<void>,
-    startingPrompt?: string
+    startingPrompt?: string,
+    operationName?: string
   ) => void;
   separation: number;
   importNodesAndRelationships: (graph: Graph) => void;
@@ -96,6 +97,7 @@ interface ContextMenuProps {
 }
 
 const ContextMenu = ({
+  userData,
   clearGraph,
   diagramName,
   graph,
@@ -114,6 +116,60 @@ const ContextMenu = ({
   y,
   setDiagramName,
 }: ContextMenuProps) => {
+  const [permissions, setPermissions] = useState<Record<string, { allowed: boolean; reason?: string }>>({});
+
+  useEffect(() => {
+    console.log(userData);
+    const fetchPermissions = async () => {
+      if (!userData || !userData.username) {
+        setPermissions({ 
+          AddAttributeToRelationship: {allowed: false, reason: "You must be logged in to perform this operation."},
+          AddClassAssociatedToClass: {allowed: false, reason: "You must be logged in to perform this operation."},
+          AddClassSimilarToClass: {allowed: false, reason: "You must be logged in to perform this operation."},
+          AddClassesSimilarToEntities: {allowed: false, reason: "You must be logged in to perform this operation."},
+          ExplainClass: {allowed: false, reason: "You must be logged in to perform this operation."},
+          ExplainEntities: {allowed: false, reason: "You must be logged in to perform this operation."},
+          FixClassName: {allowed: false, reason: "You must be logged in to perform this operation."},
+          FixClassOntology: {allowed: false, reason: "You must be logged in to perform this operation."},
+          FixRelationshipCardinality: {allowed: false, reason: "You must be logged in to perform this operation."},
+          OpenGPTDialog: {allowed: false, reason: "You must be logged in to perform this operation."},
+          ReifyClass: {allowed: false, reason: "You must be logged in to perform this operation."}
+        });
+        return;
+      }
+      const commands = new Set<string>();
+      Object.values(selectionToActions).forEach((methods) => {
+        commands.add("OpenGPTDialog");
+        Object.values(methods || {}).forEach((actions) => {
+          actions?.forEach(({ commandKind }) => {
+            if (typeof commandKind !== 'undefined') commands.add(CommandKind[commandKind]);
+          });
+        });
+      });
+
+      const permissionResults: Record<string, { allowed: boolean; reason?: string }> = {};
+      for (const cmd of commands) {  
+        const response = await fetch("http://localhost:8000/canPerformOperation/", {
+          method: "POST",
+          credentials: "include",
+          body: JSON.stringify({ username: userData.username, operation: cmd }),
+          headers: { "Content-Type": "application/json" },
+        });
+        const result = await response.json();
+        permissionResults[cmd] = {
+          allowed: result.allowed === true,
+          reason: result.allowed !== true ? (result.reason || "You do not have permission to perform this operation.") : undefined
+
+        };
+        console.log("Authorization result", result);
+      }
+      setPermissions(permissionResults);
+      console.log("Permission map:", permissionResults);
+    };
+
+    fetchPermissions();
+  }, [userData]);
+
   const whichSelection = () => {
     const entities = [...nodes, ...relationships];
 
@@ -248,66 +304,85 @@ const ContextMenu = ({
             actions.length > 1 ? (
               <Dropdown item text={method}>
                 <DropdownMenu>
-                  {actions.map(({ action, commandKind, label, callback }) => (
-                    <DropdownItem
-                      text={label || `${selectionType} ${action}`}
-                      onClick={() => {
-                        const startingPrompt = computePrompt({
-                          kind: commandKind,
-                          nodes: nodes.map(({ caption }) => caption),
-                          relationships: relationships.map(
-                            toRelationshipClassName
-                          ),
-                          fullSchema: toYaml(
-                            fromGraph(diagramName, graph, SpiresType.LINKML)
-                          ),
-                        });
-                        openGtpModal(
-                          callback ?? defaultCallback,
-                          startingPrompt
-                        );
-                        onClose();
-                      }}
-                    />
-                  ))}
+                  {actions.map(({ action, commandKind, label, callback }) => {
+                    const isAllowed = permissions[CommandKind[commandKind]]?.allowed;
+                    const reason = permissions[CommandKind[commandKind]]?.reason;
+
+                    return (
+                      <DropdownItem
+                        text={label || `${selectionType} ${action}`}
+                        content={
+                          <span style={{ color: isAllowed ? 'inherit' : 'gray' }}>
+                            {label || `${selectionType} ${action}`}
+                          </span>
+                        }
+                        title={isAllowed ? '' : reason || 'You do not have permission to perform this operation.'}
+                        onClick={async () => {
+                        if (isAllowed) {
+                            const startingPrompt = computePrompt({
+                              kind: commandKind,
+                              nodes: nodes.map(({ caption }) => caption),
+                              relationships: relationships.map(toRelationshipClassName),
+                              fullSchema: toYaml(fromGraph(diagramName, graph, SpiresType.LINKML)),
+                            });
+                            console.log("Opening GPT modal with operationName:", CommandKind[commandKind]);
+                            openGtpModal(callback ?? defaultCallback, startingPrompt, CommandKind[commandKind]);
+                            onClose();
+                          }
+                        }}
+                      />
+                    );
+                  })}
                 </DropdownMenu>
               </Dropdown>
             ) : (
               <MenuItem
-                name={`${method}${
-                  actions[0].action
-                    ? ` ${
-                        actions[0].label ||
-                        `${selectionType} ${actions[0].action}`
-                      }`
-                    : ''
-                }`}
-                onClick={() => {
-                  const startingPrompt = computePrompt({
-                    kind: actions[0].commandKind,
-                    nodes: nodes.map(({ caption }) => caption),
-                    relationships: relationships.map(toRelationshipClassName),
-                    fullSchema: toYaml(
-                      fromGraph(diagramName, graph, SpiresType.LINKML)
-                    ),
-                  });
-                  openGtpModal(
-                    actions[0].callback ?? defaultCallback,
-                    startingPrompt
-                  );
-                  onClose();
+                name={`${method}${actions[0].action ? actions[0].label || '' : ''}`}
+                style={{
+                  color: permissions[CommandKind[actions[0].commandKind]]?.allowed ? 'inherit' : 'gray',
+                }}
+                title={
+                  permissions[CommandKind[actions[0].commandKind]]?.allowed
+                    ? ''
+                    : permissions[CommandKind[actions[0].commandKind]]?.reason || 'You do not have permission to perform this operation.'
+                }
+                onClick={async () => {
+                  const permission = permissions[CommandKind[actions[0].commandKind]];
+                  if (permission?.allowed) {
+                    const startingPrompt = computePrompt({
+                      kind: actions[0].commandKind,
+                      nodes: nodes.map(({ caption }) => caption),
+                      relationships: relationships.map(toRelationshipClassName),
+                      fullSchema: toYaml(fromGraph(diagramName, graph, SpiresType.LINKML)),
+                    });
+                    console.log("Opening GPT modal with operationName:", CommandKind[actions[0].commandKind]);
+                    openGtpModal(actions[0].callback ?? defaultCallback, startingPrompt, CommandKind[actions[0].commandKind]);
+                    onClose();
+                  }
                 }}
               />
             )
           )}
         <MenuItem
-          name={`Open GPT dialog`}
-          onClick={() => {
-            openGtpModal(defaultCallback);
-            onClose();
+          name={"Open GPT dialog"}
+          style={{
+            color: permissions["OpenGPTDialog"]?.allowed ? 'inherit' : 'gray',
+          }}
+          title={
+            permissions["OpenGPTDialog"]?.allowed
+              ? ''
+              : permissions["OpenGPTDialog"]?.reason || 'You do not have permission to perform this operation.'
+          }
+          onClick={async () => {
+            if (permissions["OpenGPTDialog"]?.allowed) {
+              console.log("Opening GPT modal with operationName:", "OpenGPTDialog");
+              openGtpModal(defaultCallback, undefined, "OpenGPTDialog");
+              onClose();
+            }
           }}
         />
       </Menu>
+
     </div>
   ) : null;
 };
@@ -315,6 +390,7 @@ const ContextMenu = ({
 const mapStateToProps = (state: ArrowsState) => {
   return {
     ...state.applicationDialogs.contextMenu,
+    userData: state.applicationDialogs.userData,
     graph: state.graph.present,
     diagramName: state.diagramName,
     ontologies: state.ontologies.ontologies,
@@ -345,9 +421,10 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     },
     openGtpModal: (
       callback: (text: string) => Promise<void>,
-      startingPrompt?: string
+      startingPrompt?: string,
+      operationName?: string
     ) => {
-      dispatch(showGptModal(callback, startingPrompt));
+      dispatch(showGptModal(callback, startingPrompt, operationName));
     },
     openGtpExplanationModal: (explanation: string) => {
       dispatch(showGptExplanationModal(explanation));
