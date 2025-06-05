@@ -51,13 +51,27 @@ class AuthLoginPanel extends Component<AuthLoginPanelProps, AuthLoginPanelState>
           };
       
           try {
-            const response = await fetch('https://schemalink.anacleto.di.unimi.it/api/auth/login/', {
+            const response = await fetch(`${import.meta.env.VITE_LOGIN_ENDPOINT}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(user),
               credentials: 'include',
             });
-      
+            console.log("Request sent to:", import.meta.env.VITE_LOGIN_ENDPOINT);
+            console.log("Request body:", JSON.stringify(user));
+            console.log("Request headers:", {
+              'Content-Type': 'application/json',
+              'credentials': 'include'
+            });
+            console.log("Response status:", response.status);
+            console.log("Response headers:", response.headers);
+            console.log("Response URL:", response.url);
+            console.log("Response type:", response.type);
+            console.log("Response redirected:", response.redirected);
+            console.log("Response ok:", response.ok);
+            console.log("Response status text:", response.statusText);
+            console.log("Response body:", await response.text());
+            
             if (response.ok) {
               const data = await response.json();
               console.log('Login successful!');
