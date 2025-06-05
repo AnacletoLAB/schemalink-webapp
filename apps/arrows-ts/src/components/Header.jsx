@@ -75,7 +75,7 @@ class Header extends PureComponent {
       return;
     }
 
-    const response = await fetch("http://localhost:8000/canPerformOperation/", {
+    const response = await fetch("https://schemalink.anacleto.di.unimi.it/api/canPerformOperation/", {
       method: "POST",
       credentials: "include",
       body: JSON.stringify({ username: userData.username, operation: "Generate" }),
@@ -102,7 +102,7 @@ class Header extends PureComponent {
     if (!confirmed) return;
   
     try {
-      const response = await fetch("http://localhost:8000/auth/logout/", {
+      const response = await fetch("https://schemalink.anacleto.di.unimi.it/api/auth/logout/", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -133,7 +133,7 @@ class Header extends PureComponent {
     if (!confirmed) return;
   
     try {
-      const response = await fetch("http://localhost:8000/auth/delete-account/", {
+      const response = await fetch("https://schemalink.anacleto.di.unimi.it/api/auth/delete-account/", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -168,7 +168,7 @@ class Header extends PureComponent {
 
       const jsonGraph = JSON.stringify(this.props.graph, null, 2);
 
-      const response = await fetch("http://localhost:8000/contribute/", {
+      const response = await fetch("https://schemalink.anacleto.di.unimi.it/api/contribute/", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

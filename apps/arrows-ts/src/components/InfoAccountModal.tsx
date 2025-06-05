@@ -174,7 +174,7 @@ class InfoAccountModal extends Component<InfoAccountModalProps, InfoAccountModal
     });
 
     try {
-      const response = await fetch('http://localhost:8000/update-user/', {
+      const response = await fetch('https://schemalink.anacleto.di.unimi.it/api/update-user/', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -204,7 +204,7 @@ class InfoAccountModal extends Component<InfoAccountModalProps, InfoAccountModal
 
   getUserSubscription = async () => {    
     try {
-        const response = await fetch('http://localhost:8000/get-user-subscription-details/', {
+        const response = await fetch('https://schemalink.anacleto.di.unimi.it/api/get-user-subscription-details/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',

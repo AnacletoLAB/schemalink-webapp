@@ -36,7 +36,7 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
 
   getUserSubscription = async () => {    
     try {
-        const response = await fetch('http://localhost:8000/get-user-subscription/', {
+        const response = await fetch('https://schemalink.anacleto.di.unimi.it/api/get-user-subscription/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -67,7 +67,7 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
     console.log("Payload being sent:", payload);
 
     try {
-      const response = await fetch('http://localhost:8000/subscribe-policy/', {
+      const response = await fetch('https://schemalink.anacleto.di.unimi.it/api/subscribe-policy/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
