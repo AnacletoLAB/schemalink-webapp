@@ -148,8 +148,8 @@ const ContextMenu = ({
       });
 
       const permissionResults: Record<string, { allowed: boolean; reason?: string }> = {};
-      for (const cmd of commands) {  
-        const response = await fetch("https://schemalink.anacleto.di.unimi.it/api/canPerformOperation/", {
+      for (const cmd of commands) {
+        const response = await fetch(`${import.meta.env.VITE_CAN_PERFORM_OPERATION_ENDPOINT}`, {
           method: "POST",
           credentials: "include",
           body: JSON.stringify({ username: userData.username, operation: cmd }),

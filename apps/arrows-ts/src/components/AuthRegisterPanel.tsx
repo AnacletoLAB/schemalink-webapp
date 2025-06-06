@@ -134,7 +134,7 @@ class AuthRegisterPanel extends Component<AuthRegisterPanelProps, AuthRegisterPa
       };
       
       try {
-        const response = await fetch('https://schemalink.anacleto.di.unimi.it/api/auth/register/', {
+        const response = await fetch(`${import.meta.env.VITE_REGISTER_ENDPOINT}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

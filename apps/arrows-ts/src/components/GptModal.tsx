@@ -107,8 +107,8 @@ export const GptModal = ({
       }
 
       console.log('User operation:', operationName);
-      
-      await fetch('https://schemalink.anacleto.di.unimi.it/api/user-operation/', {
+
+      await fetch(`${import.meta.env.VITE_USER_OPERATION_ENDPOINT}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

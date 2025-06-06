@@ -50,7 +50,7 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
 
   getUsers = async () => {    
     try {
-        const response = await fetch('https://schemalink.anacleto.di.unimi.it/api/get-users/', {
+        const response = await fetch(`${import.meta.env.VITE_GET_USERS_ENDPOINT}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -70,7 +70,7 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
 
   getSubscriptions = async () => {    
     try {
-        const response = await fetch('https://schemalink.anacleto.di.unimi.it/api/get-user-subscriptions/', {
+        const response = await fetch(`${import.meta.env.VITE_GET_USER_SUBSCRIPTIONS_ENDPOINT}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -126,7 +126,7 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
     this.setState({ users: updatedUsers });
   
     try {
-      const response = await fetch('https://schemalink.anacleto.di.unimi.it/api/update-status/', {
+      const response = await fetch(`${import.meta.env.VITE_UPDATE_STATUS_ENDPOINT}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -164,7 +164,7 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
     console.log("Subscription after update:", subscription);
   
     try {
-      const response = await fetch('https://schemalink.anacleto.di.unimi.it/api/update-subscription-status/', {
+      const response = await fetch(`${import.meta.env.VITE_UPDATE_SUBSCRIPTION_STATUS_ENDPOINT}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
