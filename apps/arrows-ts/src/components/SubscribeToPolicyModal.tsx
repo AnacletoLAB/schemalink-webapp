@@ -78,7 +78,7 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
       if (response.ok) {
         const data = await response.json();
         console.log('Policy subscription request successful: ', data);
-        this.setState({ pendingPolicyName: policyName });
+        await this.getUserSubscription();
         alert('Policy subscription successful! Your request is pending admin approval. You will receive an email once approved.');
       } else {
         const errorData = await response.json();
