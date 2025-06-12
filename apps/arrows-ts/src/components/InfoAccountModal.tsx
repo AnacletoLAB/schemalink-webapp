@@ -214,6 +214,10 @@ class InfoAccountModal extends Component<InfoAccountModalProps, InfoAccountModal
         if (response.ok) {
             const data = await response.json();
             console.log("Fetched subscription:", data);
+            if (data.hasSubscription === false) {
+              this.setState({ subscriptionData: undefined });
+              return;
+            }
             this.setState({ subscriptionData: data });
         } else {
             const errorData = await response.json();

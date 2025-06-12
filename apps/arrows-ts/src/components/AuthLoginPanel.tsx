@@ -61,10 +61,10 @@ class AuthLoginPanel extends Component<AuthLoginPanelProps, AuthLoginPanelState>
             if (response.ok) {
               const data = await response.json();
               console.log('Login successful!');
-              alert('Login successful!');
               if (this.props.onLoginSuccess) {
                 this.props.onLoginSuccess(data.user);
               }
+              localStorage.setItem('user', JSON.stringify(data.user));
               if (this.props.onClose) {
                 this.props.onClose();
               }

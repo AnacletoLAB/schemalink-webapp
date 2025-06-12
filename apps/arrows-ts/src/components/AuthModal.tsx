@@ -50,7 +50,12 @@ class AuthModal extends Component<AuthModalProps, AuthModalState> {
 
     return (
       <Modal size="large" centered={false} open={true} onClose={this.onCancel}>
-        <Modal.Header>Authentication</Modal.Header>
+        <Modal.Header>
+          Authentication
+          <div style={{ fontSize: '0.5em' }}>
+            You must register to request intelligent operations.
+          </div>
+        </Modal.Header>
         <Modal.Content scrolling>
           <Tab
             menu={{ secondary: true }}

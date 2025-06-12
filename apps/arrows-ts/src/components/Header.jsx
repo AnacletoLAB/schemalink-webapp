@@ -70,7 +70,7 @@ class Header extends PureComponent {
     if (!userData || !userData.username){
       this.setState({
         canGenerate: false,
-        reason: "You must be logged in to perform this operation.",
+        reason: "You must register to request intelligent operations.",
       });
       return;
     }
@@ -87,7 +87,7 @@ class Header extends PureComponent {
 
     this.setState({
       canGenerate: result.allowed === true,
-      reason: result.allowed !== true ? (result.reason || "You do not have permission to perform this operation.") : undefined,
+      reason: result.allowed !== true ? (result.reason || "You do not have permission to request intelligent operations.") : undefined,
       userPolicy: result.policy?.toLowerCase() || null
     });
   };
@@ -111,9 +111,10 @@ class Header extends PureComponent {
       if (response.ok) {
         console.log('Logout successful');
         this.props.onLogout();
+        localStorage.removeItem('user');
         this.setState({
           canGenerate: false,
-          reason: 'You must be logged in to perform this operation.',
+          reason: 'You must register to request intelligent operations.',
           userPolicy: null,
         });
       } else {
@@ -327,7 +328,7 @@ class Header extends PureComponent {
                 title={
                   this.state.canGenerate
                     ? ''
-                    : this.state.reason || 'You do not have permission to perform this operation.'
+                    : this.state.reason || 'You do not have permission to request intelligent operations.'
                 }
                 style={{
                   opacity: (!isAuthenticated || !this.state.canGenerate) ? 0.5 : 1,
@@ -397,10 +398,10 @@ class Header extends PureComponent {
                   <Dropdown.Item onClick={this.props.onInfoAccountClick}>Info Account</Dropdown.Item>
                 )}
                 {userData.username !== "schemalink" && (
-                  <Dropdown.Item onClick={this.props.onSubscribeToPolicyClick}>Policies</Dropdown.Item>
+                  <Dropdown.Item onClick={this.props.onSubscribeToPolicyClick}>Subscription Plan</Dropdown.Item>
                 )}
                 {userData.username === "schemalink" && (
-                  <Dropdown.Item onClick={this.props.onViewUsersClick}>View users</Dropdown.Item>
+                  <Dropdown.Item onClick={this.props.onViewUsersClick}>View Users</Dropdown.Item>
                 )}
                 <Dropdown.Item onClick={this.handleLogout}>Logout</Dropdown.Item>
                 {userData.username !== "schemalink" && (

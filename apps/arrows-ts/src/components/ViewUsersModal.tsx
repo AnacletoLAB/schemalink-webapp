@@ -106,13 +106,12 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
     const baseOptions = optionsMap[currentStatus] || [];
   
     return [
-      { text: currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1), value: currentStatus, key: 'current', disabled: true },
+      { text: currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1), value: currentStatus, key: 'current' },
       ...baseOptions,
-      { text: 'Cancel', value: 'cancel', key: 'cancel' },
+      { text: <strong>Close</strong>, value: 'cancel', key: 'cancel' },
     ];
   };
     
-
   handleStatusChange = async (userIndex: number, newStatus: string) => {
     if (newStatus === 'cancel') return;
 
@@ -265,8 +264,10 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
                     <td>{user.lastName}</td>
                     <td>{new Date(user.birthDate).toLocaleDateString()}</td>
                     <td>
-                      {user.status === 'disabled' ? (
-                        user.status
+                      {user.username === 'schemalink' ? (
+                        'Admin'
+                      ) : user.status === 'disabled' ? (
+                        'Disabled'
                       ) : (
                         <Dropdown
                           options={this.getStatusOptions(user.status)}
@@ -320,10 +321,10 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
                       {sub.status === 'pending' ? (
                         <Dropdown
                           options={[
-                            { text: 'Pending', value: 'pending', key: 'current', disabled: true },
+                            { text: 'Pending', value: 'pending', key: 'current' },
                             { text: 'Active', value: 'active' },
                             { text: 'Rejected', value: 'rejected' },
-                            { text: 'Cancel', value: 'cancel', key: 'cancel' },
+                            { text: <strong>Close</strong>, value: 'cancel', key: 'cancel' },
                           ]}
                           value={sub.status}
                           onChange={(_, data) => this.handleSubscriptionChange(index, data.value as string)}

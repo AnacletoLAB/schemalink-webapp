@@ -123,17 +123,17 @@ const ContextMenu = ({
     const fetchPermissions = async () => {
       if (!userData || !userData.username) {
         setPermissions({ 
-          AddAttributeToRelationship: {allowed: false, reason: "You must be logged in to perform this operation."},
-          AddClassAssociatedToClass: {allowed: false, reason: "You must be logged in to perform this operation."},
-          AddClassSimilarToClass: {allowed: false, reason: "You must be logged in to perform this operation."},
-          AddClassesSimilarToEntities: {allowed: false, reason: "You must be logged in to perform this operation."},
-          ExplainClass: {allowed: false, reason: "You must be logged in to perform this operation."},
-          ExplainEntities: {allowed: false, reason: "You must be logged in to perform this operation."},
-          FixClassName: {allowed: false, reason: "You must be logged in to perform this operation."},
-          FixClassOntology: {allowed: false, reason: "You must be logged in to perform this operation."},
-          FixRelationshipCardinality: {allowed: false, reason: "You must be logged in to perform this operation."},
-          OpenGPTDialog: {allowed: false, reason: "You must be logged in to perform this operation."},
-          ReifyClass: {allowed: false, reason: "You must be logged in to perform this operation."}
+          AddAttributeToRelationship: {allowed: false, reason: "You must register to request intelligent operations."},
+          AddClassAssociatedToClass: {allowed: false, reason: "You must register to request intelligent operations."},
+          AddClassSimilarToClass: {allowed: false, reason: "You must register to request intelligent operations."},
+          AddClassesSimilarToEntities: {allowed: false, reason: "You must register to request intelligent operations."},
+          ExplainClass: {allowed: false, reason: "You must register to request intelligent operations."},
+          ExplainEntities: {allowed: false, reason: "You must register to request intelligent operations."},
+          FixClassName: {allowed: false, reason: "You must register to request intelligent operations."},
+          FixClassOntology: {allowed: false, reason: "You must register to request intelligent operations."},
+          FixRelationshipCardinality: {allowed: false, reason: "You must register to request intelligent operations."},
+          OpenGPTDialog: {allowed: false, reason: "You must register to request intelligent operations."},
+          ReifyClass: {allowed: false, reason: "You must register to request intelligent operations."}
         });
         return;
       }
@@ -158,7 +158,7 @@ const ContextMenu = ({
         const result = await response.json();
         permissionResults[cmd] = {
           allowed: result.allowed === true,
-          reason: result.allowed !== true ? (result.reason || "You do not have permission to perform this operation.") : undefined
+          reason: result.allowed !== true ? (result.reason || "You do not have permission to request intelligent operations.") : undefined
 
         };
         console.log("Authorization result", result);
@@ -316,7 +316,7 @@ const ContextMenu = ({
                             {label || `${selectionType} ${action}`}
                           </span>
                         }
-                        title={isAllowed ? '' : reason || 'You do not have permission to perform this operation.'}
+                        title={isAllowed ? '' : reason || 'You do not have permission to request intelligent operations.'}
                         onClick={async () => {
                         if (isAllowed) {
                             const startingPrompt = computePrompt({
@@ -344,7 +344,7 @@ const ContextMenu = ({
                 title={
                   permissions[CommandKind[actions[0].commandKind]]?.allowed
                     ? ''
-                    : permissions[CommandKind[actions[0].commandKind]]?.reason || 'You do not have permission to perform this operation.'
+                    : permissions[CommandKind[actions[0].commandKind]]?.reason || 'You do not have permission to request intelligent operations.'
                 }
                 onClick={async () => {
                   const permission = permissions[CommandKind[actions[0].commandKind]];
@@ -371,7 +371,7 @@ const ContextMenu = ({
           title={
             permissions["OpenGPTDialog"]?.allowed
               ? ''
-              : permissions["OpenGPTDialog"]?.reason || 'You do not have permission to perform this operation.'
+              : permissions["OpenGPTDialog"]?.reason || 'You do not have permission to request intelligent operations.'
           }
           onClick={async () => {
             if (permissions["OpenGPTDialog"]?.allowed) {

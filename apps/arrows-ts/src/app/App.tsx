@@ -20,6 +20,7 @@ import { handlePaste } from '../actions/import';
 import { handleCopy } from '../actions/export';
 import { linkToGoogleFontsCss } from '@neo4j-arrows/graphics';
 import { handleImportMessage } from '../reducers/storage';
+import { loginSuccess } from '../actions/applicationDialogs';
 
 import './App.css';
 import ContextMenu from '../components/ContextMenu';
@@ -45,6 +46,8 @@ export interface AppProps {
   handlePaste: (ev: ClipboardEvent) => void;
   handleImportMessage: (ev: MessageEvent<any>) => void;
   onWindowResized: (this: Window, ev: UIEvent) => any;
+
+  dispatch: Dispatch<any>;
 }
 
 class App extends Component<AppProps> {
@@ -164,6 +167,12 @@ class App extends Component<AppProps> {
 
   componentDidMount() {
     window.addEventListener('resize', this.props.onWindowResized);
+
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      const parsedUser = JSON.parse(savedUser);
+      this.props.dispatch(loginSuccess(parsedUser));
+    }
   }
 }
 
@@ -184,6 +193,7 @@ const mapStateToProps = (state: ArrowsState) => ({
 
 const mapDispatchToProps = (dispatch: Dispatch) => {
   return {
+    dispatch,
     onWindowResized: () =>
       dispatch(windowResized(window.innerWidth, window.innerHeight)),
     onCancelPicker: () => dispatch(pickDiagramCancel()),

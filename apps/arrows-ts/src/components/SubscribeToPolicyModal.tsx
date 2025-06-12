@@ -121,7 +121,7 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
 
     return (
       <Modal size="large" centered={false} open={true} onClose={this.onCancel}>
-        <Modal.Header style={{ fontSize: '1.8em', textAlign: 'center' }}>Choose Your Policy</Modal.Header>
+        <Modal.Header style={{ fontSize: '1.8em', textAlign: 'center' }}>Choose Your Subscription Plan</Modal.Header>
         <Modal.Content scrolling>
           <Table celled>
             <Table.Header>
@@ -144,6 +144,7 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
                     </p>
                   </div>
                   <div style={{ background: '#f0fff4', padding: '0.8em 1em', borderRadius: '8px', boxShadow: 'inset 0 0 5px rgba(0,0,0,0.05)', lineHeight: '1.6'}}>
+                    <p><i className="check icon" style={{ color: '#21ba45' }}></i> GENERATE</p>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> ADD</p>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> FIX</p>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> EXPLAIN</p>
@@ -166,6 +167,7 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
                   </p>
                 </div>
                 <div style={{ background: '#f0fff4', padding: '0.8em 1em', borderRadius: '8px', boxShadow: 'inset 0 0 5px rgba(0,0,0,0.05)', lineHeight: '1.6'}}>
+                  <p><i className="check icon" style={{ color: '#21ba45' }}></i> GENERATE</p>
                   <p><i className="check icon" style={{ color: '#21ba45' }}></i> ADD</p>
                   <p><i className="check icon" style={{ color: '#21ba45' }}></i> FIX</p>
                   <p><i className="check icon" style={{ color: '#21ba45' }}></i> EXPLAIN</p>
@@ -210,6 +212,7 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
                     </p>
                   </div>
                   <div style={{ background: '#f0fff4', padding: '0.8em 1em', borderRadius: '8px', boxShadow: 'inset 0 0 5px rgba(0,0,0,0.05)', lineHeight: '1.6'}}>
+                    <p><i className="check icon" style={{ color: '#21ba45' }}></i> GENERATE</p>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> ADD</p>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> FIX</p>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> EXPLAIN</p>
@@ -253,6 +256,7 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
                     </p>
                   </div>
                   <div style={{ background: '#f0fff4', padding: '0.8em 1em', borderRadius: '8px', boxShadow: 'inset 0 0 5px rgba(0,0,0,0.05)', lineHeight: '1.6'}}>
+                    <p><i className="check icon" style={{ color: '#21ba45' }}></i> GENERATE</p>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> ADD</p>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> FIX</p>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> EXPLAIN</p>
