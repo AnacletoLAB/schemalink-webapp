@@ -292,7 +292,7 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
           </Table>
         </Modal.Content>
         <Modal.Actions>
-          <Button onClick={this.onCancel} content="Back" />
+          <Button onClick={this.onCancel} content="Close" />
         </Modal.Actions>
       </Modal>
     );

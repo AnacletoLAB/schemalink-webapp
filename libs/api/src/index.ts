@@ -2,10 +2,22 @@ export const generate = async (
   prompt: string,
   url: string
 ): Promise<string> => {
-  return fetch(url, {
+  const response = await fetch(url, {
     body: prompt,
     method: 'POST',
-  }).then((response) => response.text());
+  });
+  if (!response.ok) {
+    if (response.status === 409) {
+      alert("OpenAI rate or fund limit exceeded. An email will be sent to the admin.");
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData?.error || "An error occurred while generating the response.";
+      alert(errorMessage);
+    }
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+  
+  return await response.text();
 };
 
 export const edit = async (

@@ -394,9 +394,7 @@ class Header extends PureComponent {
               className="link item"
             >
               <Dropdown.Menu>
-                {userData.username !== "schemalink" && (
-                  <Dropdown.Item onClick={this.props.onInfoAccountClick}>Info Account</Dropdown.Item>
-                )}
+                <Dropdown.Item onClick={this.props.onInfoAccountClick}>Info Account</Dropdown.Item>
                 {userData.username !== "schemalink" && (
                   <Dropdown.Item onClick={this.props.onSubscribeToPolicyClick}>Subscription Plan</Dropdown.Item>
                 )}

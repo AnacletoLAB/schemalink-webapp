@@ -65,7 +65,7 @@ class AuthModal extends Component<AuthModalProps, AuthModalState> {
           />
         </Modal.Content>
         <Modal.Actions>
-          <Button onClick={this.onCancel} content="Back" />
+          <Button onClick={this.onCancel} content="Close" />
         </Modal.Actions>
       </Modal>
     );

@@ -139,12 +139,15 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
         const errorData = await response.json();
         console.error("Update failed: ", errorData);
         this.getUsers();
+        this.getSubscriptions();
       } else {
         this.getUsers();
+        this.getSubscriptions();
       }
     } catch (error: any) {
       console.error('Request error: ', error);
       this.getUsers();
+      this.getSubscriptions();
     }
   };
 
@@ -331,7 +334,7 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
                           selection
                         />
                       ) : (
-                        sub.status
+                        sub.status.charAt(0).toUpperCase() + sub.status.slice(1)
                       )}
                     </td>
                   </tr>
@@ -355,7 +358,7 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
           />
         </Modal.Content>
         <Modal.Actions>
-          <Button onClick={this.onCancel} content="Back" />
+          <Button onClick={this.onCancel} content="Close" />
         </Modal.Actions>
       </Modal>
     );

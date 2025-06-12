@@ -358,47 +358,48 @@ class InfoAccountModal extends Component<InfoAccountModalProps, InfoAccountModal
               </Table.Row>
             </Table.Body>
           </Table>
-
-        {subscriptionData ? (
-          <Table>
-            <Table.Header>
-              <Table.Row>
-                <Table.HeaderCell>Subscription Info</Table.HeaderCell>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              <Table.Row>
-                <Table.Cell>
-                    <strong>Policy:</strong> {subscriptionData.policyName.toUpperCase()}<br/><br/>
-                    <strong>Intelligent Requests Left:</strong>{' '}
-                    {subscriptionData.maxAccess === null
-                      ? 'Unlimited'
-                      : `${Math.max(subscriptionData.maxAccess - subscriptionData.operationsDone, 0)} / ${subscriptionData.maxAccess}`}
-                    <br/><br/>
-                    <strong>Time left:</strong> {this.formatHours(subscriptionData.hoursRemaining)}<br/>
-                </Table.Cell>
-              </Table.Row>
-            </Table.Body>
-          </Table>
-        ) : (
-          <Table>
-            <Table.Header>
-              <Table.Row>
-                <Table.HeaderCell>Subscription Info</Table.HeaderCell>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              <Table.Row>
-                <Table.Cell>
-                    <strong>No active subscription:</strong> you don't currently have an active subscription to a policy<br/>
-                </Table.Cell>
-              </Table.Row>
-            </Table.Body>
-          </Table>            
+        {this.props.userData.username !== "schemalink" && (
+          subscriptionData ? (
+            <Table>
+              <Table.Header>
+                <Table.Row>
+                  <Table.HeaderCell>Subscription Info</Table.HeaderCell>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                <Table.Row>
+                  <Table.Cell>
+                      <strong>Policy:</strong> {subscriptionData.policyName.toUpperCase()}<br/><br/>
+                      <strong>Intelligent Requests Left:</strong>{' '}
+                      {subscriptionData.maxAccess === null
+                        ? 'Unlimited'
+                        : `${Math.max(subscriptionData.maxAccess - subscriptionData.operationsDone, 0)} / ${subscriptionData.maxAccess}`}
+                      <br/><br/>
+                      <strong>Time left:</strong> {this.formatHours(subscriptionData.hoursRemaining)}<br/>
+                  </Table.Cell>
+                </Table.Row>
+              </Table.Body>
+            </Table>
+          ) : (
+            <Table>
+              <Table.Header>
+                <Table.Row>
+                  <Table.HeaderCell>Subscription Info</Table.HeaderCell>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                <Table.Row>
+                  <Table.Cell>
+                      <strong>No active subscription:</strong> you don't currently have an active subscription to a policy<br/>
+                  </Table.Cell>
+                </Table.Row>
+              </Table.Body>
+            </Table> 
+          )           
         )}
         </Modal.Content>
         <Modal.Actions>
-          <Button onClick={this.onCancel} content="Back" />
+          <Button onClick={this.onCancel} content="Close" />
         </Modal.Actions>
       </Modal>
     );
