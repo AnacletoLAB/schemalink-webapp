@@ -10,7 +10,7 @@ export default defineConfig({
     port: 4200,
     host: '0.0.0.0',
     fs: { allow: ['../../node_modules/semantic-ui-css/themes/default/assets'] },
-    allowedHosts: ['schemalink.biodata.di.unimi.it', 'schemalink.anacleto.di.unimi.it', 'localhost'],
+    allowedHosts: ['helix.biodata.di.unimi.it', 'schemalink.biodata.di.unimi.it', 'schemalink.anacleto.di.unimi.it', 'localhost'],
   },
 
   preview: {
