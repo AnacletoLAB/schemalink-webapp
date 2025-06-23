@@ -175,7 +175,7 @@ export const fromGraph = (
   ];
 
   return {
-    id: `https://schemalink.anacleto.di.unimi.it/${snakeCasedName}`,
+    id: `https://schemalink.biodata.di.unimi.it/${snakeCasedName}`,
     default_range: BasicType.STRING,
     name: snakeCasedName,
     title: name,
