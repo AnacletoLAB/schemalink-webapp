@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Modal, Button, Tab, TabProps, Dropdown } from 'semantic-ui-react';
+import { Modal, Button, Tab, TabProps, Dropdown, Popup } from 'semantic-ui-react';
 
 interface User {
     username: string;
@@ -108,13 +108,10 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
     return [
       { text: currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1), value: currentStatus, key: 'current' },
       ...baseOptions,
-      { text: <strong>Close</strong>, value: 'cancel', key: 'cancel' },
     ];
   };
     
   handleStatusChange = async (userIndex: number, newStatus: string) => {
-    if (newStatus === 'cancel') return;
-
     const updatedUsers = [...this.state.users];
     updatedUsers[userIndex] = {
       ...updatedUsers[userIndex],
@@ -152,8 +149,6 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
   };
 
   handleSubscriptionChange = async (subIndex: number, newStatus: string) => {
-    if (newStatus === 'cancel') return;
-
     const updatedSubscriptions = [...this.state.subscriptions];
     const subscription = updatedSubscriptions[subIndex];
 
@@ -255,7 +250,23 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
                   <th>First Name</th>
                   <th>Last Name</th>
                   <th>Birth Date</th>
-                  <th>Status</th>
+                    <th>
+                      Status
+                      <div style={{ marginLeft: '8px', display: 'inline-block' }}>
+                        <Popup
+                          content={
+                            <>
+                              <strong>pending</strong>: user is waiting for admin approval<br />
+                              <strong>active</strong>: user account is active<br />
+                              <strong>disabled</strong>: account was permanently deactivated by admin or user<br />
+                              <strong>blocked</strong>: temporarily blocked by admin, can be reactivated
+                            </>
+                          }
+                          trigger={<Button icon="question" size="mini" circular />}
+                          position="top center"
+                        />
+                      </div>
+                    </th>
                 </tr>
               </thead>
               <tbody>
@@ -309,7 +320,23 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
                   <th>Request Date</th>
                   <th>Start Date</th>
                   <th>End Date</th>
-                  <th>Status</th>
+                    <th>
+                      Status
+                      <div style={{ marginLeft: '8px', display: 'inline-block' }}>
+                        <Popup
+                          content={
+                            <>
+                              <strong>pending</strong>: user requested a policy, waiting admin approval<br />
+                              <strong>active</strong>: policy is active<br />
+                              <strong>rejected</strong>: admin rejected the policy request<br />
+                              <strong>expired</strong>: policy expired due to usage limits or end date
+                            </>
+                          }
+                          trigger={<Button icon="question" size="mini" circular />}
+                          position="top center"
+                        />
+                      </div>
+                    </th>
                 </tr>
               </thead>
               <tbody>
@@ -327,7 +354,6 @@ class ViewUsersModal extends Component<ViewUsersModalProps, ViewUsersModalState>
                             { text: 'Pending', value: 'pending', key: 'current' },
                             { text: 'Active', value: 'active' },
                             { text: 'Rejected', value: 'rejected' },
-                            { text: <strong>Close</strong>, value: 'cancel', key: 'cancel' },
                           ]}
                           value={sub.status}
                           onChange={(_, data) => this.handleSubscriptionChange(index, data.value as string)}

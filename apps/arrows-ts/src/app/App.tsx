@@ -9,6 +9,7 @@ import { computeCanvasSize, inspectorWidth } from '@neo4j-arrows/model';
 import ExportContainer from '../containers/ExportContainer';
 import AuthContainer from '../containers/AuthContainer';
 import ViewUsersContainer from '../containers/ViewUsersContainer';
+import DashboardContainer from '../containers/DashboardContainer';
 import SubscribeToPolicyContainer from '../containers/SubscribeToPolicyContainer';
 import InfoAccountContainer from '../containers/InfoAccountContainer';
 import HelpModal from '../components/HelpModal';
@@ -34,6 +35,7 @@ export interface AppProps {
   showSaveAsDialog: boolean;
   showAuthDialog: boolean;
   showViewUsersDialog: boolean;
+  showDashboardDialog: boolean;
   showSubscribeToPolicyDialog: boolean;
   showInfoAccountDialog: boolean;
   showExportDialog: boolean;
@@ -69,6 +71,7 @@ class App extends Component<AppProps> {
       showSaveAsDialog,
       showAuthDialog,
       showViewUsersDialog,
+      showDashboardDialog,
       showSubscribeToPolicyDialog,
       showInfoAccountDialog,
       showExportDialog,
@@ -80,6 +83,7 @@ class App extends Component<AppProps> {
     const exportModal = showExportDialog ? <ExportContainer /> : null;
     const authModal = showAuthDialog ? <AuthContainer /> : null;
     const viewUsersModal = showViewUsersDialog ? <ViewUsersContainer /> : null; 
+    const showDashboardModal = showDashboardDialog ? <DashboardContainer /> : null;
     const subscribeToPolicyModal = showSubscribeToPolicyDialog ? <SubscribeToPolicyContainer /> : null; 
     const infoAccountModal = showInfoAccountDialog ? <InfoAccountContainer /> : null;
     const importModal = showImportDialog ? <ImportContainer /> : null;
@@ -116,6 +120,7 @@ class App extends Component<AppProps> {
         {saveAsModal}
         {authModal}
         {viewUsersModal}
+        {showDashboardModal}
         {subscribeToPolicyModal}
         {infoAccountModal}
         {exportModal}
@@ -184,6 +189,7 @@ const mapStateToProps = (state: ArrowsState) => ({
   showSaveAsDialog: state.applicationDialogs.showSaveAsDialog,
   showAuthDialog: state.applicationDialogs.showAuthDialog,
   showViewUsersDialog: state.applicationDialogs.showViewUsersDialog,
+  showDashboardDialog: state.applicationDialogs.showDashboardDialog,
   showSubscribeToPolicyDialog: state.applicationDialogs.showSubscribeToPolicyDialog,
   showInfoAccountDialog: state.applicationDialogs.showInfoAccountDialog,
   showExportDialog: state.applicationDialogs.showExportDialog,

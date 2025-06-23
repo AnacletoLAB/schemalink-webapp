@@ -96,11 +96,7 @@ class Header extends PureComponent {
     this.setState({ open: !this.state.open });
   };
 
-  handleLogout = async () => {
-    const confirmed = window.confirm("Are you sure you want to logout?");
-    
-    if (!confirmed) return;
-  
+  handleLogout = async () => {  
     try {
       const response = await fetch(`${import.meta.env.VITE_LOGOUT_ENDPOINT}`, {
         method: "POST",
@@ -400,6 +396,9 @@ class Header extends PureComponent {
                 )}
                 {userData.username === "schemalink" && (
                   <Dropdown.Item onClick={this.props.onViewUsersClick}>View Users</Dropdown.Item>
+                )}
+                {userData.username === "schemalink" && (
+                  <Dropdown.Item onClick={this.props.onDashboardClick}>Dashboard</Dropdown.Item>
                 )}
                 <Dropdown.Item onClick={this.handleLogout}>Logout</Dropdown.Item>
                 {userData.username !== "schemalink" && (

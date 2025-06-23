@@ -24,6 +24,7 @@ export type ApplicationDialogsState = {
   userData: any;
   showAuthDialog: boolean;
   showViewUsersDialog: boolean;
+  showDashboardDialog: boolean;
   showSubscribeToPolicyDialog: boolean;
   showInfoAccountDialog: boolean;
   showExportDialog: boolean;
@@ -59,6 +60,8 @@ type ApplicationDialogsAction =
       | 'HIDE_AUTH_DIALOG'
       | 'SHOW_VIEW_USERS_DIALOG'
       | 'HIDE_VIEW_USERS_DIALOG'
+      | 'SHOW_DASHBOARD_DIALOG'
+      | 'HIDE_DASHBOARD_DIALOG'
       | 'SHOW_SUBSCRIBE_TO_POLICY_DIALOG'
       | 'HIDE_SUBSCRIBE_TO_POLICY_DIALOG'
       | 'SHOW_INFO_ACCOUNT_DIALOG'
@@ -87,6 +90,7 @@ export default function applicationDialogs(
     userData: null,
     showAuthDialog: false,
     showViewUsersDialog: false,
+    showDashboardDialog: false,
     showSubscribeToPolicyDialog: false,
     showInfoAccountDialog: false,
     showExportDialog: false,
@@ -144,6 +148,18 @@ export default function applicationDialogs(
       return {
         ...state,
         showViewUsersDialog: false,
+      };
+
+    case 'SHOW_DASHBOARD_DIALOG':
+      return {
+        ...state,
+        showDashboardDialog: true,
+      };
+
+    case 'HIDE_DASHBOARD_DIALOG':
+      return {
+        ...state,
+        showDashboardDialog: false,
       };
 
     case 'SHOW_SUBSCRIBE_TO_POLICY_DIALOG':

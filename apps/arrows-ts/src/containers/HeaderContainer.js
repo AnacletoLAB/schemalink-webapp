@@ -7,6 +7,7 @@ import {
   delete_account,
   showAuthDialog,
   showViewUsersDialog,
+  showDashboardDialog,
   showSubscribeToPolicyDialog,
   showInfoAccountDialog,
   showExportDialog,
@@ -77,6 +78,9 @@ const mapDispatchToProps = (dispatch) => {
     },
     onViewUsersClick: () => {
       dispatch(showViewUsersDialog());
+    },
+    onDashboardClick: () => {
+      dispatch(showDashboardDialog());
     },
     onSubscribeToPolicyClick: () => {
       dispatch(showSubscribeToPolicyDialog());

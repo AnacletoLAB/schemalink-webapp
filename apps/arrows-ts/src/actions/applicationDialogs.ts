@@ -31,6 +31,18 @@ export const hideViewUsersDialog = () => {
   };
 };
 
+export const showDashboardDialog = () => {
+  return {
+    type: 'SHOW_DASHBOARD_DIALOG',
+  };
+};
+
+export const hideDashboardDialog = () => {
+  return {
+    type: 'HIDE_DASHBOARD_DIALOG',
+  };
+};
+
 export const showSubscribeToPolicyDialog = () => {
   return {
     type: 'SHOW_SUBSCRIBE_TO_POLICY_DIALOG',

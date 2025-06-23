@@ -61,7 +61,7 @@ class AuthRegisterPanel extends Component<AuthRegisterPanelProps, AuthRegisterPa
     if (name === "password") {
       const passwordRegex = /^(?!.*(.)\1{2,})(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
       if (!passwordRegex.test(value)) {
-        error = "Password must be at least 8 characters long, include an uppercase letter, a lowercase letter, a number, a special character, and not have more than 3 consecutive identical characters.";
+        error = "Password must be at least 8 characters long, include an uppercase letter, a lowercase letter, a number, a special character (@, $, !, %, *, ?, &), and not have more than 3 consecutive identical characters.";
       }
     }
     if (name === "confirmPassword" && value !== this.state.password) {
