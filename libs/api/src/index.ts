@@ -1,11 +1,30 @@
+import { Node, Relationship } from '@neo4j-arrows/model';
 export const generate = async (
   prompt: string,
-  url: string
+  url: string,
+  operation: string,
+  classesNames: Node[],
+  associationsNames: string[]
 ): Promise<string> => {
-  const response = await fetch(url, {
-    body: prompt,
-    method: 'POST',
+  const body = JSON.stringify({
+    prompt,
+    operation,
+    classes_names: classesNames,
+    associations_names: associationsNames,
   });
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body,
+  });
+  // const response = await fetch(url, {
+  //   body: prompt,
+  //   method: 'POST',
+  // });
+
   if (!response.ok) {
     if (response.status === 409) {
       alert("OpenAI rate or fund limit exceeded. An email will be sent to the admin.");
@@ -24,7 +43,10 @@ export const edit = async (
   linkmlSchema: string,
   linkmlSelection: string | null,
   prompt: string,
-  url: string
+  url: string,
+  operation: string,
+  classesNames: Node[],
+  associationsNames: string[]
 ): Promise<string> => {
   const fullPrompt = `
 Given this LinkML schema\n\n
@@ -38,7 +60,7 @@ Perform this operation\n\n
 ${prompt}\n\n
 Return an updated version of the full LinkML schema`;
 
-  return generate(fullPrompt, url);
+  return generate(fullPrompt, url, operation, classesNames, associationsNames);
 };
 
 interface ValidationIssue {

@@ -38,11 +38,12 @@ import { generate } from '@neo4j-arrows/api';
 import { importNodesAndRelationships, onSaveOntology } from '../actions/graph';
 import { clearGraph } from '../actions/storage';
 import { nodeSeparation } from '../actions/import';
-import { Callback, defaultCallbackFactory } from './GptModal';
+import { Callback, defaultCallbackFactory, getReadableRelationshipNames } from './GptModal';
 import { renameDiagram } from '../actions/diagramName';
 
 enum Method {
   ADD = 'Add',
+  ANNOTATE = 'Annotate',
   EXPLAIN = 'Explain',
   FIX = 'Fix',
   REIFY = 'Reify',
@@ -55,6 +56,8 @@ enum Action {
   NAME = 'Name',
   ONTOLOGY = 'Ontology',
   CARDINALITY = 'Cardinality',
+  DESCRIPTION = 'Description',
+  EXAMPLE = 'Example',
 }
 
 enum Selection {
@@ -94,6 +97,7 @@ interface ContextMenuProps {
   separation: number;
   importNodesAndRelationships: (graph: Graph) => void;
   setDiagramName: (diagramName: string) => void;
+  userData: { username?: string } | null;
 }
 
 const ContextMenu = ({
@@ -188,27 +192,32 @@ const ContextMenu = ({
     return nodes.length ? Selection.CLASS : Selection.RELATIONSHIP;
   };
 
-  const defaultCallback = defaultCallbackFactory(
-    ontologies,
-    graph,
-    separation,
-    clearGraph,
-    importNodesAndRelationships,
-    setDiagramName
-  );
+  const defaultCallback = (kind: CommandKind): Callback =>
+    defaultCallbackFactory(
+      kind,
+      ontologies,
+      graph,
+      separation,
+      clearGraph,
+      importNodesAndRelationships,
+      setDiagramName,
+      nodes,
+      relationships
+    );
 
-  const explanationCallback: Callback = (text: string) =>
-    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT).then(
+  const explanationCallback = (kind: CommandKind): Callback => (text: string) =>
+    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT, CommandKind[kind], nodes, relationships.map(toRelationshipClassName)).then(
       (explanation) => {
         openGtpExplanationModal(explanation);
       }
     );
 
-  const ontologiesCallbackFactory: (
+  const ontologiesCallbackFactory = (
+    kind: CommandKind,
     selection: EntitySelection,
     ontologies: Ontology[]
-  ) => Callback = (selection, ontologies) => (text: string) =>
-    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT).then(
+  ): Callback => (text: string) =>
+    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT, CommandKind[kind], nodes, relationships.map(toRelationshipClassName)).then(
       (returnedOntologies) => {
         const ids = returnedOntologies.split(',').map((id) => id.trim());
         onSaveOntology(
@@ -225,6 +234,16 @@ const ContextMenu = ({
     [Selection.CLASS]: {
       [Method.ADD]: [
         {
+          action: Action.ATTRIBUTE,
+          commandKind: CommandKind.AddAttributesToClass,
+          label: 'Attribute to class',
+        },
+        {
+          action: Action.DESCRIPTION,
+          commandKind: CommandKind.AddAttributesDescription,
+          label: 'Attributes description',
+        },
+        {
           action: Action.ASSOCIATION_RELATIONSHIP,
           commandKind: CommandKind.AddClassAssociatedToClass,
           label: 'Class associated to',
@@ -234,19 +253,76 @@ const ContextMenu = ({
           commandKind: CommandKind.AddClassSimilarToClass,
           label: 'Class similar to',
         },
+        {
+          action: Action.CLASS,
+          commandKind: CommandKind.AddChildClass,
+          label: 'Child class',
+        },
+        {
+          action: Action.CLASS,
+          commandKind: CommandKind.AddParentClass,
+          label: 'Parent class',
+        },
+      ],
+      [Method.ANNOTATE]: [
+        {
+          action: Action.DESCRIPTION,
+          commandKind: CommandKind.AnnotateClassDescription,
+          label: 'Description',
+        },
+        {
+          action: Action.EXAMPLE,
+          commandKind: CommandKind.AnnotateClassExample,
+          label: 'Example',
+        },
+        {
+          action: Action.ONTOLOGY,
+          commandKind: CommandKind.AnnotateClassOntology,
+          label: 'Ontology',
+        },
       ],
       [Method.FIX]: [
-        { action: Action.NAME, commandKind: CommandKind.FixClassName },
+        {
+          action: Action.ATTRIBUTE,
+          commandKind: CommandKind.FixClassAttributesDescription,
+          label: 'Attributes description',
+        },
+        {
+          action: Action.ATTRIBUTE,
+          commandKind: CommandKind.FixClassAttributesName,
+          label: 'Attributes name',
+        },
+        {
+          action: Action.ATTRIBUTE,
+          commandKind: CommandKind.FixClassAttributesType,
+          label: 'Attributes type',
+        },
+        {
+          action: Action.DESCRIPTION,
+          commandKind: CommandKind.FixClassDescription,
+          label: 'Class description',
+        },
+        {
+          action: Action.EXAMPLE,
+          commandKind: CommandKind.FixClassExample,
+          label: 'Class examples',
+        },
+        {
+          action: Action.NAME,
+          commandKind: CommandKind.FixClassName,
+          label: 'Class name',
+        },
         {
           action: Action.ONTOLOGY,
           commandKind: CommandKind.FixClassOntology,
-          callback: ontologiesCallbackFactory(selection, ontologies),
+          callback: ontologiesCallbackFactory(CommandKind.FixClassOntology, selection, ontologies),
+          label: 'Class ontologies',
         },
       ],
       [Method.EXPLAIN]: [
         {
           commandKind: CommandKind.ExplainClass,
-          callback: explanationCallback,
+          callback: explanationCallback(CommandKind.ExplainClass),
         },
       ],
       [Method.REIFY]: [{ commandKind: CommandKind.ReifyClass }],
@@ -254,15 +330,64 @@ const ContextMenu = ({
     [Selection.MULTIPLE]: {
       [Method.ADD]: [
         {
+          action: Action.ASSOCIATION_RELATIONSHIP,
+          commandKind: CommandKind.AddAssociationsSimilarToEntities,
+          label: 'Association relationships similar to',
+        },
+        {
           action: Action.CLASS,
           commandKind: CommandKind.AddClassesSimilarToEntities,
           label: 'Classes similar to',
         },
       ],
+      [Method.ANNOTATE]: [
+        {
+          action: Action.DESCRIPTION,
+          commandKind: CommandKind.AnnotateSubschemaDescription,
+          label: 'Classes and relationships descriptions',
+        },
+        {
+          action: Action.EXAMPLE,
+          commandKind: CommandKind.AnnotateSubschemaExample,
+          label: 'Classes and relationships examples',
+        },
+        {
+          action: Action.ONTOLOGY,
+          commandKind: CommandKind.AnnotateSubschemaOntology,
+          label: 'Classes and relationships ontologies',
+        },
+      ],
+      [Method.FIX]: [
+        {
+          action: Action.DESCRIPTION,
+          commandKind: CommandKind.FixClassesAndAssociationsDescription,
+          label: 'Classes and relationships descriptions',
+        },
+        {
+          action: Action.EXAMPLE,
+          commandKind: CommandKind.FixSubschemaExample,
+          label: 'Classes and relationships examples',
+        },
+        {
+          action: Action.NAME,
+          commandKind: CommandKind.FixClassesAndAssociationsName,
+          label: 'Classes and relationships names',
+        },
+        {
+          action: Action.ONTOLOGY,
+          commandKind: CommandKind.FixSubschemaOntology,
+          label: 'Classes and relationships ontologies',
+        },
+        {
+          action: Action.CARDINALITY,
+          commandKind: CommandKind.FixSubschemaCardinalities,
+          label: 'Relationships cardinalities',
+        },
+      ],
       [Method.EXPLAIN]: [
         {
           commandKind: CommandKind.ExplainEntities,
-          callback: explanationCallback,
+          callback: explanationCallback(CommandKind.ExplainEntities),
         },
       ],
     },
@@ -270,13 +395,72 @@ const ContextMenu = ({
       [Method.ADD]: [
         {
           action: Action.ATTRIBUTE,
-          commandKind: CommandKind.AddAttributeToRelationship,
+          commandKind: CommandKind.AddAttributesToRelationship,
+          label: 'Attributes',
+        },
+        {
+          action: Action.DESCRIPTION,
+          commandKind: CommandKind.AddRelationshipAttributesDescription,
+          label: 'Attributes description',
+        },
+      ],
+      [Method.ANNOTATE]: [
+        {
+          action: Action.DESCRIPTION,
+          commandKind: CommandKind.AnnotateRelationshipDescription,
+          label: 'Relationship description',
+        },
+        {
+          action: Action.EXAMPLE,
+          commandKind: CommandKind.AnnotateRelationshipExample,
+          label: 'Relationship examples',
+        },
+        {
+          action: Action.ONTOLOGY,
+          commandKind: CommandKind.AnnotateRelationshipOntology,
+          label: 'Relationship ontologies',
         },
       ],
       [Method.FIX]: [
         {
+          action: Action.NAME,
+          commandKind: CommandKind.FixRelationshipAttributesName,
+          label: 'Attributes name',
+        },
+        {
+          commandKind: CommandKind.FixRelationshipAttributesType,
+          label: 'Attributes type',
+        },
+        {
           action: Action.CARDINALITY,
           commandKind: CommandKind.FixRelationshipCardinality,
+          label: 'Relationship cardinalities',
+        },
+        {
+          action: Action.DESCRIPTION,
+          commandKind: CommandKind.FixRelationshipDescription,
+          label: 'Relationship description',
+        },
+        {
+          action: Action.EXAMPLE,
+          commandKind: CommandKind.FixRelationshipExample,
+          label: 'Relationship examples',
+        },
+        {
+          action: Action.NAME,
+          commandKind: CommandKind.FixRelationshipName,
+          label: 'Relationship name',
+        },
+        {
+          action: Action.ONTOLOGY,
+          commandKind: CommandKind.FixRelationshipOntology,
+          label: 'Relationship ontologies',
+        },
+      ],
+      [Method.EXPLAIN]: [
+        {
+          commandKind: CommandKind.ExplainRelationship,
+          callback: explanationCallback(CommandKind.ExplainRelationship),
         },
       ],
     },
@@ -324,9 +508,9 @@ const ContextMenu = ({
                               nodes: nodes.map(({ caption }) => caption),
                               relationships: relationships.map(toRelationshipClassName),
                               fullSchema: toYaml(fromGraph(diagramName, graph, SpiresType.LINKML)),
-                            });
+                            } as any);
                             console.log("Opening GPT modal with operationName:", CommandKind[commandKind]);
-                            openGtpModal(callback ?? defaultCallback, startingPrompt, CommandKind[commandKind]);
+                            openGtpModal(callback ?? defaultCallback(commandKind), startingPrompt, CommandKind[commandKind]);
                             onClose();
                           }
                         }}
@@ -354,9 +538,9 @@ const ContextMenu = ({
                       nodes: nodes.map(({ caption }) => caption),
                       relationships: relationships.map(toRelationshipClassName),
                       fullSchema: toYaml(fromGraph(diagramName, graph, SpiresType.LINKML)),
-                    });
+                    } as any);
                     console.log("Opening GPT modal with operationName:", CommandKind[actions[0].commandKind]);
-                    openGtpModal(actions[0].callback ?? defaultCallback, startingPrompt, CommandKind[actions[0].commandKind]);
+                    openGtpModal(actions[0].callback ?? defaultCallback(actions[0].commandKind), startingPrompt, CommandKind[actions[0].commandKind]);
                     onClose();
                   }
                 }}
@@ -376,7 +560,7 @@ const ContextMenu = ({
           onClick={async () => {
             if (permissions["OpenGPTDialog"]?.allowed) {
               console.log("Opening GPT modal with operationName:", "OpenGPTDialog");
-              openGtpModal(defaultCallback, undefined, "OpenGPTDialog");
+              openGtpModal(defaultCallback(CommandKind.OpenGPTDialog), undefined, "OpenGPTDialog");
               onClose();
             }
           }}
@@ -430,7 +614,7 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
       dispatch(showGptExplanationModal(explanation));
     },
     importNodesAndRelationships: (graph: Graph) => {
-      dispatch(importNodesAndRelationships(graph));
+      dispatch(importNodesAndRelationships(graph) as any);
     },
     clearGraph: () => {
       clearGraph()(dispatch);

@@ -12,6 +12,7 @@ export type GptModalState = {
   open: boolean;
   startingPrompt: string;
   callback?: (text: string) => Promise<void>;
+  operationName?: string;
 };
 
 export type GptExplanationModalState = {
@@ -44,6 +45,7 @@ interface ShowContextMenuAction extends Action<'SHOW_CONTEXT_MENU'> {
 interface ShowGptModalAction extends Action<'SHOW_GPT_MODAL'> {
   startingPrompt: string;
   callback?: (text: string) => Promise<void>;
+  operationName?: string;
 }
 
 interface ShowGptExplanationModalAction
@@ -51,11 +53,30 @@ interface ShowGptExplanationModalAction
   explanation: string;
 }
 
+interface LoginSuccessAction extends Action<'LOGIN_SUCCESS'> {
+  payload: {
+    userData: any;
+  };
+}
+
+interface LogoutSuccessAction extends Action<'LOGOUT_SUCCESS'> {}
+
+interface DeleteAccountSuccessAction extends Action<'DELETE_ACCOUNT_SUCCESS'> {}
+
+interface UpdateUserDataAction extends Action<'UPDATE_USER_DATA'> {
+  payload: any;
+}
+
+
 type ApplicationDialogsAction =
+  | LoginSuccessAction
+  | LogoutSuccessAction
+  | DeleteAccountSuccessAction
+  | UpdateUserDataAction
+  | ShowContextMenuAction
+  | ShowGptModalAction
+  | ShowGptExplanationModalAction
   | Action<
-      | 'LOGIN_SUCCESS'
-      | 'LOGOUT_SUCCESS'
-      | 'DELETE_ACCOUNT_SUCCESS'
       | 'SHOW_AUTH_DIALOG'
       | 'HIDE_AUTH_DIALOG'
       | 'SHOW_VIEW_USERS_DIALOG'
@@ -79,10 +100,7 @@ type ApplicationDialogsAction =
       | 'HIDE_HELP_DIALOG'
       | 'SHOW_ACKNOWLEDGEMENTS_DIALOG'
       | 'HIDE_ACKNOWLEDGEMENTS_DIALOG'
-    >
-  | ShowContextMenuAction
-  | ShowGptModalAction
-  | ShowGptExplanationModalAction;
+    >;
 
 export default function applicationDialogs(
   state: ApplicationDialogsState = {

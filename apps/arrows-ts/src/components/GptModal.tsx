@@ -12,9 +12,9 @@ import { Dispatch } from 'redux';
 import { connect } from 'react-redux';
 import { hideGptModal } from '../actions/applicationDialogs';
 import { generate } from '@neo4j-arrows/api';
-import { LinkML, toGraph } from '@neo4j-arrows/linkml';
+import { LinkML, toGraph, toRelationshipClassNameFactory } from '@neo4j-arrows/linkml';
 import yaml from 'js-yaml';
-import { Graph, Ontology, Point } from '@neo4j-arrows/model';
+import { Graph, Ontology, Point, Node, Relationship, CommandKind } from '@neo4j-arrows/model';
 
 export interface GptModalProps {
   onClose: () => void;
@@ -27,63 +27,76 @@ export interface GptModalProps {
 
 export type Callback = (text: string) => Promise<void>;
 
-export const defaultCallbackFactory: (
+export const getReadableRelationshipNames = (nodes: Node[], relationships: Relationship[]) => {
+  return relationships.map((rel) => {
+    const fromNode = nodes.find((n) => n.id === rel.fromId);
+    const toNode = nodes.find((n) => n.id === rel.toId);
+    const subject = fromNode?.caption || 'Unknown';
+    const object = toNode?.caption || 'Unknown';
+    return `${subject}${rel.type.charAt(0).toUpperCase() + rel.type.slice(1)}${object}`;
+  });
+};
+
+export const defaultCallbackFactory = (
+  kind: CommandKind,
   ontologies: Ontology[],
   graph: Graph,
   separation: number,
   clearGraph: () => void,
   importNodesAndRelationships: (graph: Graph) => void,
-  renameDiagram: (diagramName: string) => void
-) => Callback =
-  (
-    ontologies,
-    graph,
-    separation,
-    clearGraph,
-    importNodesAndRelationships,
-    renameDiagram
-  ) =>
-  (text) =>
-    generate(text, import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT).then(
-      (returnedSchema) => {
-        const diagramName = (yaml.load(returnedSchema) as LinkML).title;
-        const returnedGraph = toGraph(
-          yaml.load(returnedSchema) as LinkML,
-          ontologies
-        );
-        const returnedNodes = returnedGraph.nodes.map((node, index) => ({
-          position: new Point(
-            separation * Math.cos(360 * index),
-            separation * Math.sin(360 * index)
-          ),
+  renameDiagram: (diagramName: string) => void,
+  nodes: Node[],
+  relationships: Relationship[]
+): Callback => {
+  const readableRelations = getReadableRelationshipNames(nodes, relationships);
+  const toRelationshipClassName = toRelationshipClassNameFactory(graph.nodes);
+  return (text) =>
+    generate(
+      text,
+      import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT,
+      CommandKind[kind],
+      nodes,
+      // readableRelations
+      relationships.map(toRelationshipClassName)
+    ).then((returnedSchema) => {
+      const diagramName = (yaml.load(returnedSchema) as LinkML).title;
+      const returnedGraph = toGraph(
+        yaml.load(returnedSchema) as LinkML,
+        ontologies
+      );
+      const returnedNodes = returnedGraph.nodes.map((node, index) => ({
+        position: new Point(
+          separation * Math.cos(360 * index),
+          separation * Math.sin(360 * index)
+        ),
+        style: {},
+        ...graph.nodes.find(
+          (n) => n.caption.toLowerCase() === node.caption.toLowerCase()
+        ),
+        ...node,
+      }));
+      const returnedNodesIds = returnedNodes.map(({ id }) => id);
+      const returnedRelationships = returnedGraph.relationships
+        .filter(
+          ({ fromId, toId }) =>
+            returnedNodesIds.includes(fromId) &&
+            returnedNodesIds.includes(toId)
+        )
+        .map((relationship) => ({
           style: {},
-          ...graph.nodes.find(
-            (n) => n.caption.toLowerCase() === node.caption.toLowerCase()
-          ),
-          ...node,
+          ...relationship,
         }));
-        const returnedNodesIds = returnedNodes.map(({ id }) => id);
-        const returnedRelationships = returnedGraph.relationships
-          .filter(
-            ({ fromId, toId }) =>
-              returnedNodesIds.includes(fromId) &&
-              returnedNodesIds.includes(toId)
-          )
-          .map((relationship) => ({
-            style: {},
-            ...relationship,
-          }));
 
-        clearGraph();
-        importNodesAndRelationships({
-          nodes: returnedNodes,
-          relationships: returnedRelationships,
-          description: graph.description,
-          style: graph.style,
-        });
-        renameDiagram(diagramName);
-      }
-    );
+      clearGraph();
+      importNodesAndRelationships({
+        nodes: returnedNodes,
+        relationships: returnedRelationships,
+        description: graph.description,
+        style: graph.style,
+      });
+      renameDiagram(diagramName);
+    });
+};
 
 export const GptModal = ({
   onClose,
