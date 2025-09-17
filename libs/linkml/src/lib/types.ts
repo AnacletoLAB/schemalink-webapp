@@ -70,6 +70,7 @@ export enum SpiresType {
 
 export const regexToPattern = {
   [RegexType.AMERICAN_PHONE_NUMBER]: '^[\\d\\(\\)\\-]+$',
+  [RegexType.EMAIL_ADDRESS]: '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$',
 };
 
 export const patternToRegexType = {
@@ -80,7 +81,7 @@ export const enumToPermissibleValues = {
 };
 
 export type LinkMLNode = Omit<Node, 'style' | 'position'>;
-export type LinkMLRelationship = Omit<Relationship, 'style'>;
+export type LinkMLRelationship = Omit<Relationship, 'style'> & { annotations?: Annotations };
 export type LinkMLGraph = {
   description: string;
   nodes: LinkMLNode[];

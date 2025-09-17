@@ -123,14 +123,15 @@ export const relationshipToRelationshipClass = (
       object: nodeToTripleSlot(toNode, RelationshipMember.OBJECT),
       predicate: {
         range: `${toRelationshipClassName(relationship)}Predicate`,
-        annotations: {
-          'prompt.examples': relationship.examples
-            ? relationship.examples.join(', ')
-            : '',
-        },
       },
       ...propertiesToAttributes(relationship.properties),
     },
+
+    annotations: {
+      'prompt.examples': relationship.examples
+        ? relationship.examples.join(', ')
+        : '',
+      },
   };
 };
 

@@ -4,6 +4,9 @@ import { DiagramNameEditor } from './DiagramNameEditor';
 import arrows_logo from '../images/arrows_logo.svg';
 import { defaultCallbackFactory } from './GptModal';
 
+import {
+  CommandKind
+} from '@neo4j-arrows/model';
 
 const storageNames = {
   LOCAL_STORAGE: 'Web Browser storage',
@@ -311,12 +314,15 @@ class Header extends PureComponent {
                   if (isAuthenticated && this.state.canGenerate) {
                     onGenerateClick(
                       defaultCallbackFactory(
+                        CommandKind,
                         ontologies,
                         graph,
                         separation,
                         clearGraph,
                         importNodesAndRelationships,
-                        setDiagramName
+                        setDiagramName,
+                        graph.nodes,
+                        graph.relationships
                       )
                     );
                   }

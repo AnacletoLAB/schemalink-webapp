@@ -145,7 +145,16 @@ export const GptModal = ({
   };
 
   return (
-    <Modal open={open} onClose={onClose}>
+    <Modal
+      open={open}
+      onClose={() => {
+        if (!state.loading) {
+          onClose();
+        }
+      }}
+      closeOnDimmerClick={false}
+      closeOnEscape={false}
+    >
       <ModalContent>
         <Form loading={state.loading}>
           <TextArea

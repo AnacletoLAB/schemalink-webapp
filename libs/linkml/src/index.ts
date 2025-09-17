@@ -265,7 +265,8 @@ export const toGraph = (
   const { relationships: triples } = importTriples(
     classes,
     nodes,
-    inheritances.length
+    inheritances.length,
+    ontologies
   );
   const { relationships: compoundTypes } = importCompoundTypes(
     classes,

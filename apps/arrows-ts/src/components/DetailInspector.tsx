@@ -261,17 +261,86 @@ export default class DetailInspector extends Component<
             relationship.relationshipType === RelationshipType.ASSOCIATION
         )
       ) {
-        fields.push(
-          <Form.Field key="_type">
-            <label>Name</label>
-            <Input
-              value={commonType || ''}
-              onChange={(event) => onSaveType(selection, event.target.value)}
-              placeholder={commonType === undefined ? '<multiple types>' : null}
-            />
-          </Form.Field>
-        );
+        if (
+          entities.length < 2 &&
+          (!isRelationship(entities[0]) ||
+            (isRelationship(entities[0]) &&
+              entities[0].relationshipType === RelationshipType.ASSOCIATION))
+        ) {
+          const { ontologies: entityOntologies } = entities[0];
+          const { ontologies: storeOntologies, isFetching } = ontologies;
 
+          const ontologiesExamples = entityOntologies
+            ? entityOntologies
+                .flatMap((ontology: Ontology) => {
+                  const matching = storeOntologies.find(({ id }) => ontology.id === id);
+                  return matching
+                    ? entities[0].entityType === 'relationship'
+                      ? matching.properties
+                      : matching.terms
+                    : [];
+                })
+                .sort(() => Math.random() - 0.5).slice(0, 10)
+            : [];
+
+          const examplesOptions = [
+            ...(commonType ? [commonType] : []),
+            ...ontologiesExamples,
+            ...this.state.additionalExamplesOptions,
+          ].map((example, index) => ({
+            key: index,
+            text: example,
+            value: example,
+          }));
+
+          // callback per aggiunte manuali
+          const onAddType = (value: string) => {
+            this.setState({
+              ...this.state,
+              additionalExamplesOptions: [
+                ...this.state.additionalExamplesOptions,
+                value,
+              ],
+            });
+            onSaveType(selection, value);
+          };
+
+          fields.push(
+            <Form.Field key="_type">
+          <label>Name</label>
+          <Dropdown
+            value={typeof commonType === 'string' ? commonType : ''}
+            allowAdditions
+            search
+            clearable
+            selection
+            options={examplesOptions}
+            placeholder={
+              examplesOptions.length > 0
+                ? "Choose or add a name"
+                : "Provide a name for this relationship"
+            }
+            loading={isFetching}
+            noResultsMessage={null}
+            onChange={(event, { value }) => {
+              if (value) onSaveType(selection, value as string);
+              else onSaveType(selection, '');
+            }}
+            onAddItem={(event, { value }) => {
+              if (typeof value === 'string') {
+                this.setState({
+                  additionalExamplesOptions: [
+                    ...this.state.additionalExamplesOptions,
+                    value,
+                  ],
+                });
+                onSaveType(selection, value);
+              }
+            }}
+          />
+        </Form.Field>
+          );
+        }
         fields.push(
           <Form.Field key="_cardinality">
             <label>Cardinality</label>
@@ -380,8 +449,7 @@ export default class DetailInspector extends Component<
                   : matching.terms
                 : [];
             })
-            .toSorted((a: string, b: string) => Math.random() - 0.5)
-            .toSpliced(10)
+            .sort(() => Math.random() - 0.5).slice(0, 10)
         : [];
       const examplesOptions = [
         ...(examples ?? []),
@@ -442,6 +510,69 @@ export default class DetailInspector extends Component<
         </Form.Field>
       );
 
+if (
+  entities.length < 2 &&
+  isRelationship(entities[0]) &&
+  entities[0].relationshipType === RelationshipType.ASSOCIATION
+) {
+  const rel = entities[0] as Relationship;
+  const { examples: relExamples } = rel;
+  const { isFetching } = ontologies;
+
+  // Find source and target nodes in the graph
+  const sourceNode = graph.nodes.find((n) => n.id === rel.fromId);
+  const targetNode = graph.nodes.find((n) => n.id === rel.toId);
+
+  const sourceExamples = sourceNode?.examples ?? [];
+  const targetExamples = targetNode?.examples ?? [];
+  const relName = rel.type ? [rel.type] : [];
+
+  // Generate concatenated examples
+  const concatenatedExamples: string[] = [];
+  for (const src of sourceExamples) {
+    for (const tgt of targetExamples) {
+      const example = [src, ...relName, tgt].filter(Boolean).join(' - ');
+      concatenatedExamples.push(example);
+    }
+  }
+
+  // Subsample if too many
+  const sampledExamples = concatenatedExamples.slice(0, 10);
+
+  const examplesOptions = [
+    ...(relExamples ?? []),
+    ...sampledExamples,
+    ...this.state.additionalExamplesOptions,
+  ].map((example, index) => ({ key: index, text: example, value: example }));
+
+  const onAddExample = (example: string) =>
+    this.setState({
+      ...this.state,
+      additionalExamplesOptions: [...this.state.additionalExamplesOptions, example],
+    });
+
+  fields.push(
+    <Form.Field key="_examples">
+      <label>Examples</label>
+      <Dropdown
+        value={relExamples ?? []}
+        allowAdditions
+        search
+        multiple
+        clearable
+        selection
+        options={examplesOptions}
+        placeholder={'Provide examples for this relationship'}
+        loading={isFetching}
+        onChange={(event, { value }) => onSaveExamples(selection, value as string[])}
+        onAddItem={(event, { value }) => onAddExample(value as string)}
+        disabled={isFetching}
+      />
+    </Form.Field>
+  );
+}
+ else {
+
       fields.push(
         <Form.Field key="_examples">
           <label>Examples</label>
@@ -463,7 +594,7 @@ export default class DetailInspector extends Component<
           />
         </Form.Field>
       );
-    }
+    }}
 
     if (
       (selectionIncludes.relationships || selectionIncludes.nodes) &&

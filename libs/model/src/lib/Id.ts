@@ -23,6 +23,7 @@ export enum BasicType {
 
 export enum RegexType {
   AMERICAN_PHONE_NUMBER = 'American Phone Number',
+  EMAIL_ADDRESS = 'Email address',
 }
 
 export enum EnumType {

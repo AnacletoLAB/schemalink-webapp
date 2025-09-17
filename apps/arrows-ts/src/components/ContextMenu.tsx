@@ -315,7 +315,7 @@ const ContextMenu = ({
         {
           action: Action.ONTOLOGY,
           commandKind: CommandKind.FixClassOntology,
-          callback: ontologiesCallbackFactory(CommandKind.FixClassOntology, selection, ontologies),
+          //callback: ontologiesCallbackFactory(CommandKind.FixClassOntology, selection, ontologies),
           label: 'Class ontologies',
         },
       ],

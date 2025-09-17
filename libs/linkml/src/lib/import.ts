@@ -48,7 +48,7 @@ const attributesToProperties = (attributes?: Record<string, Attribute>) =>
           : required
           ? RequiredType.REQUIRED
           : RequiredType.OPTIONAL,
-        range: range || (pattern ? patternToRegexType[pattern] : undefined),
+        range: range || (pattern ? patternToRegexType[pattern] : undefined) || 'string',
         collectionType: array
           ? CollectionType.ARRAY
           : multivalued
@@ -118,7 +118,7 @@ export const importNodes = (
             ),
             description: description || annotations?.prompt || '',
             examples: [
-              ...new Set(annotations?.['prompt.examples']?.split(',')),
+              ...new Set(annotations?.['prompt.examples']?.split(', ')),
             ],
           });
         }
@@ -131,13 +131,14 @@ export const importNodes = (
 export const importTriples = (
   classes: Record<string, LinkMLClass>,
   nodes: LinkMLNode[],
-  nextRelationshipId: number
+  nextRelationshipId: number,
+  ontologies: Ontology[]
 ): ImportRelationshipsReturnType => {
   const triples: LinkMLRelationship[] = [];
   let index = nextRelationshipId;
   Object.entries(classes)
     .filter(([key, { is_a }]) => is_a === SpiresCoreClasses.Triple)
-    .forEach(([key, { slot_usage, description }]) => {
+    .forEach(([key, { slot_usage, description, annotations }]) => {
       if (slot_usage) {
         const fromNodeIndex = nodes.findIndex(
           (node) => node.caption === slot_usage['subject'].range
@@ -154,7 +155,7 @@ export const importTriples = (
             return [
               ...new Set([
                 ...(node.examples ?? []),
-                ...(annotations?.['prompt.examples']?.split(',') ?? []),
+                ...(annotations?.['prompt.examples']?.split(', ') ?? []),
               ]),
             ];
           };
@@ -225,6 +226,19 @@ export const importTriples = (
             ? classes[predicateClassName]
             : undefined;
 
+          const predicateAnnotators = predicate?.annotations?.annotators
+            ?.split(',')
+            .map((a) => a.trim())
+            .filter((a) => a.startsWith('sqlite:obo:'))
+            .map((a) => a.replace('sqlite:obo:', ''));
+
+          const predicateOntologies = ontologies.filter(
+            ({ id }) =>
+              (predicate?.id_prefixes &&
+                predicate.id_prefixes.includes(id.toUpperCase())) ||
+              predicateAnnotators?.includes(id.toLowerCase())
+          );
+
           index = triples.push({
             relationshipType: RelationshipType.ASSOCIATION,
             fromId: fromNode.id,
@@ -235,14 +249,20 @@ export const importTriples = (
             id: index.toString(),
             cardinality: cardinality,
             customCardinality:
-              cardinality === Cardinality.CUSTOM
-                ? customCardinality
-                : undefined,
-            examples:
-              slot_usage['predicate'].annotations?.['prompt.examples']?.split(
-                ','
-              ),
+              cardinality === Cardinality.CUSTOM ? customCardinality : undefined,
             description: description ?? '',
+            annotations: {
+              ...(predicate?.annotations ?? {}),
+              ...(annotations ?? {}),
+            },
+            examples: [
+              ...new Set([
+                ...(annotations?.['prompt.examples']?.split(', ') ?? []),
+                ...(predicate?.annotations?.['prompt.examples']?.split(', ') ??
+                  []),
+              ]),
+            ],
+            ontologies: predicateOntologies,
           });
         }
       }
@@ -281,6 +301,7 @@ export const importCompoundTypes = (
             id: index.toString(),
             cardinality: Cardinality.MANY_TO_MANY,
             description: '',
+            annotations: {},
           });
         }
       }

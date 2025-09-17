@@ -314,10 +314,10 @@ export const computePrompt = (command: CommandType): string => {
   const OUTRO =
     'Maintain all the existing classes and structure from the schema. Return the entire updated schema.';
   const OUTRO_ASSOCIATIONS =
-    'Maintain all the existing associations and structure from the schema. Return the entire updated schema.';
+    'Maintain all the existing relationships and structure from the schema. Return the entire updated schema.';
 
   const RELATIONSHIP_EXPLANATION =
-    'For each association, introduce a predicate (a class characterized by is_a: RelationshipType) and a new relationship (a class characterized by is_a: Triple).';
+    'For each relationship, introduce a predicate (a class characterized by is_a: RelationshipType) and a new relationship (a class characterized by is_a: Triple).';
 
   switch (command.kind) {
     case CommandKind.AddClassSimilarToClass:
@@ -409,7 +409,8 @@ ${OUTRO}
 
 ${command.fullSchema}`;
     case CommandKind.FixClassAttributesType:
-      return `${INTRO}review the attributes within the class named ${command.nodes} and, if necessary, update their types to better reflect their intended semantics. For example, string-type attributes might benefit from restrictions such as patterns or enums to confine their values.
+      return `${INTRO}review the attributes within the class named ${command.nodes} and, if necessary, update their types to better reflect their intended semantics. Use the range: slot within an attribute to specify its type.
+Examples: 1- string-type attributes like identifiers or values might benefit from restrictions such as integers (range: integer) to confine their values; 2- multivalued: true specifies that an attribute is a list.
 Ensure that any changes to attribute names enhance clarity while preserving the original meaning.
 ${OUTRO}
 
@@ -426,96 +427,101 @@ The explanation should include details on its role within the schema, its relati
 
 ${command.fullSchema}`;
     case CommandKind.AddAttributesToRelationship:
-      return `${INTRO}add relevant attributes to the association named ${command.relationships}.
-Ensure that the proposed attributes align with the semantics of the association ${command.relationships}.
+      return `${INTRO}add relevant attributes to the relationship named ${command.relationships}Relationship. Add them in the slot_usage slot.
+Ensure that the proposed attributes align with the semantics of the relationship ${command.relationships}Relationship.
 ${OUTRO}
 
 ${command.fullSchema}`;
     case CommandKind.AddRelationshipAttributesDescription:
-      return `${INTRO}add relevant descriptions to the attributes of the association named ${command.relationships}.
-Ensure that the proposed description for the attributes align with the semantics of the association ${command.relationships}.
+      return `${INTRO}add relevant descriptions to the attributes of the relationship named ${command.relationships}Relationship.
+Ensure that the proposed description for the attributes align with the semantics of the relationship ${command.relationships}Relationship.
 ${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.AnnotateRelationshipOntology:
-      return `${INTRO}introduce one or more ontologies that are suitable for describing the association ${command.relationships}.
+      return `${INTRO}introduce one or more ontologies that are suitable for describing the predicate ${command.relationships}Predicate e.g. sqlite:obo:ro, sqlite:obo:so. NOTE that the format for specifying ontologies is e.g. sqlite:obo:ro for relations ontology (RO).
 Use annotations → annotators nested attribute to specify the ontology and report ontology prefix(es) as well.
 The entire structure and existing classes should remain intact. Return the entire updated schema.
 
 ${command.fullSchema}`;
     case CommandKind.AnnotateRelationshipExample:
-      return `${INTRO}add example instances to the association ${command.relationships} using the prompt.example attribute.
+      return `${INTRO}add example instances to the association ${command.relationships}Relationship.
+
+For instance:
+  Relationship:
+    is_a: Triple
+    description: ... # left unchanged
+    annotations: # 
+      prompt.examples: '' # --> Add examples here
+    slot_usage:
+      ... # left unchanged.
+
 Do not describe examples, and separate instances with commas.
 Ensure that the new instances are aligned with the overall schema structure.
 ${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.AnnotateRelationshipDescription:
-      return `${INTRO}add a detailed description to the association ${command.relationships}.
+      return `${INTRO}add a detailed description to the association ${command.relationships}Relationship.
 Ensure that the description aligns with the overall schema structure.
 Return the entire updated schema while preserving all other existing associations and structures intact.
 
 ${command.fullSchema}`;
     case CommandKind.FixRelationshipName:
-      return `${INTRO}if you retain it necessary, update the association named ${command.relationships} by renaming it to better reflect its role and context within the schema.
+      return `${INTRO}if you retain it necessary, update the predicate named ${command.relationships}Predicate by introducing or modifying its id attribute using a pattern to better reflect its role and context within the schema. Do not modify the predicate class name (${command.relationships}Predicate) itself, only its pattern. Note that the attribute id needs a pattern that specifies the predicate.
 Ensure the new name enhances clarity and preserves the intended meaning.
 ${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.FixRelationshipDescription:
-      return `${INTRO}if you retain it necessary, update/improve the description belonging to the association named ${command.relationships}.
-Ensure the new examples enhance clarity and are coherent to the association semantics.
+      return `${INTRO}if you retain it necessary, update/improve the description belonging to the relationship named ${command.relationships}Relationship.
+Ensure the new examples enhance clarity and are coherent to the relationship semantics.
 ${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.FixRelationshipAttributesName:
-      return `${INTRO}if you retain it necessary, update the attributes belonging to the association named ${command.relationships}.
+      return `${INTRO}if you retain it necessary, update the attributes belonging to the relationship named ${command.relationships}Relationship.
 Rename them better to reflect their role and context within the class and the schema.
 Ensure the new names enhance clarity and preserve the intended meaning.
 ${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.FixRelationshipAttributesType:
-      return `${INTRO}review the attributes within the association named ${command.relationships} and, if necessary, update their types to better reflect their intended semantics.
-For example, string-type attributes might benefit from restrictions such as patterns or enums to confine their values.
+      return `${INTRO}review the attributes within the relationship named ${command.relationships}Relationship and, if necessary, update their types to better reflect their intended semantics. Use the range: slot within an attribute to specify its type.
+Examples: 1- string-type attributes like values might benefit from restrictions such as integers (range: integer) to confine their values; 2- multivalued: true specifies that an attribute is a list.
 Ensure that any changes to attribute names enhance clarity while preserving the original meaning.
 ${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.FixRelationshipOntology:
-      return `${INTRO}propose relevant ontologies that could be used to annotate the association named ${command.relationships}.
+      return `${INTRO}propose new, remove, or fix ontologies that could be used to annotate the predicate named ${command.relationships}Predicate e.g. sqlite:obo:ro, sqlite:obo:so. NOTE that the format for specifying ontologies is e.g. sqlite:obo:ro for relations ontology (RO).
+Use annotations → annotators nested attribute to specify the ontology and report ontology prefix(es) as well.
 ${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.FixRelationshipExample:
-      return `${INTRO}if you retain it necessary, update/improve the examples (prompt.examples attribute) belonging to the association named ${command.relationships}.
-Ensure the new examples enhance clarity and are coherent to the association semantics.
+      return `${INTRO}if you retain it necessary, update/improve the examples (prompt.examples attribute) belonging to the relationship named ${command.relationships}Relationship.
+Ensure the new examples enhance clarity and are coherent to the relationship semantics.
 ${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.ExplainRelationship:
-      return `${INTRO}explain in human-friendly terms the association ${command.relationships}.
+      return `${INTRO}explain in human-friendly terms the relationship ${command.relationships}Relationship.
 The explanation should include details on its role within the schema and any examples provided.
 
-${command.fullSchema}`;
-    case CommandKind.AddClassesSimilarToEntities:
+    ${command.fullSchema}`;
+        case CommandKind.AddClassesSimilarToEntities:
       return `${INTRO}add one or more new classes that semantically fit the context defined by the subschema,
-which includes the following classes: ${[
-        ...(command.nodes || [])
-      ].join(', ')} and associations: ${[
-        ...(command.relationships || [])
-      ].join(', ')}.
-The new classes should logically extend or complement the meaning and structure of these existing classes and associations.
+which includes the following classes: ${[...(command.nodes || [])].map(item => item).join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
+The new classes should logically extend or complement the meaning and structure of these existing classes and relationships.
 ${OUTRO}
 
-${command.fullSchema}`;
+    ${command.fullSchema}`;
     case CommandKind.AddAssociationsSimilarToEntities:
       return `${INTRO}add one or more new associations that semantically fit the context defined by the subschema,
 which includes the following classes: ${[
         ...(command.nodes || [])
-      ].join(', ')} and associations: ${[
-        ...(command.relationships || [])
-      ].join(', ')}.
+      ].join(', ')} and associations: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
 The new associations should logically extend or complement the meaning and structure of these existing classes and associations.
 ${OUTRO_ASSOCIATIONS}
 
@@ -523,82 +529,82 @@ ${command.fullSchema}`;
     case CommandKind.AnnotateSubschemaOntology:
       return `${INTRO}propose relevant ontologies that could be used to annotate associations and classes of the subschema which includes the following classes: ${[
         ...(command.nodes || [])
-      ].join(', ')} and associations: ${[
-        ...(command.relationships || [])
-      ].join(', ')}.
+      ].join(', ')} and predicates: ${[...(command.relationships || [])].map(item => item + 'Predicate').join(', ')}.
+Use the annotators nested attribute within annotations to specify the ontology and report ontology prefix(es) as well.
+Example for classes:
+    annotations:
+      annotators: sqlite:obo:mondo, sqlite:obo:hp
+Example for predicates (annotate the predicates, not the relationships):
+    annotations:
+      annotators: sqlite:obo:ro, sqlite:obo:so
 Maintain all the existing classes, associations, and structure from the schema.
 Return the entire updated schema.
 
 ${command.fullSchema}`;
     case CommandKind.AnnotateSubschemaExample:
-      return `${INTRO}add example instances to the associations and the classes belonging to the subschema which includes the following classes: ${[
+      return `${INTRO}add example instances to the relationships and the classes belonging to the subschema which includes the following classes: ${[
         ...(command.nodes || [])
-      ].join(', ')} and associations: ${[
-        ...(command.relationships || [])
-      ].join(', ')}.
-Make use of the prompt.example attribute.
-Do not describe examples, and separate instances with commas.
+      ].join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
+Fill examples in the prompt.example attribute.  Note that classes MUST be annotated separately from relationships i.e. at the class level.
+Do not describe examples, and separate examples with commas. Avoid quotation marks and colons.
 Ensure that the new instances are aligned with the overall schema structure. Maintain all the existing classes, associations, and structure from the schema.
 Return the entire updated schema.
 
 ${command.fullSchema}`;
     case CommandKind.AnnotateSubschemaDescription:
-      return `${INTRO}if absent, add a description to the associations and the classes belonging to the subschema which includes the following classes: ${[
+      return `${INTRO}add or update the descriptions to the relationships and the classes belonging to the subschema which includes the following classes: ${[
         ...(command.nodes || [])
-      ].join(', ')} and associations: ${[
-        ...(command.relationships || [])
-      ].join(', ')}.
-Maintain all the existing classes, associations, and structure from the schema. Return the entire updated schema.
+      ].join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
+Use the description slot within a class or relationship to specify its description. If not present, add it.
+Maintain all the existing classes, relationships, and structure from the schema. Return the entire updated schema.
 
 ${command.fullSchema}`;
     case CommandKind.FixClassesAndAssociationsName:
-      return `${INTRO}if you retain it necessary, update the names of the associations and classes belonging to the subschema which includes the following classes: ${[
+      return `${INTRO}if you retain it necessary, update the names of the relationships and classes belonging to the subschema which includes the following classes: ${[
         ...(command.nodes || [])
-      ].join(', ')} and associations: ${[
-        ...(command.relationships || [])
-      ].join(', ')}.
+      ].join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
 Ensure the new name enhances clarity and preserves the intended meaning.
 ${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.FixClassesAndAssociationsDescription:
-      return `${INTRO}if you retain it necessary, add/update the description of the classes: ${[
+      return `${INTRO}if you retain it necessary, add/fix/update the description of the classes: ${[
         ...(command.nodes || [])
-      ].join(', ')} ${[
-        ...(command.relationships || [])
-      ].join(', ')}.
+      ].join(', ')} ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
+Use the description slot within a class or relationship to specify its description. If not present, add it.
 Ensure the new name enhances clarity and preserves the intended meaning.
 ${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.FixSubschemaOntology:
-      return `${INTRO}if you retain it necessary, add/update an ontology suitable for annotating associations and classes belonging to the subschema which includes the following classes: ${[
+      return `${INTRO}if you retain it necessary, add/fix/update an ontology suitable for annotating predicates and classes belonging to the subschema which includes the following classes: ${[
         ...(command.nodes || [])
-      ].join(', ')} and associations: ${[
-        ...(command.relationships || [])
-      ].join(', ')}. Make sure to add the ontologies in the related class "annotators" column, e.g.
+      ].join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Predicate').join(', ')}.
+Make sure to add the ontologies specified in annotations --> annotators. Add the annotations --> annotators section if not present. See examples below because the annotators is nested within annotations.
+Examples for classes:
     annotations:
-      annotators: sqlite:obo:swo, sqlite:obo:xlmod
+      annotators: sqlite:obo:mondo, sqlite:obo:hp
+Examples for predicates (annotate the predicates, not the relationships):
+    annotations:
+      annotators: sqlite:obo:ro, sqlite:obo:so
 Do NOT add a new "classes:" section.
 ${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.FixSubschemaExample:
-      return `${INTRO}if you retain it necessary, update/improve the examples for the associations and classes belonging to the subschema which includes the following classes: ${[
+      return `${INTRO}if you retain it necessary, update/improve the examples for the relationships and classes belonging to the subschema which includes the following classes: ${[
         ...(command.nodes || [])
-      ].join(', ')} and associations: ${[
-        ...(command.relationships || [])
-      ].join(', ')}.
+      ].join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
+Fill examples in the prompt.example attribute. Note that classes MUST be annotated separately from relationships i.e. at the class level.
+Do not describe examples, and separate examples with commas. Avoid quotation marks and colons.
 Ensure the new examples enhance clarity and are coherent to the association semantics.
 ${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.FixSubschemaCardinalities:
-      return `${INTRO}if you retain it necessary, update/improve the cardinality for the associations belonging to the subschema which includes the following classes: ${[
+      return `${INTRO}if you retain it necessary, update/fix/improve the cardinality for the relationships belonging to the subschema which includes the following classes: ${[
         ...(command.nodes || [])
-      ].join(', ')} and associations: ${[
-        ...(command.relationships || [])
-      ].join(', ')}. Specify the cardinalities using the minum_cardinality and maximum_cardinality attributes.
+      ].join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}. Specify the cardinalities using the minum_cardinality and maximum_cardinality attributes as in the context.
 Note that maximum_cardinality MUST be strictly greater than minimum_cardinality.
 Ensure the new cardinalities enhance clarity and are coherent to the association semantics.
 ${OUTRO_ASSOCIATIONS}
@@ -624,13 +630,16 @@ Maintain all the existing classes and structure from the schema (so you MUST add
 ${command.fullSchema}
 `;
     case CommandKind.FixClassOntology:
-      return `${INTRO}propose relevant ontologies that could be used to annotate the class named ${command.nodes}.
-${OUTRO}
+      return `${INTRO}propose new relevant or fix ontologies that could be used to annotate the class named ${command.nodes}.
+Use the annotators nested attribute within annotations to specify the ontology and report ontology prefix(es) as well e.g.
+    annotations:
+      annotators: sqlite:obo:mondo, sqlite:obo:hp
+The entire structure and existing classes should remain intact. Return the entire updated schema.
 
 ${command.fullSchema}`;
     case CommandKind.FixRelationshipCardinality:
-      return `${INTRO} if you retain it necessary, update/improve the cardinality of the association named
-${command.relationships}, specified using the minimum_cardinality and maximum_cardinality attributes.
+      return `${INTRO} if you retain it necessary, update/improve the cardinality of the relationship named
+${command.relationships}Relationship, specified using the minimum_cardinality and maximum_cardinality attributes.
 Ensure the new cardinalities enhance clarity and are coherent to the association semantics.
 ${OUTRO}
 
