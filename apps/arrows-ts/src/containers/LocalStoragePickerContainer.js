@@ -1,5 +1,7 @@
 import { connect } from 'react-redux';
 import { getFileFromLocalStorage, pickDiagramCancel } from '../actions/storage';
+import { deleteGraphFromLocalStorage } from '../actions/localStorage';
+import { removeFromRecentStorage } from '../actions/recentStorage';
 import LocalStoragePickerModal from '../components/LocalStoragePickerModal';
 
 const mapStateToProps = (state) => {
@@ -14,6 +16,10 @@ const mapDispatchToProps = (dispatch) => {
   return {
     onPick: (fileId) => {
       dispatch(getFileFromLocalStorage(fileId));
+    },
+    onDelete: (fileId) => {
+      deleteGraphFromLocalStorage(fileId);
+      dispatch(removeFromRecentStorage('LOCAL_STORAGE', fileId));
     },
     onCancel: () => {
       dispatch(pickDiagramCancel());

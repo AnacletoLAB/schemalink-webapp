@@ -14,6 +14,13 @@ export enum RelationshipType {
   INHERITANCE = 'INHERITANCE',
 }
 
+export enum Navigation {
+  None = 'None',
+  L2R = 'L2R',
+  R2L = 'R2L',
+  Reification = 'Reification',
+}
+
 export function toVisualCardinality(cardinality: Cardinality): string {
   switch (cardinality) {
     case Cardinality.ONE_TO_ONE:
@@ -45,6 +52,7 @@ export interface Relationship extends Entity {
   examples?: string[];
   cardinality?: Cardinality;
   customCardinality?: CustomCardinality;
+  navigation?: Navigation;
 }
 
 export interface RelationshipWithDefaultCardinality extends Relationship {

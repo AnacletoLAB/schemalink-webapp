@@ -55,6 +55,10 @@ export const saveGraphToLocalStorage = (fileId, data) => {
   save('GRAPH|' + fileId, data);
 };
 
+export const deleteGraphFromLocalStorage = (fileId) => {
+  localStorage.removeItem('GRAPH|' + fileId);
+};
+
 export const loadRecentlyAccessedDiagrams = () => {
   return load(key_recentlyAccessedDiagrams);
 };

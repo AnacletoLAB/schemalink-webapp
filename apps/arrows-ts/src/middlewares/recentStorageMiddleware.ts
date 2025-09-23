@@ -21,7 +21,10 @@ export const recentStorageMiddleware =
       );
     }
 
-    if (action.type === 'UPDATE_RECENT_STORAGE') {
+    if (
+      action.type === 'UPDATE_RECENT_STORAGE' ||
+      action.type === 'REMOVE_RECENT_STORAGE_ENTRY'
+    ) {
       saveRecentlyAccessedDiagrams(newState.recentStorage);
     }
 

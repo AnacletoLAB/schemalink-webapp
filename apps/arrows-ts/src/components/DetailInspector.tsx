@@ -26,6 +26,7 @@ import {
   summarizeProperties,
   toVisualCardinality,
   RelationshipType,
+  Navigation,
   Graph,
   Node,
   EntitySelection,
@@ -64,6 +65,7 @@ interface DetailInspectorProps {
     selection: EntitySelection,
     relationshipType: RelationshipType
   ) => void;
+  onSaveNavigation: (selection: EntitySelection, navigation: Navigation) => void;
   onSaveType: (selection: EntitySelection, type: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -161,6 +163,7 @@ export default class DetailInspector extends Component<
       onDeleteProperty,
       onSaveOntology,
       onSaveDescription,
+      onSaveNavigation,
     } = this.props;
 
     const { styleActive } = this.state;
@@ -173,6 +176,13 @@ export default class DetailInspector extends Component<
       nodes: selectedNodes.length > 0,
       relationships: relationships.length > 0,
     };
+
+    // Build class reference options from node captions, excluding current node when single selection
+    const allCaptions = graph.nodes.map((node) => node.caption).filter(Boolean);
+    const rangeOptions: string[] =
+      selectedNodes.length === 1
+        ? allCaptions.filter((name) => name !== selectedNodes[0].caption)
+        : allCaptions;
 
     fields.push(
       <Divider key="DataDivider" horizontal clearing style={{ paddingTop: 50 }}>
@@ -199,7 +209,9 @@ export default class DetailInspector extends Component<
               onSaveDescription(selection, event.target.value)
             }
             placeholder={
-              description === undefined ? '<multiple descriptions>' : null
+              description === undefined && entities.length > 1
+                ? '<multiple descriptions>'
+                : null
             }
           />
         </Form.Field>
@@ -230,6 +242,9 @@ export default class DetailInspector extends Component<
       );
       const commonCardinality = commonValue(
         relationships.map((relationship) => relationship.cardinality)
+      );
+      const commonNavigation = commonValue(
+        relationships.map((relationship) => relationship.navigation)
       );
 
       fields.push(
@@ -366,6 +381,24 @@ export default class DetailInspector extends Component<
           </Form.Field>
         );
 
+        fields.push(
+          <Form.Field key="_navigation">
+            <label>Navigation</label>
+            <Dropdown
+              selection
+              value={commonNavigation ?? Navigation.None}
+              options={Object.values(Navigation).map((nav) => ({
+                key: nav,
+                text: nav,
+                value: nav,
+              }))}
+              onChange={(e, { value }) =>
+                onSaveNavigation(selection, value as Navigation)
+              }
+            />
+          </Form.Field>
+        );
+
         if (commonCardinality === Cardinality.CUSTOM && entities.length === 1) {
           // We know this because of the if statement above
           const { customCardinality } =
@@ -437,6 +470,20 @@ export default class DetailInspector extends Component<
     ) {
       const { ontologies: entityOntologies, examples } = entities[0];
       const { ontologies: storeOntologies, isFetching } = ontologies;
+      // Determine readiness of ontology-derived example options for entity examples
+      const selectedOntologyIds = entityOntologies
+        ? entityOntologies.map((ontology: Ontology) => ontology.id)
+        : [];
+      const requiresProperties = isRelationship(entities[0]);
+      const examplesReady =
+        selectedOntologyIds.length === 0 ||
+        selectedOntologyIds.every((id) => {
+          const matching = storeOntologies.find((o) => o.id === id);
+          if (!matching) return false;
+          return requiresProperties
+            ? Array.isArray(matching.properties)
+            : Array.isArray(matching.terms);
+        });
       const ontologiesExamples = entityOntologies
         ? entityOntologies
             .flatMap((ontology: Ontology) => {
@@ -563,10 +610,10 @@ if (
         selection
         options={examplesOptions}
         placeholder={'Provide examples for this relationship'}
-        loading={isFetching}
+        loading={isFetching || !examplesReady}
         onChange={(event, { value }) => onSaveExamples(selection, value as string[])}
         onAddItem={(event, { value }) => onAddExample(value as string)}
-        disabled={isFetching}
+        disabled={isFetching || !examplesReady}
       />
     </Form.Field>
   );
@@ -588,9 +635,9 @@ if (
               onSaveExamples(selection, value as string[])
             }
             placeholder={'Provide examples for this entity'}
-            loading={isFetching}
+            loading={isFetching || !examplesReady}
             onAddItem={(event, { value }) => onAddExample(value as string)}
-            disabled={isFetching}
+            disabled={isFetching || !examplesReady}
           />
         </Form.Field>
       );
@@ -614,6 +661,7 @@ if (
           key={`properties-${entities.map((entity) => entity.id).join(',')}`}
           properties={properties}
           propertySummary={propertySummary}
+          rangeOptions={rangeOptions}
           onMergeOnValues={(propertyKey: string) =>
             onMergeOnValues(selection, propertyKey)
           }

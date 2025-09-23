@@ -16,6 +16,7 @@ import { TextMeasurementContext } from './utils/TextMeasurementContext';
 import { AnyArrow } from './AnyArrow';
 import { TextOrientation } from './circumferentialTextAlignment';
 import { DrawingContext } from './utils/DrawingContext';
+import { createPropertyNameFormatter, formatTypeString } from '@neo4j-arrows/linkml';
 
 export class VisualRelationship {
   resolvedRelationship: ResolvedRelationship;
@@ -83,10 +84,26 @@ export class VisualRelationship {
         ))
       );
     }
+    // Format relationship properties for display 
     if (hasProperties) {
+      const formatRelationshipPropertyName = createPropertyNameFormatter(true);
+      const propertyDisplayStrings = Object.entries(
+        resolvedRelationship.relationship.properties
+      ).map(([key, attr]) => {
+        let typeStr = attr.range || '';
+        if (attr.collectionType) {
+          typeStr = `${attr.collectionType}(${typeStr})`;
+        }
+        const formattedKey = formatRelationshipPropertyName(
+          key,
+          attr.requiredType
+        );
+        const formattedType = formatTypeString(typeStr, attr.requiredType);
+        return formattedType ? `${formattedKey} : ${formattedType}` : formattedKey;
+      });
       this.components.push(
         (this.properties = new PropertiesOutside(
-          Object.keys(resolvedRelationship.relationship.properties),
+          propertyDisplayStrings,
           alignment,
           editing,
           style,

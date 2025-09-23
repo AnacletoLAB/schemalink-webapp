@@ -47,6 +47,19 @@ class LocalStoragePickerModal extends Component {
         <Modal.Actions>
           <Button onClick={this.onCancel} content="Cancel" />
           <Button
+            negative
+            disabled={this.state.fileId === null}
+            onClick={() => {
+              const fileId = this.state.fileId;
+              if (!fileId) return;
+              const confirmed = window.confirm('Delete this schema from your browser? This cannot be undone.');
+              if (!confirmed) return;
+              this.props.onDelete(fileId);
+              this.setState({ fileId: null });
+            }}
+            content="Delete"
+          />
+          <Button
             primary
             disabled={this.state.fileId === null}
             onClick={() => this.props.onPick(this.state.fileId)}

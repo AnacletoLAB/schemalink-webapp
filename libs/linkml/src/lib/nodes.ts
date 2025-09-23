@@ -8,7 +8,7 @@ import { LinkMLClass, SpiresCoreClasses } from './types';
 import { toClassName } from './naming';
 import { toAnnotators } from './ontologies';
 import { propertiesToAttributes } from './entities';
-import { snakeCase } from 'lodash';
+ 
 
 export const nodeToClass = (
   node: Node,
@@ -22,9 +22,7 @@ export const nodeToClass = (
         relationship.relationshipType === RelationshipType.INHERITANCE
     )
     .map((relationship) => findNode(relationship.toId));
-  const hasIdentifier = Object.values(properties).some(
-    ({ requiredType }) => requiredType === RequiredType.IDENTIFIER
-  );
+  
 
   return {
     is_a: parent ? toClassName(parent.caption) : SpiresCoreClasses.NamedEntity,
@@ -34,14 +32,6 @@ export const nodeToClass = (
       .map((parent) => toClassName(parent.caption)),
     attributes: {
       ...propertiesToAttributes(properties),
-      ...(!hasIdentifier && {
-        [`${snakeCase(caption)}_id`]: {
-          identifier: true,
-          description: `A unique identifier for the ${toClassName(
-            caption
-          )} class.`,
-        },
-      }),
     },
     id_prefixes: ontologies.map((ontology) => ontology.id.toLocaleUpperCase()),
     annotations: {

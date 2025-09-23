@@ -17,6 +17,7 @@ import {
   setExamples,
   setCardinality,
   setDescription,
+  setNavigation,
   onSaveOntology,
 } from '../actions/graph';
 import DetailInspector from '../components/DetailInspector';
@@ -32,6 +33,7 @@ import {
   EntitySelection,
   Ontology,
   RelationshipType,
+  Navigation,
 } from '@neo4j-arrows/model';
 import { ArrowsState } from '../reducers';
 
@@ -121,6 +123,9 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
       customCardinality?: CustomCardinality
     ) => {
       dispatch(setCardinality(selection, cardinality, customCardinality));
+    },
+    onSaveNavigation: (selection: EntitySelection, navigation: Navigation) => {
+      dispatch(setNavigation(selection, navigation));
     },
     onSaveDescription: (selection: EntitySelection, description: string) => {
       dispatch(setDescription(selection, description));

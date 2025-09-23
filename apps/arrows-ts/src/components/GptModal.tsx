@@ -12,9 +12,9 @@ import { Dispatch } from 'redux';
 import { connect } from 'react-redux';
 import { hideGptModal } from '../actions/applicationDialogs';
 import { generate } from '@neo4j-arrows/api';
-import { LinkML, toGraph, toRelationshipClassNameFactory } from '@neo4j-arrows/linkml';
+import { LinkML, toGraph, toRelationshipClassNameFactory, SpiresType, toYaml, fromGraph } from '@neo4j-arrows/linkml';
 import yaml from 'js-yaml';
-import { Graph, Ontology, Point, Node, Relationship, CommandKind } from '@neo4j-arrows/model';
+import { Graph, Ontology, Point, Node, Relationship, CommandKind, RelationshipType } from '@neo4j-arrows/model';
 
 export interface GptModalProps {
   onClose: () => void;
@@ -46,10 +46,76 @@ export const defaultCallbackFactory = (
   importNodesAndRelationships: (graph: Graph) => void,
   renameDiagram: (diagramName: string) => void,
   nodes: Node[],
-  relationships: Relationship[]
+  relationships: Relationship[],
+  diagramName: string
 ): Callback => {
   const readableRelations = getReadableRelationshipNames(nodes, relationships);
   const toRelationshipClassName = toRelationshipClassNameFactory(graph.nodes);
+  const showAutoDismissWarning = (message: string, durationMs = 8000) => {
+    try {
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.top = '1rem';
+      container.style.right = '1rem';
+      container.style.zIndex = '10000';
+      container.style.maxWidth = '480px';
+
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'ui warning message';
+      messageDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+      messageDiv.style.borderRadius = '6px';
+      messageDiv.style.margin = '0';
+      messageDiv.style.opacity = '0.95';
+      messageDiv.innerText = message;
+
+      container.appendChild(messageDiv);
+      document.body.appendChild(container);
+
+      const remove = () => {
+        if (container.parentNode) container.parentNode.removeChild(container);
+      };
+      setTimeout(remove, durationMs);
+    } catch {
+      // Fallback: ignore if DOM not available
+    }
+  };
+
+  const normalizeGraph = (g: Graph) => {
+    const nodeIdToCaption: Record<string | number, string> = {};
+    g.nodes.forEach((n) => {
+      nodeIdToCaption[n.id] = (n.caption || '').toLowerCase();
+    });
+
+    const nodeCaptions = new Set<string>(
+      g.nodes.map((n) => (n.caption || '').toLowerCase())
+    );
+
+    const relationshipTriples = new Set<string>(
+      g.relationships
+        .filter((r) => r.relationshipType !== RelationshipType.INHERITANCE)
+        .map((r) => {
+          const from = nodeIdToCaption[r.fromId] ?? String(r.fromId);
+          const to = nodeIdToCaption[r.toId] ?? String(r.toId);
+          const type = (r.type || '').toLowerCase();
+          return `${from}|${type}|${to}`;
+        })
+    );
+
+    return { nodeCaptions, relationshipTriples };
+  };
+
+  const graphsStructurallyEqual = (a: Graph, b: Graph) => {
+    const na = normalizeGraph(a);
+    const nb = normalizeGraph(b);
+
+    if (na.nodeCaptions.size !== nb.nodeCaptions.size) return false;
+    if (na.relationshipTriples.size !== nb.relationshipTriples.size) return false;
+
+    for (const v of na.nodeCaptions) if (!nb.nodeCaptions.has(v)) return false;
+    for (const v of na.relationshipTriples) if (!nb.relationshipTriples.has(v)) return false;
+    return true;
+  };
+
   return (text) =>
     generate(
       text,
@@ -57,7 +123,8 @@ export const defaultCallbackFactory = (
       CommandKind[kind],
       nodes,
       // readableRelations
-      relationships.map(toRelationshipClassName)
+      relationships.map(toRelationshipClassName),
+      toYaml(fromGraph(diagramName, graph, SpiresType.LINKML))
     ).then((returnedSchema) => {
       const diagramName = (yaml.load(returnedSchema) as LinkML).title;
       const returnedGraph = toGraph(
@@ -86,6 +153,14 @@ export const defaultCallbackFactory = (
           style: {},
           ...relationship,
         }));
+
+      const unchanged = graphsStructurallyEqual(graph, returnedGraph);
+
+      if (unchanged) {
+        showAutoDismissWarning(
+          'Warning: The LinkML schema was left unmodified by GPT. We suggest improving the schema using the graphical artifacts (right panel) and then trying again with the intelligent operations.'
+        );
+      }
 
       clearGraph();
       importNodesAndRelationships({
@@ -131,7 +206,6 @@ export const GptModal = ({
       })
         .then(res => res.json())
         .then(data => {
-          console.log("Risposta ricevuta dalla fetch:", data);
           if (data.thresholdReached) {
             alert(`You have ${data.data.policyThreshold} operations remaining under the '${data.data.policyName}' policy. Once you reach ${data.data.policyMaxAccess} operations, your subscription will expire.`);
           }

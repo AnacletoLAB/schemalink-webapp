@@ -13,6 +13,13 @@ export default function recentStorage(
       ),
     ];
   }
+  
+  if (action.type === 'REMOVE_RECENT_STORAGE_ENTRY') {
+    const { mode, fileId } = action;
+    return state.filter(
+      (entry) => !(entry.mode === mode && entry.fileId === fileId)
+    );
+  }
 
   return state;
 }

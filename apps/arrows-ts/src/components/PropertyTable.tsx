@@ -7,6 +7,7 @@ import {
   PropertiesSummary,
   Property,
   RequiredType,
+  BasicType,
 } from '@neo4j-arrows/model';
 
 interface PropertyTableProps {
@@ -16,6 +17,7 @@ interface PropertyTableProps {
   onSavePropertyKey: (oldKey: string, newKey: string) => void;
   onSavePropertyValue: (key: string, value: Attribute) => void;
   onDeleteProperty: (key: string) => void;
+  rangeOptions?: string[];
 }
 
 interface PropertyTableState {
@@ -75,6 +77,7 @@ export default class PropertyTable extends Component<
       onSavePropertyKey,
       onSavePropertyValue,
       onDeleteProperty,
+      rangeOptions = [],
     } = this.props;
     const {
       properties: localProperties,
@@ -95,6 +98,7 @@ export default class PropertyTable extends Component<
       onSavePropertyValue('', {
         description: '',
         requiredType: RequiredType.OPTIONAL,
+        range: BasicType.STRING,
       });
     };
 
@@ -161,6 +165,7 @@ export default class PropertyTable extends Component<
             key={'row-' + index}
             propertyKey={key}
             propertySummary={propertySummary}
+            rangeOptions={rangeOptions}
             onMergeOnValues={() => onMergeOnValues(key)}
             onKeyChange={(newKey) => onPropertyKeyChange(key, newKey, index)}
             onValueChange={(newValue) => onSavePropertyValue(key, newValue)}
@@ -171,7 +176,7 @@ export default class PropertyTable extends Component<
             onNext={() => onNextProperty(index + 1)}
             keyDisabled={!!error && invalidIndex !== index}
             valueDisabled={!!error}
-            attributeValue={prop.value ?? {}}
+            attributeValue={prop.value ?? { range: BasicType.STRING, requiredType: RequiredType.OPTIONAL, description: '' }}
             active={this.state.activeIndex === index}
             onClick={() =>
               this.setState({

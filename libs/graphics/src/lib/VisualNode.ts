@@ -8,6 +8,7 @@ import { neighbourPositions } from '@neo4j-arrows/model';
 import { BoundingBox } from './utils/BoundingBox';
 import { NodeCaptionOutsideNode } from './NodeCaptionOutsideNode';
 import { NodePropertiesInside } from './NodePropertiesInside';
+import { createPropertyNameFormatter, formatTypeString } from '@neo4j-arrows/linkml';
 import { bisect } from './bisect';
 import { NodeLabelsInsideNode } from './NodeLabelsInsideNode';
 import { NodeCaptionFillNode } from './NodeCaptionFillNode';
@@ -198,12 +199,25 @@ export class VisualNode {
       }
     }
 
+    // Format node properties for display 
     if (hasProperties) {
+      const formatNodePropertyName = createPropertyNameFormatter(false);
+      const propertyDisplayStrings = Object.entries(node.properties).map(
+        ([key, attr]) => {
+          let typeStr = attr.range || '';
+          if (attr.collectionType) {
+            typeStr = `${attr.collectionType}(${typeStr})`;
+          }
+          const formattedKey = formatNodePropertyName(key, attr.requiredType);
+          const formattedType = formatTypeString(typeStr, attr.requiredType);
+          return formattedType ? `${formattedKey} : ${formattedType}` : formattedKey;
+        }
+      );
       switch (propertyPosition) {
         case 'inside':
           this.insideComponents.push(
             (this.properties = new NodePropertiesInside(
-              Object.keys(node.properties),
+              propertyDisplayStrings,
               editing,
               style,
               measureTextContext
@@ -214,7 +228,7 @@ export class VisualNode {
         case 'outside':
           this.outsideComponents.push(
             (this.properties = new PropertiesOutside(
-              Object.keys(node.properties),
+              propertyDisplayStrings,
               this.outsideOrientation,
               editing,
               style,

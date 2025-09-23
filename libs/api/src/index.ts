@@ -4,13 +4,15 @@ export const generate = async (
   url: string,
   operation: string,
   classesNames: Node[],
-  associationsNames: string[]
+  associationsNames: string[],
+  fullSchema: any
 ): Promise<string> => {
   const body = JSON.stringify({
     prompt,
     operation,
     classes_names: classesNames,
     associations_names: associationsNames,
+    full_schema: fullSchema,
   });
 
   const response = await fetch(url, {
@@ -60,7 +62,7 @@ Perform this operation\n\n
 ${prompt}\n\n
 Return an updated version of the full LinkML schema`;
 
-  return generate(fullPrompt, url, operation, classesNames, associationsNames);
+  return generate(fullPrompt, url, operation, classesNames, associationsNames, linkmlSchema);
 };
 
 interface ValidationIssue {

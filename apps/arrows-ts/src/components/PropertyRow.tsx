@@ -27,6 +27,7 @@ interface PropertyRowProps {
   attributeValue: Attribute;
   propertyKey: string;
   propertySummary: PropertiesSummary;
+  rangeOptions: string[];
   onMergeOnValues: () => void;
   onKeyChange: (key: string) => void;
   valueFieldValue: string;
@@ -82,6 +83,7 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
       attributeValue,
       propertyKey,
       propertySummary,
+      rangeOptions,
       onMergeOnValues,
       onKeyChange,
       valueFieldValue,
@@ -296,20 +298,22 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
             <label>Range</label>
             <Dropdown
               selection
-              value={attributeValue.range}
+              value={attributeValue.range ?? BasicType.STRING}
               options={[
                 ...Object.values(BasicType),
                 ...Object.values(RegexType),
                 ...Object.values(EnumType),
-              ].map((type) => {
-                return {
-                  key: type,
-                  text: type,
-                  value: type,
-                };
-              })}
+              ]
+                .map((type) => ({ key: String(type), text: String(type), value: String(type) }))
+                .concat(
+                  rangeOptions.map((name) => ({
+                    key: `class-${name}`,
+                    text: `Reference: ${name}`,
+                    value: name,
+                  }))
+                )}
               onChange={(e, { value }) =>
-                onValueChange({ ...attributeValue, range: value as BasicType })
+                onValueChange({ ...attributeValue, range: value as string })
               }
               disabled={valueDisabled}
             />

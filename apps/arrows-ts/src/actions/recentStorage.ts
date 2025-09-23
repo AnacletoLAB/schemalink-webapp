@@ -11,3 +11,11 @@ export const updateRecentStorage = (
     timestamp: Date.now(),
   };
 };
+
+export const removeFromRecentStorage = (mode: string, fileId: string) => {
+  return {
+    type: 'REMOVE_RECENT_STORAGE_ENTRY',
+    mode,
+    fileId,
+  } as const;
+};

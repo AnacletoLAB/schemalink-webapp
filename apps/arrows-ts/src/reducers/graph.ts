@@ -17,6 +17,7 @@ import {
   setType,
   relationshipSelected,
   RelationshipType,
+  Navigation,
   Graph,
   Id,
   Point,
@@ -67,6 +68,10 @@ interface SetExamplesAction extends SelectionAction<'SET_EXAMPLES'> {
 interface SetCardinalityAction extends SelectionAction<'SET_CARDINALITY'> {
   cardinality: Cardinality;
   customCardinality?: CustomCardinality;
+}
+
+interface SetNavigationAction extends SelectionAction<'SET_NAVIGATION'> {
+  navigation: Navigation;
 }
 
 interface SetNodeCaptionAction extends SelectionAction<'SET_NODE_CAPTION'> {
@@ -178,6 +183,7 @@ export type GraphAction =
   | SetOntologiesAction
   | SetExamplesAction
   | SetCardinalityAction
+  | SetNavigationAction
   | SetNodeCaptionAction
   | RenamePropertyAction
   | AccessPropertyAction
@@ -254,6 +260,7 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
             style: {},
             properties: {},
             cardinality: Cardinality.ONE_TO_MANY,
+            navigation: Navigation.None,
             fromId: action.sourceNodeIds[i],
             toId: action.targetNodeIds[i],
             description: '',
@@ -280,6 +287,7 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
             style: {},
             properties: {},
             cardinality: Cardinality.ONE_TO_MANY,
+            navigation: Navigation.None,
             fromId: action.sourceNodeIds[i],
             toId: action.targetNodeIds[i],
             description: '',
@@ -385,6 +393,18 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
                         ...action.customCardinality,
                       },
               }
+            : relationship
+        ),
+      };
+    }
+
+    case 'SET_NAVIGATION': {
+      const actionTyped = action as SetNavigationAction;
+      return {
+        ...state,
+        relationships: state.relationships.map((relationship) =>
+          relationshipSelected(actionTyped.selection, relationship.id)
+            ? { ...relationship, navigation: actionTyped.navigation }
             : relationship
         ),
       };

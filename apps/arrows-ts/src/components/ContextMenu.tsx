@@ -202,11 +202,12 @@ const ContextMenu = ({
       importNodesAndRelationships,
       setDiagramName,
       nodes,
-      relationships
+      relationships,
+      diagramName
     );
 
   const explanationCallback = (kind: CommandKind): Callback => (text: string) =>
-    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT, CommandKind[kind], nodes, relationships.map(toRelationshipClassName)).then(
+    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT, CommandKind[kind], nodes, relationships.map(toRelationshipClassName), toYaml(fromGraph(diagramName, graph, SpiresType.LINKML))).then(
       (explanation) => {
         openGtpExplanationModal(explanation);
       }
@@ -217,7 +218,7 @@ const ContextMenu = ({
     selection: EntitySelection,
     ontologies: Ontology[]
   ): Callback => (text: string) =>
-    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT, CommandKind[kind], nodes, relationships.map(toRelationshipClassName)).then(
+    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT, CommandKind[kind], nodes, relationships.map(toRelationshipClassName), toYaml(fromGraph(diagramName, graph, SpiresType.LINKML))).then(
       (returnedOntologies) => {
         const ids = returnedOntologies.split(',').map((id) => id.trim());
         onSaveOntology(

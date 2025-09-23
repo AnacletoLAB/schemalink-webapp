@@ -31,6 +31,7 @@ import {
   EntitySelection,
   RelationshipType,
   Cardinality,
+  Navigation,
   Ontology,
   ViewTransformation,
   Coordinate,
@@ -557,6 +558,16 @@ export const setCardinality = (
   customCardinality,
 });
 
+export const setNavigation = (
+  selection: EntitySelection,
+  navigation: Navigation
+) => ({
+  category: 'GRAPH',
+  type: 'SET_NAVIGATION',
+  selection,
+  navigation,
+});
+
 export const setSchemaProperties = (
   properties: SchemaProperties
 ): GraphAction => ({
@@ -943,6 +954,7 @@ export const importNodesAndRelationships = (importedGraph: Graph) => {
         id: newRelationshipId,
         fromId: nodeIdMap[oldRelationship.fromId],
         toId: nodeIdMap[oldRelationship.toId],
+        navigation: oldRelationship.navigation ?? Navigation.None,
       };
       newRelationships.push(newRelationship);
       newRelationshipId = nextId(newRelationshipId);
