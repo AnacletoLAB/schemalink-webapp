@@ -113,12 +113,10 @@ export const relationshipToRelationshipClass = (
 
   return {
     is_a: SpiresCoreClasses.Triple,
-    description: `${defaultDescription}${
-      relationship.description !== '' &&
-      relationship.description !== defaultDescription
-        ? ` ${relationship.description}`
-        : ''
-    }`,
+    description:
+      relationship.description != null && relationship.description !== ''
+        ? relationship.description
+        : defaultDescription,
     slot_usage: {
       subject: nodeToTripleSlot(fromNode, RelationshipMember.SUBJECT),
       object: nodeToTripleSlot(toNode, RelationshipMember.OBJECT),
@@ -132,7 +130,7 @@ export const relationshipToRelationshipClass = (
       'prompt.examples': relationship.examples
         ? relationship.examples.join(', ')
         : '',
-      },
+    },
   };
 };
 
@@ -213,12 +211,10 @@ export const relationshipToRelationshipClassPG = (
 
   return {
     is_a: fromNode && toNode ? title(camelCase(title(fromNode.caption) + title(relationship.type) + title(toNode.caption) + 'Edge')) : SpiresCoreClasses.Edge,
-    description: `${defaultDescription}${
-      relationship.description !== '' &&
-      relationship.description !== defaultDescription
-        ? ` ${relationship.description}`
-        : ''
-    }`,
+    description:
+      relationship.description != null && relationship.description !== ''
+        ? relationship.description
+        : defaultDescription,
     slot_usage: {
       subject: nodeToTripleSlot(fromNode, RelationshipMember.SUBJECT),
       object: nodeToTripleSlot(toNode, RelationshipMember.OBJECT),
