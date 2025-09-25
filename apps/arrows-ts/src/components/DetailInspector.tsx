@@ -11,6 +11,7 @@ import {
   AccordionContent,
   Accordion,
   Icon,
+  Label,
 } from 'semantic-ui-react';
 import {
   Cardinality,
@@ -320,40 +321,64 @@ export default class DetailInspector extends Component<
             onSaveType(selection, value);
           };
 
+      const allRelationshipNames = graph.relationships
+  .map(r => r.type)
+  .filter(Boolean);
+
+const isDuplicateRelationship = (relationship: Relationship) =>
+  relationship &&
+  graph.relationships.some(r =>
+    r !== relationship && 
+    (r.type?.toLowerCase() === relationship.type?.toLowerCase()) &&
+    r.fromId === relationship.fromId &&
+    r.toId === relationship.toId
+  );
           fields.push(
-            <Form.Field key="_type">
-          <label>Name</label>
-          <Dropdown
-            value={typeof commonType === 'string' ? commonType : ''}
-            allowAdditions
-            search
-            clearable
-            selection
-            options={examplesOptions}
-            placeholder={
-              examplesOptions.length > 0
-                ? "Choose or add a name"
-                : "Provide a name for this relationship"
-            }
-            loading={isFetching}
-            noResultsMessage={null}
-            onChange={(event, { value }) => {
-              if (value) onSaveType(selection, value as string);
-              else onSaveType(selection, '');
-            }}
-            onAddItem={(event, { value }) => {
-              if (typeof value === 'string') {
-                this.setState({
-                  additionalExamplesOptions: [
-                    ...this.state.additionalExamplesOptions,
-                    value,
-                  ],
-                });
-                onSaveType(selection, value);
-              }
-            }}
-          />
-        </Form.Field>
+
+<Form.Field
+  key="_type"
+  error={relationships.some(isDuplicateRelationship)}
+>
+  <label>Name</label>
+  <Dropdown
+    value={typeof commonType === 'string' ? commonType : ''}
+    allowAdditions
+    search
+    clearable
+    selection
+    options={examplesOptions}
+    placeholder={
+      examplesOptions.length > 0
+        ? "Choose or add a name"
+        : "Provide a name for this relationship"
+    }
+    loading={isFetching}
+    noResultsMessage={null}
+    onChange={(event, { value }) => {
+      if (value) onSaveType(selection, value as string);
+      else onSaveType(selection, '');
+    }}
+    onAddItem={(event, { value }) => {
+      if (typeof value === 'string') {
+        this.setState({
+          additionalExamplesOptions: [
+            ...this.state.additionalExamplesOptions,
+            value,
+          ],
+        });
+        onSaveType(selection, value);
+      }
+    }}
+  />
+  {relationships.some(isDuplicateRelationship) && (
+    <Label pointing color="red">
+      A relationship with this name already exists between the selected classes
+    </Label>
+  )}
+</Form.Field>
+
+
+
           );
         }
         fields.push(

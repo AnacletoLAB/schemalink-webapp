@@ -60,6 +60,7 @@ export const constructGraphFromFile = (data) => {
     id: node.id,
     position: new Point(node.position.x, node.position.y),
     caption: node.caption,
+    description: node.description || '',
     ontologies: node.ontologies || [],
     examples: node.examples || [],
     properties: node.properties || {},
@@ -78,6 +79,7 @@ export const constructGraphFromFile = (data) => {
       type: relationship.type || '',
       relationshipType:
         relationship.relationshipType || RelationshipType.ASSOCIATION,
+      description: relationship.description || '',
       ontologies: relationship.ontologies || [],
       examples: relationship.examples || [],
       properties: relationship.properties || {},

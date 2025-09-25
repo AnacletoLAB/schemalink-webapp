@@ -19,6 +19,7 @@ export enum BasicType {
   FLOAT = 'float',
   DATE = 'date',
   DATETIME = 'datetime',
+  URIORCURIE = 'uriorcurie',
 }
 
 export enum RegexType {

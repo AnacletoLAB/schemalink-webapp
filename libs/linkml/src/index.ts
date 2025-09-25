@@ -21,16 +21,19 @@ import {
   toClassName,
   toRelationshipClassNameFactory,
 } from './lib/naming';
-import { camelCase, snakeCase } from 'lodash';
+import { camelCase, snakeCase, startCase } from 'lodash';
 import {
   relationshipToRelationshipClass,
+  relationshipToRelationshipClassPG,
   relationshipToPredicateClass,
   findRelationshipsFromNodeFactory,
 } from './lib/relationships';
-import { nodeToClass } from './lib/nodes';
-import { toPrefixes } from './lib/ontologies';
+import { nodeToClass, nodeToClassPG } from './lib/nodes';
+import { toAnnotators, toPrefixes } from './lib/ontologies';
 import { dump } from 'js-yaml';
 import { importCompoundTypes, importNodes, importTriples } from './lib/import';
+
+const title = (s?: string): string => s ? startCase(s) : '';
 
 export * from './lib/types';
 export * from './lib/naming';
@@ -59,6 +62,127 @@ export const fromGraph = (
   const getRootClass = (): Record<string, LinkMLClass> | undefined => {
     const core: LinkMLClass = { tree_root: true };
     switch (spiresType) {
+      case SpiresType.LINKML_PG: {
+
+        const nodeBase: Record<string, LinkMLClass> = {
+          Node: {
+            abstract: true,
+            attributes: {
+              id: {
+                identifier: true,
+                range: BasicType.URIORCURIE
+              },
+              name: {
+                slot_uri: 'rdfs:label',
+              },
+              category: {
+                slot_uri: 'rdf:type',
+                range: BasicType.STRING,
+                designates_type: true,
+              },
+              types: {
+                //name: null, --> this is a typo in the guidelines: https://linkml.io/linkml/howtos/model-property-graphs.html#second-attempt-standard-pg-pattern-node-and-edge-classes
+                range: BasicType.STRING,
+                multivalued: true,
+              },
+            },
+          },
+        };
+
+        const edgeBase: Record<string, LinkMLClass> = {
+          Edge: {
+            abstract: true,
+            class_uri: 'rdf:Statement',
+            attributes: {
+              //class_uri: 'rdf:Statement', --> this is a typo in the guidelines: https://linkml.io/linkml/howtos/model-property-graphs.html#second-attempt-standard-pg-pattern-node-and-edge-classes
+              subject: {
+                slot_uri: 'rdf:subject',
+                range: 'Node'
+              },
+              predicate: {
+                slot_uri: 'rdf:predicate',
+                range: BasicType.URIORCURIE,
+                designates_type: true,
+              },
+              object: {
+                slot_uri: 'rdf:object',
+                range: 'Node'
+              },
+              type: {
+                slot_uri: 'rdf:type',
+                range: BasicType.URIORCURIE,
+                designates_type: true,
+              },
+            },
+          },
+        };
+
+        const graphsBase: Record<string, LinkMLClass> = {
+          Graphs: {
+            attributes: {
+              nodes: {
+                range: 'Node',
+                multivalued: true,
+                inlined_as_list: true,
+              },
+              edges: {
+                range: 'Edge',
+                multivalued: true,
+                inlined_as_list: true,
+              },
+            },
+          },
+        };
+
+        const typeClasses = relationships.reduce(
+          (classes: Record<string, LinkMLClass>, relationship) => {
+            const fromNode = findNode(relationship.fromId);
+            const toNode = findNode(relationship.toId);
+
+            const typeName = 
+              (title(fromNode?.caption) ?? '') + 
+              (relationship.type ? toClassName(relationship.type) : '') + 
+              (title(toNode?.caption) ?? '') + 'Edge';
+
+            let attributes: Record<string , Attribute> = {};
+
+            for (const [propName, prop] of Object.entries(relationship.properties)) {
+              if (prop.range) {
+                attributes[propName] = { 
+                  range: prop.range,
+                  ...(prop.description ? { description: prop.description } : {}),
+                  ...(prop.collectionType === 'list' || prop.collectionType === 'set' ? { multivalued: true } : {}),
+                  ...(prop.collectionType === 'set' ? { unique_values : true } : {}),
+                  ...(prop.collectionType === 'array' ? { 
+                    array: { exact_number_dimensions: prop.dimensions ?? 1 }
+                   } : {}),
+                  ...(prop.requiredType === 'required' ? { required: true } : {}),
+                  ...(prop.requiredType === 'identifier' ? { identifier: true } : {}),
+                  ...(prop.requiredType === 'identifier' ? { required: true } : {}),
+                };
+              }
+            }
+
+            return {
+              ...classes,
+              [typeName]: {
+                is_a: 'Edge',
+                slot_usage: {
+                  predicate: {
+                    equals_string: relationship.type,
+                  },
+                },
+                ...(Object.keys(attributes).length ? { attributes } : {}),
+                annotations: { annotators: toAnnotators(relationship.ontologies || []) },
+              },
+            };
+          },
+          {}
+        );
+
+        return {...nodeBase, ...edgeBase, ...graphsBase, ...typeClasses};
+      }
+
       case SpiresType.RE: {
         const toDescription = (relationship: Relationship): string => {
           const fromNode = findNode(relationship.fromId);
@@ -152,7 +276,7 @@ export const fromGraph = (
               {}
             ),
           },
-        };
+        }
       default:
         return undefined;
     }
@@ -174,84 +298,122 @@ export const fromGraph = (
       ) as string[]),
   ];
 
-  return {
-    id: `https://schemalink.biodata.di.unimi.it/${snakeCasedName}`,
-    default_range: BasicType.STRING,
-    name: snakeCasedName,
-    title: name,
-    description,
-    license,
-    prefixes: {
-      linkml: 'https://w3id.org/linkml/',
-      ontogpt: 'http://w3id.org/ontogpt/',
-      rdf: 'https://www.w3.org/1999/02/22-rdf-syntax-ns',
-      ...toPrefixes([
-        ...nodes.flatMap((node) => node.ontologies ?? []),
-        ...relationships.flatMap(
-          (relationship) => relationship.ontologies ?? []
+const ontologyPrefixes = toPrefixes([
+  ...nodes.flatMap((node) => node.ontologies ?? []),
+  ...relationships.flatMap((relationship) => relationship.ontologies ?? []),
+]);
+
+return {
+  id: `https://schemalink.biodata.di.unimi.it/${snakeCasedName}`,
+  default_range: BasicType.STRING,
+  name: snakeCasedName,
+  title: name,
+  description,
+  license,
+  prefixes: (() => {
+    if ([SpiresType.LINKML, SpiresType.RE, SpiresType.ER].includes(spiresType)) {
+      return {
+        linkml: 'https://w3id.org/linkml/',
+        ontogpt: 'http://w3id.org/ontogpt/',
+        rdf: 'https://www.w3.org/1999/02/22-rdf-syntax-ns#',
+        ...ontologyPrefixes,
+      };
+    }
+    if (spiresType === SpiresType.LINKML_PG) {
+      return {
+        linkml: 'https://w3id.org/linkml/',
+        rdf: 'https://www.w3.org/1999/02/22-rdf-syntax-ns#',
+        rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+        BFO: 'http://purl.obolibrary.org/obo/bfo.owl',
+        ...ontologyPrefixes,
+      };
+    }
+    return ontologyPrefixes;
+  })(),
+  imports: (() => {
+    if ([SpiresType.LINKML, SpiresType.RE, SpiresType.ER].includes(spiresType)) {
+      return ['ontogpt:core', 'linkml:types'];
+    }
+    if (spiresType === SpiresType.LINKML_PG) {
+      return ['linkml:types'];
+    }
+    return [];
+  })(),
+  classes: {
+    ...getRootClass(),
+    ...([SpiresType.LINKML, SpiresType.RE].includes(spiresType) &&
+      relationships
+        .filter(
+          ({ relationshipType }) =>
+            relationshipType === RelationshipType.ASSOCIATION
+        )
+        .reduce(
+          (classes: Record<string, LinkMLClass>, relationship) => ({
+            ...classes,
+            [`${toRelationshipClassName(relationship)}Relationship`]:
+              relationshipToRelationshipClass(
+                relationship,
+                findNode,
+                toRelationshipClassName
+              ),
+            [`${toRelationshipClassName(relationship)}Predicate`]:
+              relationshipToPredicateClass(
+                relationship,
+                toRelationshipClassName
+              ),
+          }),
+          {}
+        )),
+    ...([SpiresType.LINKML_PG].includes(spiresType) &&
+      relationships
+        .filter(
+          ({ relationshipType }) =>
+            relationshipType === RelationshipType.ASSOCIATION
+        )
+        .reduce(
+          (classes: Record<string, LinkMLClass>, relationship) => ({
+            ...classes,
+            [`${toRelationshipClassName(relationship)}Relationship`]:
+              relationshipToRelationshipClassPG(
+                relationship,
+                findNode,
+                toRelationshipClassName
+              )
+          }),
+          {}
+        )),
+    ...nodes.reduce(
+      (classes: Record<string, LinkMLClass>, node) => ({
+        ...classes,
+        [toClassName(node.caption)]: spiresType === SpiresType.LINKML_PG
+          ? nodeToClassPG(node, findNode, findRelationshipFromNode)
+          : nodeToClass(node, findNode, findRelationshipFromNode),
+      }),
+      {}
+    ),
+  },
+  ...(enums.length
+    ? {
+        enums: enums.reduce(
+          (enums, enumType) => ({
+            ...enums,
+            [enumType]: {
+              permissible_values: enumToPermissibleValues[
+                enumType as EnumType
+              ].reduce(
+                (permissibleValues, value) => ({
+                  ...permissibleValues,
+                  [value]: null,
+                }),
+                {}
+              ),
+            },
+          }),
+          {}
         ),
-      ]),
-    },
-    imports: ['ontogpt:core', 'linkml:types'],
-    classes: {
-      ...getRootClass(),
-      ...([SpiresType.LINKML, SpiresType.RE].includes(spiresType) &&
-        relationships
-          .filter(
-            ({ relationshipType }) =>
-              relationshipType === RelationshipType.ASSOCIATION
-          )
-          .reduce(
-            (classes: Record<string, LinkMLClass>, relationship) => ({
-              ...classes,
-              [`${toRelationshipClassName(relationship)}Relationship`]:
-                relationshipToRelationshipClass(
-                  relationship,
-                  findNode,
-                  toRelationshipClassName
-                ),
-              [`${toRelationshipClassName(relationship)}Predicate`]:
-                relationshipToPredicateClass(
-                  relationship,
-                  toRelationshipClassName
-                ),
-            }),
-            {}
-          )),
-      ...nodes.reduce(
-        (classes: Record<string, LinkMLClass>, node) => ({
-          ...classes,
-          [toClassName(node.caption)]: nodeToClass(
-            node,
-            findNode,
-            findRelationshipFromNode
-          ),
-        }),
-        {}
-      ),
-    },
-    ...(enums.length
-      ? {
-          enums: enums.reduce(
-            (enums, enumType) => ({
-              ...enums,
-              [enumType]: {
-                permissible_values: enumToPermissibleValues[
-                  enumType as EnumType
-                ].reduce(
-                  (permissibleValues, value) => ({
-                    ...permissibleValues,
-                    [value]: null,
-                  }),
-                  {}
-                ),
-              },
-            }),
-            {}
-          ),
-        }
-      : {}),
-  };
+      }
+    : {}),
+};
 };
 
 export const toGraph = (
@@ -298,7 +460,8 @@ export const toYaml = (linkML: LinkML): string => {
       .replace(/(\n\s+[^\n]*)(\n\s+[A-Z][a-zA-Z]*[a-z]+:)/g, '$1\n$2')
       // Add a newline before each first-level object
       .replace(/(\n\S)/g, '\n$1')
-      // Add double quotes to all patterns
+      // Add double quotes to all patterns and equals_string
       .replace(/pattern: ([^\n]*)/g, "pattern: '$1'")
+      .replace(/equals_string: ([^\n]*)/g, "equals_string: '$1'")
   );
 };

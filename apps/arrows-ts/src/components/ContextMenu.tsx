@@ -64,6 +64,7 @@ enum Selection {
   ALL = 'All',
   CLASS = 'Class',
   MULTIPLE = 'Multiple',
+  MULTIPLE_WITH_CARDINALITY = 'Multiple with Cardinality',
   NONE = 'None',
   RELATIONSHIP = 'Relationship',
 }
@@ -181,11 +182,23 @@ const ContextMenu = ({
       return Selection.NONE;
     }
 
+    if (nodes.length === 1 && relationships.length === 0) {
+      return Selection.CLASS;
+    }
+
+    if (relationships.length === 1 && nodes.length === 0) {
+      return Selection.RELATIONSHIP;
+    }
+
     if (entities.length > 10) {
       return Selection.ALL;
     }
 
-    if (nodes.length && relationships.length) {
+    if (nodes.length && relationships.length > 1) {
+      return Selection.MULTIPLE_WITH_CARDINALITY;
+    }
+
+    if (nodes.length || relationships.length) {
       return Selection.MULTIPLE;
     }
 
@@ -328,7 +341,7 @@ const ContextMenu = ({
       ],
       [Method.REIFY]: [{ commandKind: CommandKind.ReifyClass }],
     },
-    [Selection.MULTIPLE]: {
+    [Selection.MULTIPLE_WITH_CARDINALITY]: {
       [Method.ADD]: [
         {
           action: Action.ASSOCIATION_RELATIONSHIP,
@@ -383,6 +396,65 @@ const ContextMenu = ({
           action: Action.CARDINALITY,
           commandKind: CommandKind.FixSubschemaCardinalities,
           label: 'Relationships cardinalities',
+        },
+      ],
+      [Method.EXPLAIN]: [
+        {
+          commandKind: CommandKind.ExplainEntities,
+          callback: explanationCallback(CommandKind.ExplainEntities),
+        },
+      ],
+    },
+    [Selection.MULTIPLE]: {
+      [Method.ADD]: [
+        {
+          action: Action.ASSOCIATION_RELATIONSHIP,
+          commandKind: CommandKind.AddAssociationsSimilarToEntities,
+          label: 'Association relationships similar to',
+        },
+        {
+          action: Action.CLASS,
+          commandKind: CommandKind.AddClassesSimilarToEntities,
+          label: 'Classes similar to',
+        },
+      ],
+      [Method.ANNOTATE]: [
+        {
+          action: Action.DESCRIPTION,
+          commandKind: CommandKind.AnnotateSubschemaDescription,
+          label: 'Classes and relationships descriptions',
+        },
+        {
+          action: Action.EXAMPLE,
+          commandKind: CommandKind.AnnotateSubschemaExample,
+          label: 'Classes and relationships examples',
+        },
+        {
+          action: Action.ONTOLOGY,
+          commandKind: CommandKind.AnnotateSubschemaOntology,
+          label: 'Classes and relationships ontologies',
+        },
+      ],
+      [Method.FIX]: [
+        {
+          action: Action.DESCRIPTION,
+          commandKind: CommandKind.FixClassesAndAssociationsDescription,
+          label: 'Classes and relationships descriptions',
+        },
+        {
+          action: Action.EXAMPLE,
+          commandKind: CommandKind.FixSubschemaExample,
+          label: 'Classes and relationships examples',
+        },
+        {
+          action: Action.NAME,
+          commandKind: CommandKind.FixClassesAndAssociationsName,
+          label: 'Classes and relationships names',
+        },
+        {
+          action: Action.ONTOLOGY,
+          commandKind: CommandKind.FixSubschemaOntology,
+          label: 'Classes and relationships ontologies',
         },
       ],
       [Method.EXPLAIN]: [

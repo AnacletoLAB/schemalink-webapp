@@ -5,15 +5,22 @@ import {
   RegexType,
   Relationship,
 } from '@neo4j-arrows/model';
+import { EmptyObject } from 'lodash';
 
 type Array = {
   exact_number_dimensions: number;
 };
 
 export type Attribute = {
+  name?: null | string;
+  designates_type?: boolean;
+  equals_string?: string;
+  slot_uri?: string;
+  class_uri?: string;
   range?: BasicType | string;
   description?: string;
   multivalued?: boolean;
+  inlined_as_list?: boolean;
   required?: boolean;
   annotations?: Annotations;
   identifier?: boolean;
@@ -36,10 +43,13 @@ export enum SpiresCoreClasses {
   TextWithEntity = 'TextWithEntity',
   TextWithTriples = 'TextWithTriples',
   Triple = 'Triple',
+  Edge = 'Edge',
 }
 
 export type LinkMLClass = {
-  attributes?: Record<string, Attribute>;
+  class_uri?: string;
+  abstract?: boolean;
+  attributes?: Record<string, Attribute | string>;
   description?: string;
   id_prefixes?: string[];
   is_a?: SpiresCoreClasses | string;
@@ -63,7 +73,9 @@ export type LinkML = {
 };
 
 export enum SpiresType {
-  LINKML = 'LinkML',
+  LINKML = 'LinkML RDF',
+  LINKML_PG = 'LinkML PG',
+  LINKML_OO = 'LinkML OO',
   RE = 'SPIRES (RE)',
   ER = 'SPIRES (ER)',
 }

@@ -82,37 +82,118 @@ export const defaultCallbackFactory = (
 
   const normalizeGraph = (g: Graph) => {
     const nodeIdToCaption: Record<string | number, string> = {};
+    const nodeCaptions = new Set<string>();
+    const nodeDescriptions = new Map<string, string>();
+    const nodePropertySignatures = new Set<string>();
+    const nodeExamples = new Map<string, string[]>();
+    const nodeOntologies = new Map<string, string[]>();
+
+    // Single pass through nodes to build all node-related data
     g.nodes.forEach((n) => {
-      nodeIdToCaption[n.id] = (n.caption || '').toLowerCase();
+      const cap = (n.caption || '').toLowerCase();
+      nodeIdToCaption[n.id] = cap;
+      nodeCaptions.add(cap);
+      nodeDescriptions.set(cap, (n.description ?? '').trim());
+      
+      // Build property signatures
+      Object.entries(n.properties || {}).forEach(([key, attr]) => {
+        const k = key.toLowerCase();
+        const desc = (attr?.description ?? '').trim();
+        const req = (attr?.requiredType ?? 'OPTIONAL').toString();
+        const range = (attr?.range ?? '').toString();
+        const coll = (attr?.collectionType ?? '').toString();
+        const dims = (attr?.dimensions ?? '').toString();
+        nodePropertySignatures.add(`${cap}|prop:${k}|desc:${desc}|req:${req}|range:${range}|coll:${coll}|dims:${dims}`);
+      });
+      
+      // Build examples and ontologies
+      nodeExamples.set(cap, (n.examples || []).map(ex => ex.trim()).sort());
+      nodeOntologies.set(cap, (n.ontologies || []).map(ont => ont.id.toLowerCase()).sort());
     });
 
-    const nodeCaptions = new Set<string>(
-      g.nodes.map((n) => (n.caption || '').toLowerCase())
-    );
+    // Single pass through relationships
+    const inheritanceRelationships = new Set<string>();
+    const relationshipSignatures = new Set<string>();
+    
+    g.relationships.forEach((r) => {
+      const from = nodeIdToCaption[r.fromId] ?? String(r.fromId);
+      const to = nodeIdToCaption[r.toId] ?? String(r.toId);
+      
+      if (r.relationshipType === RelationshipType.INHERITANCE) {
+        inheritanceRelationships.add(`${from}|inherits|${to}`);
+      } else {
+        const type = (r.type || '').toLowerCase();
+        const desc = (r.description ?? '').trim();
+        const card = (r.cardinality ?? 'NONE').toString();
+        const cc = r.customCardinality
+          ? `smin:${r.customCardinality.source_minimum ?? ''},smax:${r.customCardinality.source_maximum ?? ''},tmin:${r.customCardinality.target_minimum ?? ''},tmax:${r.customCardinality.target_maximum ?? ''}`
+          : '-';
+        
+        // Build relationship properties efficiently
+        const relProps = Object.entries(r.properties || {})
+          .map(([key, attr]) => `${key.toLowerCase()}:${(attr?.description ?? '').trim()}:${(attr?.requiredType ?? 'OPTIONAL').toString()}:${(attr?.range ?? '').toString()}`)
+          .sort()
+          .join(',');
+        
+        const relExamples = (r.examples || []).map(ex => ex.trim()).sort().join(',');
+        const relOntologies = (r.ontologies || []).map(ont => ont.id.toLowerCase()).sort().join(',');
+        
+        relationshipSignatures.add(`${from}|${type}|${to}|d:${desc}|c:${card}|cc:${cc}|props:[${relProps}]|ex:[${relExamples}]|ont:[${relOntologies}]`);
+      }
+    });
 
-    const relationshipTriples = new Set<string>(
-      g.relationships
-        .filter((r) => r.relationshipType !== RelationshipType.INHERITANCE)
-        .map((r) => {
-          const from = nodeIdToCaption[r.fromId] ?? String(r.fromId);
-          const to = nodeIdToCaption[r.toId] ?? String(r.toId);
-          const type = (r.type || '').toLowerCase();
-          return `${from}|${type}|${to}`;
-        })
-    );
-
-    return { nodeCaptions, relationshipTriples };
+    return { 
+      nodeCaptions, 
+      nodeDescriptions, 
+      nodePropertySignatures,
+      nodeExamples,
+      nodeOntologies,
+      inheritanceRelationships,
+      relationshipSignatures, 
+      graphDescription: (g.description ?? '').trim()
+    };
   };
 
   const graphsStructurallyEqual = (a: Graph, b: Graph) => {
     const na = normalizeGraph(a);
     const nb = normalizeGraph(b);
 
-    if (na.nodeCaptions.size !== nb.nodeCaptions.size) return false;
-    if (na.relationshipTriples.size !== nb.relationshipTriples.size) return false;
+    // Early exit on size mismatches
+    if (na.nodeCaptions.size !== nb.nodeCaptions.size ||
+        na.relationshipSignatures.size !== nb.relationshipSignatures.size ||
+        na.inheritanceRelationships.size !== nb.inheritanceRelationships.size ||
+        na.nodePropertySignatures.size !== nb.nodePropertySignatures.size ||
+        na.nodeDescriptions.size !== nb.nodeDescriptions.size ||
+        na.nodeExamples.size !== nb.nodeExamples.size ||
+        na.nodeOntologies.size !== nb.nodeOntologies.size) {
+      return false;
+    }
 
+    // Compare graph-level description first (cheapest check)
+    if (na.graphDescription !== nb.graphDescription) return false;
+
+    // Compare sets efficiently
     for (const v of na.nodeCaptions) if (!nb.nodeCaptions.has(v)) return false;
-    for (const v of na.relationshipTriples) if (!nb.relationshipTriples.has(v)) return false;
+    for (const v of na.relationshipSignatures) if (!nb.relationshipSignatures.has(v)) return false;
+    for (const v of na.inheritanceRelationships) if (!nb.inheritanceRelationships.has(v)) return false;
+    for (const v of na.nodePropertySignatures) if (!nb.nodePropertySignatures.has(v)) return false;
+
+    // Compare maps efficiently
+    for (const [cap, desc] of na.nodeDescriptions.entries()) {
+      if (nb.nodeDescriptions.get(cap) !== desc) return false;
+    }
+
+    // Compare arrays efficiently using JSON.stringify for sorted arrays
+    for (const [cap, examples] of na.nodeExamples.entries()) {
+      const otherExamples = nb.nodeExamples.get(cap);
+      if (!otherExamples || JSON.stringify(examples) !== JSON.stringify(otherExamples)) return false;
+    }
+
+    for (const [cap, ontologies] of na.nodeOntologies.entries()) {
+      const otherOntologies = nb.nodeOntologies.get(cap);
+      if (!otherOntologies || JSON.stringify(ontologies) !== JSON.stringify(otherOntologies)) return false;
+    }
+
     return true;
   };
 
@@ -154,7 +235,22 @@ export const defaultCallbackFactory = (
           ...relationship,
         }));
 
-      const unchanged = graphsStructurallyEqual(graph, returnedGraph);
+      // Convert LinkMLGraph to Graph for comparison
+      const returnedGraphForComparison: Graph = {
+        ...returnedGraph,
+        style: graph.style,
+        nodes: returnedGraph.nodes.map(node => ({
+          ...node,
+          position: new Point(0, 0), // Add required position
+          style: {}, // Add required style
+        })),
+        relationships: returnedGraph.relationships.map(rel => ({
+          ...rel,
+          style: {}, // Add required style
+        })),
+      };
+      
+      const unchanged = graphsStructurallyEqual(graph, returnedGraphForComparison);
 
       if (unchanged) {
         showAutoDismissWarning(

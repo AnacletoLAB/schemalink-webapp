@@ -311,13 +311,42 @@ export type CommandType =
 export const computePrompt = (command: CommandType): string => {
   const INTRO = 'From the LinkML schema provided below, ';
 
-  const OUTRO =
-    'Maintain all the existing classes and structure from the schema. Return the entire updated schema.';
-  const OUTRO_ASSOCIATIONS =
-    'Maintain all the existing relationships and structure from the schema. Return the entire updated schema.';
+  const classesPart =
+    (command.nodes && command.nodes.length > 0)
+      ? `class(es): ${
+          Array.isArray(command.nodes)
+            ? command.nodes.join(', ')
+            : command.nodes
+        }`
+      : "";
 
-  const RELATIONSHIP_EXPLANATION =
-    'For each relationship, introduce a predicate (a class characterized by is_a: RelationshipType) and a new relationship (a class characterized by is_a: Triple).';
+  const relationshipsPart =
+    (command.relationships && command.relationships.length > 0)
+      ? `relationship(s): ${
+          Array.isArray(command.relationships)
+            ? command.relationships.map(r => r + "Relationship").join(', ')
+            : command.relationships + "Relationship"
+        }`
+      : "";
+
+  const predicatesPart =
+    (command.relationships && command.relationships.length > 0)
+      ? `predicate(s): ${
+          Array.isArray(command.relationships)
+            ? command.relationships.map(r => r + "Predicate").join(', ')
+            : command.relationships + "Predicate"
+        }`
+      : "";
+
+  const contextPart =
+    classesPart && relationshipsPart
+      ? `${classesPart} and ${relationshipsPart}`
+      : classesPart || relationshipsPart;
+
+  const contextPartPredicates =
+    classesPart && predicatesPart
+      ? `${classesPart} and ${predicatesPart}`
+      : classesPart || predicatesPart;
 
   switch (command.kind) {
     case CommandKind.AddClassSimilarToClass:
@@ -482,7 +511,6 @@ ${command.fullSchema}`;
     case CommandKind.FixRelationshipDescription:
       return `${INTRO}if you retain it necessary, update/improve the description belonging to the relationship named ${command.relationships}Relationship.
 Ensure the new examples enhance clarity and are coherent to the relationship semantics.
-${OUTRO_ASSOCIATIONS}
 
 ${command.fullSchema}`;
     case CommandKind.FixRelationshipAttributesName:
@@ -523,26 +551,20 @@ The explanation should include details on its role within the schema and any exa
 
     ${command.fullSchema}`;
         case CommandKind.AddClassesSimilarToEntities:
-      return `${INTRO}add one or more new classes that semantically fit the context defined by the subschema,
-which includes the following classes: ${[...(command.nodes || [])].map(item => item).join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
+      return `${INTRO}add one or more new classes that semantically fit the context defined by the subschema${contextPart ? ` which includes the following ${contextPart}` : ""}.
 The new classes should logically extend or complement the meaning and structure of these existing classes and relationships.
 DO NOT add any relationships or predicates.
 Return ONLY the yaml code chunk containing the new classes.
 
     ${command.fullSchema}`;
     case CommandKind.AddAssociationsSimilarToEntities:
-      return `${INTRO}add one or more new relationships that semantically fit the context defined by the subschema,
-which includes the following classes: ${[
-        ...(command.nodes || [])
-      ].join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
+      return `${INTRO}add one or more new relationships that semantically fit the context defined by the subschema${contextPart ? ` which includes the following ${contextPart}` : ""}.
 The new relationships should logically extend or complement the meaning and structure of these existing classes and relationships.
 Return ONLY the yaml code chunk containing the new relationships and their predicates.
 
 ${command.fullSchema}`;
     case CommandKind.AnnotateSubschemaOntology:
-      return `${INTRO}propose or add relevant ontologies that could be used to annotate relationships and classes of the subschema which includes the following classes: ${[
-        ...(command.nodes || [])
-      ].join(', ')} and predicates: ${[...(command.relationships || [])].map(item => item + 'Predicate').join(', ')}.
+      return `${INTRO}propose or add relevant ontologies that could be used to annotate relationships and classes of the subschema${contextPart ? ` which includes the following ${contextPart}` : ""}.
 Consider the annotators nested attribute within annotations to better choose the ontology. See also examples below.
 Example for classes:
     annotations:
@@ -553,9 +575,7 @@ Example for predicates (annotate the predicates, not the relationships):
 
 ${command.fullSchema}`;
     case CommandKind.AnnotateSubschemaExample:
-      return `${INTRO}add example instances to the relationships and the classes belonging to the subschema which includes the following classes: ${[
-        ...(command.nodes || [])
-      ].join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
+      return `${INTRO}add example instances to the relationships and the classes belonging to the subschema${contextPart ? ` which includes the following ${contextPart}` : ""}.
 Consider the prompt.example attribute in the context to better understand the expected examples.
 Do not describe examples, and separate examples with commas. Avoid quotation marks and colons.
 Ensure that the new instances are aligned with the overall schema structure.
@@ -567,32 +587,24 @@ For each item in pairs, you must output both class_or_relationship_name and exam
 
 ${command.fullSchema}`;
     case CommandKind.AnnotateSubschemaDescription:
-      return `${INTRO}add or update the descriptions to the relationships and the classes belonging to the subschema which includes the following classes: ${[
-        ...(command.nodes || [])
-      ].join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
+      return `${INTRO}add or update the descriptions to the relationships and the classes belonging to the subschema${contextPart ? ` which includes the following ${contextPart}` : ""}.
 Consider the class-level description slot within a class or relationship in the context to better understand its purpose. DO NOT take into account descriptions of attributes.
 
 ${command.fullSchema}`;
     case CommandKind.FixClassesAndAssociationsName:
-      return `${INTRO}if you retain it necessary, update the names of the predicates and classes belonging to the subschema which includes the following classes: ${[
-        ...(command.nodes || [])
-      ].join(', ')} and predicates: ${[...(command.relationships || [])].map(item => item + 'Predicate').join(', ')}.
-Note that relationships are named using the pattern: attribute within id e.g. treats, is treated by, interacts with.
-Ensure the new name enhances clarity and preserves the intended meaning.
+      return `${INTRO}if you retain it necessary, update the names of the predicates and classes belonging to the subschema${contextPart ? ` which includes the following ${contextPart}` : ""}.
+Note that predicates are named using the id -> pattern: attribute within id e.g. treats, is treated by, interacts with. For predicates only, return the predicate new pattern and not the class name e.g. molecularly interacts with.
+Ensure that the new names enhance clarity and preserve the intended meaning.
 
 ${command.fullSchema}`;
     case CommandKind.FixClassesAndAssociationsDescription:
-      return `${INTRO}if you retain it necessary, add/fix/update the description of the classes: ${[
-        ...(command.nodes || [])
-      ].join(', ')} ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
+      return `${INTRO}if you retain it necessary, add/fix/update the description of${contextPart ? ` the following ${contextPart}` : ""}.
 Consider the description slot within a class or relationship to better understand its purpose. DO NOT take into account descriptions of attributes.
 Ensure the new name enhances clarity and preserves the intended meaning.
 
 ${command.fullSchema}`;
     case CommandKind.FixSubschemaOntology:
-      return `${INTRO}if you retain it necessary, add/fix/update an ontology suitable for annotating predicates and classes belonging to the subschema which includes the following classes: ${[
-        ...(command.nodes || [])
-      ].join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Predicate').join(', ')}.
+      return `${INTRO}if you retain it necessary, add/fix/update an ontology suitable for annotating predicates and classes belonging to the subschema${contextPartPredicates ? ` which includes the following ${contextPartPredicates}` : ""}.
 Consider the annotations --> annotators section in the context to better choose the ontology. See examples below.
 Examples for classes:
     annotations:
@@ -603,9 +615,7 @@ Examples for predicates (annotate the predicates, not the relationships):
 
 ${command.fullSchema}`;
     case CommandKind.FixSubschemaExample:
-      return `${INTRO}if you retain it necessary, update/improve the examples for the relationships and classes belonging to the subschema which includes the following classes: ${[
-        ...(command.nodes || [])
-      ].join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
+      return `${INTRO}if you retain it necessary, update/improve the examples for the relationships and classes belonging to the subschema${contextPart ? ` which includes the following ${contextPart}` : ""}.
 Consider the prompt.example attribute in the context to better understand the expected examples.
 Do not describe examples, and separate examples with commas. Avoid quotation marks and colons.
 Ensure the new examples enhance clarity and are coherent to the relationship semantics.
@@ -617,20 +627,15 @@ For each item in pairs, you must output both class_or_relationship_name and exam
 
 ${command.fullSchema}`;
     case CommandKind.FixSubschemaCardinalities:
-      return `${INTRO}if you retain it necessary, update/fix/improve the cardinality for the relationships belonging to the subschema which includes the following classes: ${[
-        ...(command.nodes || [])
-      ].join(', ')} and relationships: ${[...(command.relationships || [])].map(item => item + 'Relationship').join(', ')}.
+      return `${INTRO}if you retain it necessary, update/fix/improve the cardinality for the following${relationshipsPart ? ` ${relationshipsPart}` : ""}${classesPart ? ` using the following ${classesPart} as a context` : ""}.
 Specify the cardinalities using the minimum_cardinality and maximum_cardinality attributes as in the context.
-Note that maximum_cardinality MUST be strictly greater than minimum_cardinality.
+IMPORTANT RULE: Note that minimum_cardinality MUST be strictly less than maximum_cardinality i.e. minimum_cardinality and maximum_cardinality CANNOT be equal e.g. minimum_cardinality=1 and maximum_cardinality=1 is NOT valid, instead minimum_cardinality=0 and maximum_cardinality=1 is valid.
 Ensure the new cardinalities enhance clarity and are coherent to the association semantics.
 Return ONLY the yaml code chunk containing the updated relationships.
 
 ${command.fullSchema}`;
     case CommandKind.ExplainEntities:
-      return `${INTRO}explain in human-friendly terms the portion of the schema that includes ${[
-        ...(command.nodes || []),
-        ...(command.relationships || []),
-      ]}.
+      return `${INTRO}explain in human-friendly terms the portion of the schema${contextPart ? ` which includes the following ${contextPart}` : ""}.
 The explanation should include details on its role within the schema and any examples provided.
 ${command.fullSchema}`;
     case CommandKind.ReifyClass:
@@ -639,7 +644,7 @@ This means creating a new class for each reified attribute and removing them fro
 You MUST include the name of the attribute removed in the name of its new class e.g. if "formula" is an attribute of the class "Compound", then the reified class will be named "CompoundFormula".
 Ensure that the new class(es) fits within the context.
 Add one or more new associations between the newly introduced class(es) and ${command.nodes}.
-${RELATIONSHIP_EXPLANATION}
+For each relationship, introduce a predicate (a class characterized by is_a: RelationshipType) and a new relationship (a class characterized by is_a: Triple).
 Ensure that the new relationship(s) fits within the context.
 Do not add comments.
 Return ONLY the yaml code chunk containing the reified class (${command.nodes}), the new class(es), predicates, and relationships.

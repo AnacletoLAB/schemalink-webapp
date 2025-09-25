@@ -52,7 +52,7 @@ class LocalStoragePickerModal extends Component {
             onClick={() => {
               const fileId = this.state.fileId;
               if (!fileId) return;
-              const confirmed = window.confirm('Delete this schema from your browser? This cannot be undone.');
+              const confirmed = window.confirm('Would you like to delete this schema? This operation is irreversible.');
               if (!confirmed) return;
               this.props.onDelete(fileId);
               this.setState({ fileId: null });

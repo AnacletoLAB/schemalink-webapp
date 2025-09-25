@@ -8,6 +8,7 @@ import { toAnnotators } from './ontologies';
 import { Attribute, LinkMLClass, SpiresCoreClasses } from './types';
 import { toClassName } from './naming';
 import { propertiesToAttributes } from './entities';
+import { camelCase, startCase } from 'lodash';
 
 enum RelationshipMember {
   SUBJECT = 'subject',
@@ -165,5 +166,67 @@ export const relationshipToPredicateClass = (
           annotators: toAnnotators(relationshipOntologies),
         }
       : {},
+  };
+};
+
+function title(str: string): string {
+  return str.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export const relationshipToRelationshipClassPG = (
+  relationship: Relationship,
+  nodeIdToNode: (id: string) => Node | undefined,
+  toRelationshipClassName: (relationship: Relationship) => string
+): LinkMLClass => {
+  const nodeToTripleSlot = (
+    node: Node | undefined,
+    relationshipMember: RelationshipMember
+  ): Attribute => {
+    if (!node) {
+      return {};
+    }
+
+    return {
+      range: toClassName(node.caption),
+      annotations: {
+        'prompt.examples': node.examples ? node.examples.join(', ') : '',
+      },
+      minimum_cardinality: toMinimumCardinality(
+        relationship,
+        relationshipMember
+      ),
+      maximum_cardinality: toMaximumCardinality(
+        relationship,
+        relationshipMember
+      ),
+    };
+  };
+
+  const fromNode = nodeIdToNode(relationship.fromId);
+  const toNode = nodeIdToNode(relationship.toId);
+
+  const defaultDescription = `A relationship${
+    fromNode ? ` where the subject is a ${fromNode.caption}` : ''
+  }${fromNode && toNode ? ' and' : ''}${
+    toNode ? ` where the object is a ${toNode.caption}` : ''
+  }.`;
+
+  return {
+    is_a: fromNode && toNode ? title(camelCase(title(fromNode.caption) + title(relationship.type) + title(toNode.caption) + 'Edge')) : SpiresCoreClasses.Edge,
+    description: `${defaultDescription}${
+      relationship.description !== '' &&
+      relationship.description !== defaultDescription
+        ? ` ${relationship.description}`
+        : ''
+    }`,
+    slot_usage: {
+      subject: nodeToTripleSlot(fromNode, RelationshipMember.SUBJECT),
+      object: nodeToTripleSlot(toNode, RelationshipMember.OBJECT),
+    },
+    annotations: {
+      'prompt.examples': relationship.examples
+        ? relationship.examples.join(', ')
+        : '',
+      },
   };
 };
