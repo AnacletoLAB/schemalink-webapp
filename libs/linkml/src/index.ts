@@ -167,6 +167,7 @@ export const fromGraph = (
               ...classes,
               [typeName]: {
                 is_a: 'Edge',
+                description: `An edge of type "${relationship.type}" from ${fromNode?.caption} to ${toNode?.caption}.`,
                 slot_usage: {
                   predicate: {
                     equals_string: relationship.type,
