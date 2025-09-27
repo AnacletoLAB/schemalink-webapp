@@ -7,6 +7,9 @@ import {
   MessageItemProps,
   TextArea,
   Message,
+  Radio,
+  Popup,
+  Icon,
 } from 'semantic-ui-react';
 import { validateLinkml } from '@neo4j-arrows/api';
 
@@ -17,7 +20,8 @@ interface ImportModalProps {
   tryImport: (
     text: string,
     separation: number,
-    ontologies: Ontology[]
+    ontologies: Ontology[],
+    selectedFormat?: string
   ) => { errorMessage?: string };
 }
 
@@ -25,6 +29,8 @@ interface ImportModalState {
   errorMessage?: string;
   text: string;
   messageProps: MessageItemProps;
+  selectedFormat: 'JSON' | 'LinkML PG' | 'LinkML RDF' | 'LinkML OO';
+  ooPopupOpen: boolean;
 }
 
 class ImportModal extends Component<ImportModalProps, ImportModalState> {
@@ -36,19 +42,31 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
       messageProps: {
         icon: 'checkmark',
         positive: true,
-        header: 'This is a valid LinkML schema',
-        content: 'You can import safely',
+        header: 'LinkML RDF import',
+        content: 'Paste LinkML schema and click Import',
       },
+      selectedFormat: 'LinkML RDF',
+      ooPopupOpen: false,
     };
   }
 
   fileInputRef: HTMLInputElement | null = null;
 
   tryImport = () => {
+    const isJson = new RegExp('^{.*}$', 's').test(this.state.text.trim());
+    if ((this.state.selectedFormat === 'LinkML PG' || this.state.selectedFormat === 'LinkML RDF') && isJson) {
+      this.setState({
+        errorMessage:
+          'Input appears to be JSON. Please switch Format to JSON or paste a LinkML schema.',
+      });
+      return;
+    }
+
     const result = this.props.tryImport(
       this.state.text,
       this.props.separation,
-      this.props.ontologies
+      this.props.ontologies,
+      this.state.selectedFormat
     );
     if (result.errorMessage) {
       this.setState({
@@ -58,6 +76,33 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
   };
 
   validateText = async (text: string) => {
+    const isJson = new RegExp('^{.*}$', 's').test(text.trim());
+
+    // If user selected any LinkML format but pasted JSON, show red X like invalid
+    if ((this.state.selectedFormat === 'LinkML PG' || this.state.selectedFormat === 'LinkML RDF' || this.state.selectedFormat === 'LinkML OO') && isJson) {
+      this.setState({
+        messageProps: {
+          icon: 'cancel',
+          positive: false,
+          negative: true,
+          header: `Invalid input for ${this.state.selectedFormat}`,
+          content: 'Detected JSON. Switch Format to JSON or paste a LinkML schema.',
+        },
+      });
+      return;
+    }
+
+    if (this.state.selectedFormat === 'JSON') {
+      this.setState({
+        messageProps: {
+          icon: 'checkmark',
+          positive: true,
+          header: 'JSON import',
+          content: 'Paste JSON and click Import',
+        },
+      });
+      return;
+    }
     this.setState({
       messageProps: {
         icon: 'circle notched loading',
@@ -115,6 +160,7 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
   };
 
   render() {
+    const isJson = new RegExp('^{.*}$', 's').test(this.state.text.trim());
     return (
       <Modal
         size="large"
@@ -143,6 +189,81 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
           </Message>
           <Form>
             <Form.Field>
+              <label>Format</label>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <Radio
+                    label="LinkML RDF"
+                    checked={this.state.selectedFormat === 'LinkML RDF'}
+                    onChange={() => this.setState({ selectedFormat: 'LinkML RDF' }, () => this.validateText(this.state.text))}
+                  />
+                  <Popup
+                    content="RDF-oriented LinkML representation"
+                    position="top center"
+                    trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+                  />
+                </div>
+                <div>
+                  <Radio
+                    label="LinkML PG"
+                    checked={this.state.selectedFormat === 'LinkML PG'}
+                    onChange={() => this.setState({ selectedFormat: 'LinkML PG' }, () => this.validateText(this.state.text))}
+                  />
+                  <Popup
+                    content="Property Graph-oriented LinkML representation"
+                    position="top center"
+                    trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+                  />
+                </div>
+                <div>
+                  <Radio
+                    label="LinkML OO"
+                    checked={this.state.selectedFormat === 'LinkML OO'}
+                    onChange={() => {
+                      this.setState({ selectedFormat: 'LinkML OO', ooPopupOpen: true });
+                      window.setTimeout(() => this.setState({ ooPopupOpen: false }), 2500);
+                      this.validateText(this.state.text);
+                    }}
+                  />
+                  <Popup
+                    content="Object-Oriented LinkML representation"
+                    position="top center"
+                    trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+                  />
+                  <Popup
+                    open={this.state.ooPopupOpen}
+                    position="top center"
+                    content="Available soon: Import for LinkML OO is not yet available."
+                    onClose={() => this.setState({ ooPopupOpen: false })}
+                    trigger={<span />}
+                  />
+                </div>
+                <div>
+                  <Radio
+                    label="JSON"
+                    checked={this.state.selectedFormat === 'JSON'}
+                    onChange={() => this.setState({ selectedFormat: 'JSON' })}
+                  />
+                  <Popup
+                    content="JSON representation"
+                    position="top center"
+                    trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+                  />
+                </div>
+              </div>
+            </Form.Field>
+            {this.state.selectedFormat === 'LinkML OO' ? (
+              <Message warning icon>
+                <Icon name="clock outline" />
+                <Message.Content>
+                  <Message.Header>Available soon</Message.Header>
+                  Import for LinkML OO is not yet available.
+                </Message.Content>
+              </Message>
+            ) : null}
+          </Form>
+          <Form>
+            <Form.Field>
               <Button
                 content="Choose File"
                 labelPosition="left"
@@ -168,7 +289,9 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
               }}
               value={this.state.text}
             />
-            <Message {...this.state.messageProps} />
+            {this.state.selectedFormat !== 'JSON' ? (
+              <Message {...this.state.messageProps} />
+            ) : null}
           </Form>
           {this.state.errorMessage ? (
             <Message negative>
@@ -181,7 +304,11 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
           <Button onClick={this.props.onCancel} content="Cancel" />
           <Button
             primary
-            disabled={this.state.text.length === 0}
+            disabled={
+              this.state.text.length === 0 ||
+              this.state.selectedFormat === 'LinkML OO' ||
+              ((this.state.selectedFormat === 'LinkML PG' || this.state.selectedFormat === 'LinkML RDF') && isJson)
+            }
             onClick={this.tryImport}
             content="Import"
           />

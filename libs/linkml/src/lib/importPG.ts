@@ -49,7 +49,7 @@ const attributesToProperties = (attributes?: Record<string, Attribute>) =>
           : required
           ? RequiredType.REQUIRED
           : RequiredType.OPTIONAL,
-        range: range || (pattern ? patternToRegexType[pattern] : undefined) || 'string',
+        range: range || (pattern ? (patternToRegexType as any)[pattern] : undefined) || 'string',
         collectionType: array
           ? CollectionType.ARRAY
           : multivalued

@@ -18,7 +18,7 @@ import {
 import { hideImportDialog } from './applicationDialogs';
 import { shrinkImageUrl } from '@neo4j-arrows/graphics';
 import { Base64 } from 'js-base64';
-import { LinkML, toGraph } from '@neo4j-arrows/linkml';
+import { LinkML, toGraph, toGraphPG } from '@neo4j-arrows/linkml';
 import { load } from 'js-yaml';
 import { Dispatch } from 'redux';
 import { ArrowsState } from '../reducers';
@@ -26,10 +26,11 @@ import { defaultName } from '../reducers/diagramName';
 import { renameDiagram } from './diagramName';
 
 export const tryImport = (dispatch: Dispatch) => {
-  return function (text: string, separation: number, ontologies: Ontology[]) {
+  return function (text: string, separation: number, ontologies: Ontology[], selectedFormat?: string) {
     let importedGraph;
     let diagramName = defaultName;
 
+    const formats = getFormats(selectedFormat);
     const format = formats.find((format) => format.recognise(text));
     if (format) {
       try {
@@ -69,6 +70,7 @@ export const interpretClipboardData = (
   const textPlainMimeType = 'text/plain';
   if (clipboardData?.types.includes(textPlainMimeType)) {
     const text = clipboardData.getData(textPlainMimeType);
+    const formats = getFormats();
     const format = formats.find((format) => format.recognise(text));
     if (format) {
       try {
@@ -167,51 +169,58 @@ interface SvgFormat extends Format {
 
 type FormatType = GraphFormat | SvgFormat;
 
-const formats: FormatType[] = [
-  {
-    // LinkML
-    recognise: (plainText: string) => {
-      try {
-        const linkml: LinkML = load(plainText) as LinkML;
-        const linkmlPrefix = Object.entries(linkml.prefixes).find(
-          ([key, value]) => key === 'linkml'
-        );
-        return !!linkmlPrefix;
-      } catch {
-        return false;
-      }
-    },
-    outputType: 'graph',
-    parse: (plainText: string, separation: number, ontologies: Ontology[]) => {
-      const graph = toGraph(load(plainText) as LinkML, ontologies);
-      const nodes = graph.nodes.map((node, index) => ({
-        ...node,
-        position: new Point(
-          separation * Math.cos(360 * index),
-          separation * Math.sin(360 * index)
-        ),
-        style: {},
-      }));
-
-      const relationships = graph.relationships.map((relationship) => ({
-        ...relationship,
-        style: {},
-      }));
-
-      const left = Math.min(...nodes.map((node) => node.position.x));
-      const top = Math.min(...nodes.map((node) => node.position.y));
-      const vector = new Vector(-left, -top);
-      const originNodes = nodes.map((node) => translate(node, vector));
-      return {
-        ...graph,
-        nodes: originNodes,
-        relationships,
-      };
-    },
-    getDiagramName: (plainText: string) => {
-      return (load(plainText) as LinkML).title;
-    },
+const createLinkMLFormat = (
+  formatName: string,
+  graphBuilder: (linkml: LinkML, ontologies: Ontology[]) => any,
+  selectedFormat?: string
+): GraphFormat => ({
+  recognise: (plainText: string) => {
+    if (selectedFormat !== formatName) return false;
+    try {
+      const linkml: LinkML = load(plainText) as LinkML;
+      const linkmlPrefix = Object.entries(linkml.prefixes).find(
+        ([key, value]) => key === 'linkml'
+      );
+      return !!linkmlPrefix;
+    } catch {
+      return false;
+    }
   },
+  outputType: 'graph',
+  parse: (plainText: string, separation: number, ontologies: Ontology[]) => {
+    const graph = graphBuilder(load(plainText) as LinkML, ontologies);
+    const nodes = graph.nodes.map((node: any, index: number) => ({
+      ...node,
+      position: new Point(
+        separation * Math.cos(360 * index),
+        separation * Math.sin(360 * index)
+      ),
+      style: {},
+    }));
+
+    const relationships = graph.relationships.map((relationship: any) => ({
+      ...relationship,
+      style: {},
+    }));
+
+    const left = Math.min(...nodes.map((node: any) => node.position.x));
+    const top = Math.min(...nodes.map((node: any) => node.position.y));
+    const vector = new Vector(-left, -top);
+    const originNodes = nodes.map((node: any) => translate(node, vector));
+    return {
+      ...graph,
+      nodes: originNodes,
+      relationships,
+    };
+  },
+  getDiagramName: (plainText: string) => {
+    return (load(plainText) as LinkML).title;
+  },
+});
+
+const getFormats = (selectedFormat?: string): FormatType[] => [
+  createLinkMLFormat('LinkML PG', toGraphPG, selectedFormat),
+  createLinkMLFormat('LinkML RDF', toGraph, selectedFormat),
   {
     // JSON
     recognise: (plainText: string) =>
