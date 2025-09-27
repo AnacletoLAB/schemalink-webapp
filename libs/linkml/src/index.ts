@@ -32,6 +32,7 @@ import { nodeToClass, nodeToClassPG } from './lib/nodes';
 import { toAnnotators, toPrefixes } from './lib/ontologies';
 import { dump } from 'js-yaml';
 import { importCompoundTypes, importNodes, importTriples } from './lib/import';
+import { importPropertyGraphNodes, importPropertyGraphEdges } from './lib/importPG';
 
 const title = (s?: string): string => s ? startCase(s) : '';
 
@@ -136,45 +137,49 @@ export const fromGraph = (
 
         const typeClasses = relationships.reduce(
           (classes: Record<string, LinkMLClass>, relationship) => {
+            if (relationship.relationshipType === RelationshipType.INHERITANCE) {
+              return classes;
+            }
+            
             const fromNode = findNode(relationship.fromId);
             const toNode = findNode(relationship.toId);
 
-            const typeName = 
-              (title(fromNode?.caption) ?? '') + 
-              (relationship.type ? toClassName(relationship.type) : '') + 
+            const typeName =
+              (title(fromNode?.caption) ?? '') +
+              (relationship.type ? toClassName(relationship.type) : '') +
               (title(toNode?.caption) ?? '') + 'Edge';
 
-            let attributes: Record<string , Attribute> = {};
+            let attributes: Record<string, Attribute> = {};
 
             for (const [propName, prop] of Object.entries(relationship.properties)) {
               if (prop.range) {
-                attributes[propName] = { 
-                  range: prop.range,
-                  ...(prop.description ? { description: prop.description } : {}),
-                  ...(prop.collectionType === 'list' || prop.collectionType === 'set' ? { multivalued: true } : {}),
-                  ...(prop.collectionType === 'set' ? { unique_values : true } : {}),
-                  ...(prop.collectionType === 'array' ? { 
-                    array: { exact_number_dimensions: prop.dimensions ?? 1 }
-                   } : {}),
-                  ...(prop.requiredType === 'required' ? { required: true } : {}),
-                  ...(prop.requiredType === 'identifier' ? { identifier: true } : {}),
-                  ...(prop.requiredType === 'identifier' ? { required: true } : {}),
-                };
+          attributes[propName] = {
+            range: prop.range,
+            ...(prop.description ? { description: prop.description } : {}),
+            ...(prop.collectionType === 'list' || prop.collectionType === 'set' ? { multivalued: true } : {}),
+            ...(prop.collectionType === 'set' ? { unique_values: true } : {}),
+            ...(prop.collectionType === 'array'
+              ? { array: { exact_number_dimensions: prop.dimensions ?? 1 } }
+              : {}),
+            ...(prop.requiredType === 'required' ? { required: true } : {}),
+            ...(prop.requiredType === 'identifier' ? { identifier: true } : {}),
+            ...(prop.requiredType === 'identifier' ? { required: true } : {}),
+          };
               }
             }
 
             return {
               ...classes,
               [typeName]: {
-                is_a: 'Edge',
-                description: `An edge of type "${relationship.type}" from ${fromNode?.caption} to ${toNode?.caption}.`,
-                slot_usage: {
-                  predicate: {
-                    equals_string: relationship.type,
-                  },
-                },
-                ...(Object.keys(attributes).length ? { attributes } : {}),
-                annotations: { annotators: toAnnotators(relationship.ontologies || []) },
+          is_a: 'Edge',
+          description: `An edge of type "${relationship.type}" from ${fromNode?.caption} to ${toNode?.caption}.`,
+          slot_usage: {
+            predicate: {
+              equals_string: relationship.type,
+            },
+          },
+          ...(Object.keys(attributes).length ? { attributes } : {}),
+          annotations: { annotators: toAnnotators(relationship.ontologies || []) },
               },
             };
           },
@@ -417,6 +422,7 @@ return {
 };
 };
 
+// RDF-like LinkML to internal Graph representation
 export const toGraph = (
   { classes, description }: LinkML,
   ontologies: Ontology[]
@@ -443,6 +449,22 @@ export const toGraph = (
     relationships: [...inheritances, ...triples, ...compoundTypes],
   };
 };
+
+// PG-like LinkML to internal Graph representation
+export const toGraphPG = (
+  { classes, description }: LinkML,
+  ontologies: Ontology[]
+): LinkMLGraph => {
+  const { nodes, relationships: inheritances } = importPropertyGraphNodes(classes, ontologies);
+  const { edges } = importPropertyGraphEdges(classes, nodes, inheritances.length, ontologies);
+
+  return {
+    description,
+    nodes,
+    relationships: [...inheritances, ...edges],
+  };
+};
+
 
 export const toYaml = (linkML: LinkML): string => {
   return (

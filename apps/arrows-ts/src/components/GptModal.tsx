@@ -325,20 +325,27 @@ export const GptModal = ({
       closeOnDimmerClick={false}
       closeOnEscape={false}
     >
-      <ModalContent>
-        <Form loading={state.loading}>
-          <TextArea
-            style={{
-              fontFamily: 'monospace',
-              minHeight: 200,
-            }}
-            onChange={(event) =>
-              setState({ ...state, prompt: event.target.value })
-            }
-            defaultValue={startingPrompt}
-          />
-        </Form>
-      </ModalContent>
+<ModalContent>
+  <Form loading={state.loading}>
+    <TextArea
+      style={{
+        fontFamily: 'monospace',
+        minHeight: 200,
+      }}
+      value={
+        state.prompt !== undefined && state.prompt !== ""
+          ? state.prompt
+          : (startingPrompt && startingPrompt !== ""
+              ? startingPrompt
+              : "Generate a LinkML schema that deals with...")
+      }
+      onChange={(event) =>
+        setState({ ...state, prompt: event.target.value })
+      }
+    />
+  </Form>
+</ModalContent>
+
       <ModalActions>
         <Button
           content="Cancel"
