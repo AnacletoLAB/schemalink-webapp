@@ -28,6 +28,7 @@ export type Attribute = {
   minimum_cardinality?: number;
   maximum_cardinality?: number;
   pattern?: string;
+  id_prefixes?: string[];
 };
 
 type Annotations = {

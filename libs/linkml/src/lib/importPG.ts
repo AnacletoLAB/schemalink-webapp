@@ -76,16 +76,17 @@ export const importPropertyGraphNodes = (
       ([
         key,
         {
-          is_a = 'Node',
+          is_a,
           mixins,
           attributes,
           id_prefixes,
           description,
           annotations,
+          abstract: isAbstract,
         },
       ]) => {
-        // skip abstract classes --> check if there's a better way to do this i.e. infer them from class structure
-        if (['Node', 'Edge', 'Graphs', 'Graph'].includes(key)) return;
+        // skip abstract classes
+        if (['Node', 'Edge', 'Graphs', 'Graph'].includes(key) && isAbstract) return;
 
         const self = nodes.find(({ caption }) => caption === key);
         const parent = nodes.find(
@@ -123,9 +124,9 @@ export const importPropertyGraphNodes = (
                 .includes(id.toLocaleLowerCase())
             ),
             description: description || annotations?.prompt || '',
-            examples: [
-              ...new Set(annotations?.['prompt.examples']?.split(', ')),
-            ],
+            examples: annotations?.['prompt.examples']
+              ? [...new Set(annotations['prompt.examples'].split(', '))]
+              : [],
             });
         }
       }
@@ -143,7 +144,26 @@ export const importPropertyGraphEdges = (
   const edges: LinkMLRelationship[] = [];
   let index = nextRelationshipId;
   Object.entries(classes)
-    .filter(([key, cls]) => endsWith(cls.is_a, 'Edge') && cls.is_a !== 'Edge') // Migliorare il controllo sul nome
+    .filter(([key, cls]) => {
+      if (cls.abstract) return false;
+
+      // Parent class
+      const parentKey = cls.is_a ?? '';
+      const parentCls = classes[parentKey];
+      if (!parentCls) return false;
+
+      // Parent of parent class i.e. grand parent
+      const grandParentKey = parentCls.is_a ?? '';
+      const grandParentCls = classes[grandParentKey];
+
+      // Favorable: grandParent is abstract and called Edge
+      if (grandParentCls?.abstract && grandParentKey === 'Edge' && cls.slot_usage?.['subject'] && cls.slot_usage?.['object']) return true;
+
+      // Acceptable: parent class name ends with 'Edge'
+      if (parentKey.toLowerCase().endsWith('edge') && cls.slot_usage?.['subject'] && cls.slot_usage?.['object']) return true;
+
+      return false;
+    })
     .forEach(([key, { attributes, slot_usage, description, annotations, is_a }]) => {
       if (slot_usage) {
         const fromNodeIndex = nodes.findIndex(
@@ -220,27 +240,36 @@ export const importPropertyGraphEdges = (
           const cardinality = toCardinality();
 
           const parentEdgeClass = is_a ? classes[is_a] : undefined;
-          const predicate = parentEdgeClass?.['slot_usage']?.['predicate'].equals_string ?? '';
+          const predicate = parentEdgeClass?.['slot_usage']?.['predicate']?.equals_string ?? slot_usage['predicate']?.pattern ?? slot_usage['predicate']?.equals_string ?? '';
 
           const attributes: Record<string, Attribute> = {};
-          if (parentEdgeClass?.attributes) {
-            Object.entries(parentEdgeClass.attributes)
+
+          const addAttributes = (source?: Record<string, Attribute | string>) => {
+            Object.entries(source ?? {})
               .filter(([key]) => !['subject', 'object', 'predicate'].includes(key))
               .forEach(([key, value]) => {
-                attributes[key] = value;
+                if (!(key in attributes)) { 
+                  attributes[key] = typeof value === 'string'
+                    ? { description: value, required: false, range: 'string' }
+                    : value;
+                }
               });
-          }
+          };
 
-          const predicateAnnotators = parentEdgeClass?.['annotations']?.annotators
-            ?.split(',')
+          addAttributes(parentEdgeClass?.attributes);
+          addAttributes(slot_usage);
+          addAttributes(attributes);
+
+          const predicateAnnotators = (parentEdgeClass?.['annotations']?.annotators ?? slot_usage['predicate']?.annotations?.annotators ?? '')
+            .split(',')
             .map((a) => a.trim())
             .filter((a) => a.startsWith('sqlite:obo:'))
             .map((a) => a.replace('sqlite:obo:', ''));
 
           const predicateOntologies = ontologies.filter(
             ({ id }) =>
-              (predicate?.['id_prefixes'] &&
-                predicate?.['id_prefixes'].includes(id.toUpperCase())) ||
+              (parentEdgeClass?.['id_prefixes'] &&
+                parentEdgeClass['id_prefixes'].includes(id.toUpperCase())) ||
               predicateAnnotators?.includes(id.toLowerCase())
           );
 
@@ -259,13 +288,13 @@ export const importPropertyGraphEdges = (
               cardinality === Cardinality.CUSTOM ? customCardinality : undefined,
             description: description ?? '',
             annotations: {
-              ...(predicate?.annotations ?? {}),
+              ...(parentEdgeClass?.annotations ?? {}),
               ...(annotations ?? {}),
             },
             examples: [
               ...new Set([
                 ...(annotations?.['prompt.examples']?.split(', ') ?? []),
-                ...(predicate?.annotations?.['prompt.examples']?.split(', ') ??
+                ...(parentEdgeClass?.annotations?.['prompt.examples']?.split(', ') ??
                   []),
               ]),
             ],

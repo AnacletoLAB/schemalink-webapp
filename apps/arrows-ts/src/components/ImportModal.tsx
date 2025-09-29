@@ -113,30 +113,31 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
       },
     });
     await validateLinkml(text, import.meta.env.VITE_VALIDATE_LINKML_ENDPOINT)
-      .then(({ validationIssues, error }) =>
-        error
-          ? this.setState({
-              messageProps: {
-                icon: 'cancel',
-                negative: true,
-                header: 'Could not validate the LinkML schema',
-                content: error,
-              },
-            })
-          : this.setState({
-              messageProps: {
-                icon: validationIssues.length ? 'cancel' : 'checkmark',
-                positive: !validationIssues.length,
-                negative: validationIssues.length,
-                header: `This is ${
-                  validationIssues.length ? 'not ' : ''
-                }a valid LinkML schema`,
-                content: validationIssues.length
-                  ? validationIssues[0].message
-                  : 'You can import safely',
-              },
-            })
-      )
+      .then(({ validationIssues, error }) => {
+        if (error) {
+          this.setState({
+            messageProps: {
+              icon: 'cancel',
+              negative: true,
+              header: 'Could not validate the LinkML schema',
+              content: error,
+            },
+          });
+        } else {
+          const issues = validationIssues ?? [];
+          this.setState({
+            messageProps: {
+              icon: issues.length ? 'cancel' : 'checkmark',
+              positive: issues.length === 0,
+              negative: issues.length > 0,
+              header: `This is ${issues.length ? 'not ' : ''}a valid LinkML schema`,
+              content: issues.length
+                ? issues[0].message
+                : 'You can import safely',
+            },
+          });
+        }
+      })
       .catch((e) =>
         this.setState({
           messageProps: {

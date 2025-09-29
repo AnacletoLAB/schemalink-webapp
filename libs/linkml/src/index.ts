@@ -120,6 +120,7 @@ export const fromGraph = (
 
         const graphsBase: Record<string, LinkMLClass> = {
           Graphs: {
+            abstract: true,
             attributes: {
               nodes: {
                 range: 'Node',
@@ -178,7 +179,7 @@ export const fromGraph = (
               equals_string: relationship.type,
             },
           },
-          ...(Object.keys(attributes).length ? { attributes } : {}),
+          ...(Object.keys(attributes) && Object.keys(attributes).length ? { attributes } : {}),
           annotations: { annotators: toAnnotators(relationship.ontologies || []) },
               },
             };
