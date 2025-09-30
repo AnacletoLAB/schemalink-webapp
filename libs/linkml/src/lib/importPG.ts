@@ -13,6 +13,7 @@ import {
   patternToRegexType,
   SpiresCoreClasses,
 } from './types';
+import { EnumType } from '@neo4j-arrows/model';
 
 interface ImportNodesReturnType {
   nodes: LinkMLNode[];
@@ -25,7 +26,8 @@ interface ImportEdgesReturnType {
 
 const attributesToProperties = (
   attributes: Record<string, Attribute | string> | undefined,
-  classes: Record<string, LinkMLClass>
+  classes: Record<string, LinkMLClass>,
+  enumNameToEnumType: Record<string, EnumType>
 ) =>
   Object.entries(attributes ?? {}).reduce(
     (
@@ -48,7 +50,13 @@ const attributesToProperties = (
         range || (pattern ? (patternToRegexType as any)[pattern] : undefined) || 'string';
       const isExistingClassReference =
         typeof intendedRange === 'string' && intendedRange in classes;
-      const finalRange = isExistingClassReference ? intendedRange : 'string';
+      const isEnumReference =
+        typeof intendedRange === 'string' && intendedRange in enumNameToEnumType;
+      const finalRange = isExistingClassReference
+        ? intendedRange
+        : isEnumReference
+        ? enumNameToEnumType[intendedRange as string]
+        : 'string';
 
       return {
         ...properties,
@@ -74,7 +82,8 @@ const attributesToProperties = (
 
 export const importPropertyGraphNodes = (
   classes: Record<string, LinkMLClass>,
-  ontologies: Ontology[]
+  ontologies: Ontology[],
+  enumNameToEnumType: Record<string, EnumType>
 ): ImportNodesReturnType => {
   const nodes: LinkMLNode[] = [];
   const relationships: LinkMLRelationship[] = [];
@@ -121,7 +130,11 @@ export const importPropertyGraphNodes = (
             id: nextNodeId.toString(),
             caption: key,
             properties: attributes
-              ? attributesToProperties(attributes as Record<string, Attribute | string>, classes)
+              ? attributesToProperties(
+                  attributes as Record<string, Attribute | string>,
+                  classes,
+                  enumNameToEnumType
+                )
               : {},
             entityType: 'node',
             ontologies: ontologies.filter(
@@ -155,7 +168,8 @@ export const importPropertyGraphEdges = (
   classes: Record<string, LinkMLClass>,
   nodes: LinkMLNode[],
   nextRelationshipId: number,
-  ontologies: Ontology[]
+  ontologies: Ontology[],
+  enumNameToEnumType: Record<string, EnumType>
 ): ImportEdgesReturnType => {
   const edges: LinkMLRelationship[] = [];
   let index = nextRelationshipId;
@@ -293,7 +307,11 @@ export const importPropertyGraphEdges = (
             fromId: fromNode.id,
             toId: toNode.id,
             properties: attributes
-              ? attributesToProperties(attributes as Record<string, Attribute | string>, classes)
+              ? attributesToProperties(
+                  attributes as Record<string, Attribute | string>,
+                  classes,
+                  enumNameToEnumType
+                )
               : {},
             entityType: 'relationship',
             type: predicate || '',
@@ -308,14 +326,14 @@ export const importPropertyGraphEdges = (
             },
             examples: [
               ...new Set([
-              ...((annotations?.['prompt.examples'] ?? '')
-                .split(',')
-                .map((s: string) => s.trim())
-                .filter((s: string) => s.length > 0)),
-              ...(((parentEdgeClass as any)?.annotations?.['prompt.examples'] ?? '')
-                .split(',')
-                .map((s: string) => s.trim())
-                .filter((s: string) => s.length > 0)),
+                ...((annotations?.['prompt.examples'] ?? '')
+                  .split(',')
+                  .map((s: string) => s.trim())
+                  .filter((s: string) => s.length > 0)),
+                ...((((parentEdgeClass as any)?.annotations?.['prompt.examples'] ?? '')
+                  .split(',')
+                  .map((s: string) => s.trim())
+                  .filter((s: string) => s.length > 0))),
               ]),
             ],
             ontologies: predicateOntologies,

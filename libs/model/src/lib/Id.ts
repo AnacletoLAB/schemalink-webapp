@@ -29,6 +29,24 @@ export enum RegexType {
 
 export enum EnumType {
   GENDER = 'Gender',
+  CHEBI_DRUG = 'CHEBIDrugType',
+  CONDITION_CLINICAL_STATUS = 'ConditionClinicalStatusType',
+  CONDITION_DIAGNOSIS_SEVERITY = 'ConditionDiagnosisSeverityType',
+  DIET = 'DietType',
+  GO_BIOLOGICAL_PROCESS = 'GOBiologicalProcessType',
+  GO_CELL_COMPONENT = 'GOCellComponentType',
+  GO_MOLECULAR_FUNCTION = 'GOMolecularFunctionType',
+  GENE_LOCATION = 'GeneLocationType',
+  MAXO_ACTION = 'MAXOActionType',
+  MESH_THERAPEUTIC = 'MESHTherapeuticType',
+  MESH_CHEMICAL_IDENTIFIER = 'MeshChemicalIdentifierType',
+  MESH_DISEASE_IDENTIFIER = 'MeshDiseaseIdentifierType',
+  NCIT_DRUG = 'NCITDrugType',
+  NCIT_ACTIVITY = 'NCITTActivityType',
+  NCIT_TREATMENT = 'NCITTreatmentType',
+  PATHOLOGY_CLASSIFICATION_ONE = 'PathologyClassificationOneType',
+  PATHOLOGY_CLASSIFICATION_TWO = 'PathologyClassificationTwoType',
+  SEVERITY_LEVEL = 'SeverityLevelType',
 }
 
 export interface Attribute {

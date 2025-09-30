@@ -14,6 +14,9 @@ import {
   Attribute,
   enumToPermissibleValues,
   LinkMLGraph,
+  getEnumRegistryEntry,
+  LinkMLEnum,
+  mapImportedEnums,
 } from './lib/types';
 import {
   findNodeFactory,
@@ -401,23 +404,31 @@ return {
   },
   ...(enums.length
     ? {
-        enums: enums.reduce(
-          (enums, enumType) => ({
-            ...enums,
-            [enumType]: {
-              permissible_values: enumToPermissibleValues[
-                enumType as EnumType
-              ].reduce(
+        enums: enums.reduce((acc, enumType) => {
+          const reg = getEnumRegistryEntry(enumType as EnumType);
+          if (reg?.permissible_values) {
+            const pv = (enumToPermissibleValues as Record<string, string[]>)[
+              enumType as EnumType
+            ] || reg.permissible_values;
+            const entry: LinkMLEnum = {
+              permissible_values: pv.reduce(
                 (permissibleValues, value) => ({
                   ...permissibleValues,
                   [value]: null,
                 }),
                 {}
               ),
-            },
-          }),
-          {}
-        ),
+            };
+            return { ...acc, [enumType]: entry };
+          }
+          if (reg?.reachable_from) {
+            const entry: LinkMLEnum = {
+              reachable_from: reg.reachable_from,
+            };
+            return { ...acc, [enumType]: entry };
+          }
+          return acc;
+        }, {} as Record<string, LinkMLEnum>),
       }
     : {}),
 };
@@ -425,18 +436,21 @@ return {
 
 // RDF-like LinkML to internal Graph representation
 export const toGraph = (
-  { classes, description }: LinkML,
+  { classes, description, enums: maybeEnums }: LinkML,
   ontologies: Ontology[]
 ): LinkMLGraph => {
+  const enumNameToEnumType = mapImportedEnums(maybeEnums as any);
   const { nodes, relationships: inheritances } = importNodes(
     classes,
-    ontologies
+    ontologies,
+    enumNameToEnumType
   );
   const { relationships: triples } = importTriples(
     classes,
     nodes,
     inheritances.length,
-    ontologies
+    ontologies,
+    enumNameToEnumType
   );
   const { relationships: compoundTypes } = importCompoundTypes(
     classes,
@@ -453,11 +467,12 @@ export const toGraph = (
 
 // PG-like LinkML to internal Graph representation
 export const toGraphPG = (
-  { classes, description }: LinkML,
+  { classes, description, enums: maybeEnums }: LinkML,
   ontologies: Ontology[]
 ): LinkMLGraph => {
-  const { nodes, relationships: inheritances } = importPropertyGraphNodes(classes, ontologies);
-  const { edges } = importPropertyGraphEdges(classes, nodes, inheritances.length, ontologies);
+  const enumNameToEnumType = mapImportedEnums(maybeEnums as any);
+  const { nodes, relationships: inheritances } = importPropertyGraphNodes(classes, ontologies, enumNameToEnumType);
+  const { edges } = importPropertyGraphEdges(classes, nodes, inheritances.length, ontologies, enumNameToEnumType);
 
   return {
     description,

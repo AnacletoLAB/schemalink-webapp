@@ -72,7 +72,7 @@ export class DiagramNameEditor extends Component<
           </DocumentTitle>
         </Menu.Item>
         <Modal open={this.state.editable} size="mini" onClose={this.onCancel}>
-          <Modal.Header>Diagram Name</Modal.Header>
+          <Modal.Header>Schema Name</Modal.Header>
           <Modal.Content>
             <Input
               fluid
