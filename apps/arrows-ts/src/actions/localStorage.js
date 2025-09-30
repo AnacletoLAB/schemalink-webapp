@@ -43,8 +43,7 @@ export const loadGraphFromLocalStorage = (fileId) => {
 
     const data = load('GRAPH|' + fileId);
     const graphData = constructGraphFromFile(data);
-
-    if (data.diagramName) {
+    if (data && typeof data === 'object' && data.diagramName) {
       dispatch(gettingDiagramNameSucceeded(data.diagramName));
     }
     dispatch(gettingGraphSucceeded(graphData.graph));

@@ -25,5 +25,13 @@ export default function recentStorage(
 }
 
 const getStateFromLocalStorage = () => {
-  return loadRecentlyAccessedDiagrams() || [];
+  const list = loadRecentlyAccessedDiagrams() || [];
+  return (Array.isArray(list) ? list : [])
+    .filter((e) => e && e.fileId && typeof e.diagramName === 'string')
+    .map((e) => ({
+      mode: e.mode || 'LOCAL_STORAGE',
+      fileId: e.fileId,
+      diagramName: e.diagramName,
+      timestamp: e.timestamp || Date.now(),
+    }));
 };

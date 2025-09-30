@@ -24,11 +24,18 @@ export const propertiesToAttributes = (
           required: requiredType !== RequiredType.OPTIONAL,
           identifier: requiredType === RequiredType.IDENTIFIER,
         },
-        ...([...Object.values(BasicType), ...Object.values(EnumType)].includes(
-          range as BasicType
-        )
-          ? { range }
-          : {}),
+        // Export range when it is a primitive/enum OR a class reference (any non-regex string)
+        ...(
+          range &&
+          ([...Object.values(BasicType), ...Object.values(EnumType)].includes(
+            range as BasicType
+          )
+            ? { range }
+            : // If range is a regex type, it will be handled below as a pattern
+            !Object.values(RegexType).includes(range as RegexType)
+            ? { range }
+            : {})
+        ),
         ...(collectionType &&
         collectionType.length &&
         [CollectionType.LIST, CollectionType.SET].includes(collectionType)

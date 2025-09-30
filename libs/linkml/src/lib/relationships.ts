@@ -210,7 +210,7 @@ export const relationshipToRelationshipClassPG = (
   }.`;
 
   return {
-    is_a: fromNode && toNode ? title(camelCase(title(fromNode.caption) + title(relationship.type) + title(toNode.caption) + 'Edge')) : SpiresCoreClasses.Edge,
+    is_a: fromNode && toNode ? title(camelCase(title(fromNode.caption) + title(relationship.type) + title(toNode.caption) + 'Edge')).replace(/\s/g, "") : SpiresCoreClasses.Edge,
     description:
       relationship.description != null && relationship.description !== ''
         ? relationship.description

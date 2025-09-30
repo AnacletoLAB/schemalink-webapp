@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Button, Form, FormInput, Input, Popup } from 'semantic-ui-react';
+import { Form, FormInput, Input } from 'semantic-ui-react';
 
 interface CaptionInspectorProps {
   value: string;
@@ -37,31 +37,9 @@ export class CaptionInspector extends Component<CaptionInspectorProps> {
       />
     );
 
-    const popupContent = (
-      <Form>
-        <Form.Field>
-          <Button
-            key="convertCaptionsToProperties"
-            onClick={onConvertCaptionsToPropertyValues}
-            basic
-            color="black"
-            size="tiny"
-            content="Use as attributes"
-            type="button"
-          />
-        </Form.Field>
-      </Form>
-    );
-
     return (
       <FormInput label={label} error={error(value)} key="_caption">
-        <Popup
-          trigger={textBox}
-          content={popupContent}
-          on="click"
-          {...(value || value === undefined ? {} : { open: false })}
-          position="bottom left"
-        />
+        {textBox}
       </FormInput>
     );
   }

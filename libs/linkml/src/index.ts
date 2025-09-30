@@ -146,9 +146,9 @@ export const fromGraph = (
             const toNode = findNode(relationship.toId);
 
             const typeName =
-              (title(fromNode?.caption) ?? '') +
+              (title(fromNode?.caption).replace(/\s/g, "") ?? '') +
               (relationship.type ? toClassName(relationship.type) : '') +
-              (title(toNode?.caption) ?? '') + 'Edge';
+              (title(toNode?.caption).replace(/\s/g, "") ?? '') + 'Edge';
 
             let attributes: Record<string, Attribute> = {};
 

@@ -13,7 +13,6 @@ import {
   patternToRegexType,
   SpiresCoreClasses,
 } from './types';
-import { endsWith } from 'lodash';
 
 interface ImportNodesReturnType {
   nodes: LinkMLNode[];
@@ -24,40 +23,52 @@ interface ImportEdgesReturnType {
   edges: LinkMLRelationship[];
 }
 
-const attributesToProperties = (attributes?: Record<string, Attribute>) =>
+const attributesToProperties = (
+  attributes: Record<string, Attribute | string> | undefined,
+  classes: Record<string, LinkMLClass>
+) =>
   Object.entries(attributes ?? {}).reduce(
     (
       properties,
-      [
-        key,
-        {
-          description,
-          required,
-          range,
-          identifier,
-          multivalued,
-          array,
-          pattern,
+      [key, value]
+    ) => {
+      if (typeof value === 'string') {
+        return properties;
+      }
+      const {
+        description,
+        required,
+        range,
+        identifier,
+        multivalued,
+        array,
+        pattern,
+      } = value;
+      const intendedRange =
+        range || (pattern ? (patternToRegexType as any)[pattern] : undefined) || 'string';
+      const isExistingClassReference =
+        typeof intendedRange === 'string' && intendedRange in classes;
+      const finalRange = isExistingClassReference ? intendedRange : 'string';
+
+      return {
+        ...properties,
+        [key]: {
+          description: description ?? '',
+          requiredType: identifier
+            ? RequiredType.IDENTIFIER
+            : required
+            ? RequiredType.REQUIRED
+            : RequiredType.OPTIONAL,
+          range: finalRange,
+          collectionType: array
+            ? CollectionType.ARRAY
+            : multivalued
+            ? CollectionType.LIST
+            : undefined,
+          dimensions: array ? array.exact_number_dimensions : undefined,
         },
-      ]
-    ) => ({
-      ...properties,
-      [key]: {
-        description: description ?? '',
-        requiredType: identifier
-          ? RequiredType.IDENTIFIER
-          : required
-          ? RequiredType.REQUIRED
-          : RequiredType.OPTIONAL,
-        range: range || (pattern ? (patternToRegexType as any)[pattern] : undefined) || 'string',
-        collectionType: array
-          ? CollectionType.ARRAY
-          : multivalued
-          ? CollectionType.LIST
-          : undefined,
-        dimensions: array ? array.exact_number_dimensions : undefined,
-      },
-    }),
+      };
+    },
     {}
   );
 
@@ -110,7 +121,7 @@ export const importPropertyGraphNodes = (
             id: nextNodeId.toString(),
             caption: key,
             properties: attributes
-              ? attributesToProperties(attributes as Record<string, Attribute>)
+              ? attributesToProperties(attributes as Record<string, Attribute | string>, classes)
               : {},
             entityType: 'node',
             ontologies: ontologies.filter(
@@ -124,9 +135,14 @@ export const importPropertyGraphNodes = (
                 .includes(id.toLocaleLowerCase())
             ),
             description: description || annotations?.prompt || '',
-            examples: annotations?.['prompt.examples']
-              ? [...new Set(annotations['prompt.examples'].split(', '))]
-              : [],
+            examples: [
+              ...new Set(
+                (annotations?.['prompt.examples'] ?? '')
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter((s) => s.length > 0)
+              ),
+            ],
             });
         }
       }
@@ -178,12 +194,11 @@ export const importPropertyGraphEdges = (
             node: LinkMLNode,
             annotations: Record<string, string> | undefined
           ) => {
-            return [
-              ...new Set([
-                ...(node.examples ?? []),
-                ...(annotations?.['prompt.examples']?.split(', ') ?? []),
-              ]),
-            ];
+            const parsed = (annotations?.['prompt.examples'] ?? '')
+              .split(',')
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0);
+            return [...new Set([...(node.examples ?? []), ...parsed])];
           };
           const fromNode = {
             ...nodes[fromNodeIndex],
@@ -278,7 +293,7 @@ export const importPropertyGraphEdges = (
             fromId: fromNode.id,
             toId: toNode.id,
             properties: attributes
-              ? attributesToProperties(attributes as Record<string, Attribute>)
+              ? attributesToProperties(attributes as Record<string, Attribute | string>, classes)
               : {},
             entityType: 'relationship',
             type: predicate || '',
@@ -293,9 +308,14 @@ export const importPropertyGraphEdges = (
             },
             examples: [
               ...new Set([
-                ...(annotations?.['prompt.examples']?.split(', ') ?? []),
-                ...(parentEdgeClass?.annotations?.['prompt.examples']?.split(', ') ??
-                  []),
+              ...((annotations?.['prompt.examples'] ?? '')
+                .split(',')
+                .map((s: string) => s.trim())
+                .filter((s: string) => s.length > 0)),
+              ...(((parentEdgeClass as any)?.annotations?.['prompt.examples'] ?? '')
+                .split(',')
+                .map((s: string) => s.trim())
+                .filter((s: string) => s.length > 0)),
               ]),
             ],
             ontologies: predicateOntologies,

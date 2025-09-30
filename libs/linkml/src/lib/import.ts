@@ -23,40 +23,52 @@ interface ImportRelationshipsReturnType {
   relationships: LinkMLRelationship[];
 }
 
-const attributesToProperties = (attributes?: Record<string, Attribute>) =>
+const attributesToProperties = (
+  attributes: Record<string, Attribute | string> | undefined,
+  classes: Record<string, LinkMLClass>
+) =>
   Object.entries(attributes ?? {}).reduce(
     (
       properties,
-      [
-        key,
-        {
-          description,
-          required,
-          range,
-          identifier,
-          multivalued,
-          array,
-          pattern,
+      [key, value]
+    ) => {
+      if (typeof value === 'string') {
+        return properties;
+      }
+      const {
+        description,
+        required,
+        range,
+        identifier,
+        multivalued,
+        array,
+        pattern,
+      } = value;
+      const intendedRange =
+        range || (pattern ? (patternToRegexType as unknown as Record<string, any>)[pattern] : undefined) || 'string';
+      const isExistingClassReference =
+        typeof intendedRange === 'string' && intendedRange in classes;
+      const finalRange = isExistingClassReference ? intendedRange : 'string';
+
+      return {
+        ...properties,
+        [key]: {
+          description: description ?? '',
+          requiredType: identifier
+            ? RequiredType.IDENTIFIER
+            : required
+            ? RequiredType.REQUIRED
+            : RequiredType.OPTIONAL,
+          range: finalRange,
+          collectionType: array
+            ? CollectionType.ARRAY
+            : multivalued
+            ? CollectionType.LIST
+            : undefined,
+          dimensions: array ? array.exact_number_dimensions : undefined,
         },
-      ]
-    ) => ({
-      ...properties,
-      [key]: {
-        description: description ?? '',
-        requiredType: identifier
-          ? RequiredType.IDENTIFIER
-          : required
-          ? RequiredType.REQUIRED
-          : RequiredType.OPTIONAL,
-        range: range || (pattern ? patternToRegexType[pattern] : undefined) || 'string',
-        collectionType: array
-          ? CollectionType.ARRAY
-          : multivalued
-          ? CollectionType.LIST
-          : undefined,
-        dimensions: array ? array.exact_number_dimensions : undefined,
-      },
-    }),
+      };
+    },
     {}
   );
 
@@ -104,7 +116,7 @@ export const importNodes = (
           nextNodeId = nodes.push({
             id: nextNodeId.toString(),
             caption: key,
-            properties: attributesToProperties(attributes),
+            properties: attributesToProperties(attributes, classes),
             entityType: 'node',
             ontologies: ontologies.filter(
               ({ id }) =>
@@ -118,7 +130,12 @@ export const importNodes = (
             ),
             description: description || annotations?.prompt || '',
             examples: [
-              ...new Set(annotations?.['prompt.examples']?.split(', ')),
+              ...new Set(
+                (annotations?.['prompt.examples'] ?? '')
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter((s) => s.length > 0)
+              ),
             ],
           });
         }
@@ -152,12 +169,11 @@ export const importTriples = (
             node: LinkMLNode,
             annotations: Record<string, string> | undefined
           ) => {
-            return [
-              ...new Set([
-                ...(node.examples ?? []),
-                ...(annotations?.['prompt.examples']?.split(', ') ?? []),
-              ]),
-            ];
+            const parsed = (annotations?.['prompt.examples'] ?? '')
+              .split(',')
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0);
+            return [...new Set([...(node.examples ?? []), ...parsed])];
           };
           const fromNode = {
             ...nodes[fromNodeIndex],
@@ -239,13 +255,19 @@ export const importTriples = (
               predicateAnnotators?.includes(id.toLowerCase())
           );
 
+          const predicateIdAttr = predicate?.attributes?.['id'];
+          const predicateType =
+            predicateIdAttr && typeof predicateIdAttr !== 'string' && 'pattern' in predicateIdAttr
+              ? (predicateIdAttr as Attribute).pattern ?? ''
+              : '';
+
           index = triples.push({
             relationshipType: RelationshipType.ASSOCIATION,
             fromId: fromNode.id,
             toId: toNode.id,
-            properties: attributesToProperties(attributes),
+            properties: attributesToProperties(attributes, classes),
             entityType: 'relationship',
-            type: predicate?.attributes?.['id']?.pattern ?? '',
+            type: predicateType,
             id: index.toString(),
             cardinality: cardinality,
             customCardinality:
@@ -257,9 +279,14 @@ export const importTriples = (
             },
             examples: [
               ...new Set([
-                ...(annotations?.['prompt.examples']?.split(', ') ?? []),
-                ...(predicate?.annotations?.['prompt.examples']?.split(', ') ??
-                  []),
+                ...((annotations?.['prompt.examples'] ?? '')
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter((s) => s.length > 0)),
+                ...((predicate?.annotations?.['prompt.examples'] ?? '')
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter((s) => s.length > 0)),
               ]),
             ],
             ontologies: predicateOntologies,
@@ -283,11 +310,16 @@ export const importCompoundTypes = (
     .forEach(([key, { attributes }]) => {
       if (attributes) {
         const [first, second, ...rest] = Object.entries(attributes);
+        const firstAttr = first && typeof first[1] !== 'string' ? (first[1] as Attribute) : undefined;
+        const secondAttr = second && typeof second[1] !== 'string' ? (second[1] as Attribute) : undefined;
+        if (!firstAttr || !secondAttr) {
+          return;
+        }
         const fromNodeIndex = nodes.findIndex(
-          (node) => node.caption === first[1].range
+          (node) => node.caption === firstAttr.range
         );
         const toNodeIndex = nodes.findIndex(
-          (node) => node.caption === second[1].range
+          (node) => node.caption === secondAttr.range
         );
 
         if (fromNodeIndex >= 0 && toNodeIndex >= 0) {

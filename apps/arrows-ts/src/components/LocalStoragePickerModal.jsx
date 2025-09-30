@@ -1,11 +1,11 @@
 import React, { Component } from 'react';
-import { Button, Modal, Table } from 'semantic-ui-react';
+import { Button, Modal, Table, Checkbox } from 'semantic-ui-react';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 
 class LocalStoragePickerModal extends Component {
   constructor(props) {
     super(props);
-    this.state = { fileId: null };
+    this.state = { fileId: null, selectedIds: new Set() };
   }
 
   onCancel = () => {
@@ -16,12 +16,31 @@ class LocalStoragePickerModal extends Component {
     this.setState({ fileId });
   };
 
+  onToggleSelect = (fileId) => {
+    const next = new Set(this.state.selectedIds);
+    if (next.has(fileId)) next.delete(fileId);
+    else next.add(fileId);
+    this.setState({ selectedIds: next });
+  };
+
+  onToggleSelectAll = () => {
+    const allIds = this.props.recentStorage.map((e) => e.fileId);
+    const allSelected = this.state.selectedIds.size === allIds.length;
+    this.setState({ selectedIds: allSelected ? new Set() : new Set(allIds) });
+  };
+
   render() {
     const rows = this.props.recentStorage.map((entry) => (
       <Table.Row
         active={this.state.fileId === entry.fileId}
         onClick={() => this.onClickRow(entry.fileId)}
       >
+        <Table.Cell collapsing onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={this.state.selectedIds.has(entry.fileId)}
+            onChange={() => this.onToggleSelect(entry.fileId)}
+          />
+        </Table.Cell>
         <Table.Cell>{entry.diagramName}</Table.Cell>
         <Table.Cell>
           {formatDistanceToNow(entry.timestamp, { addSuffix: true })}
@@ -36,6 +55,19 @@ class LocalStoragePickerModal extends Component {
           <Table selectable>
             <Table.Header>
               <Table.Row>
+                <Table.HeaderCell collapsing>
+                  <Checkbox
+                    checked={
+                      this.state.selectedIds.size > 0 &&
+                      this.state.selectedIds.size === this.props.recentStorage.length
+                    }
+                    indeterminate={
+                      this.state.selectedIds.size > 0 &&
+                      this.state.selectedIds.size < this.props.recentStorage.length
+                    }
+                    onChange={this.onToggleSelectAll}
+                  />
+                </Table.HeaderCell>
                 <Table.HeaderCell>Name</Table.HeaderCell>
                 <Table.HeaderCell>Last accessed</Table.HeaderCell>
               </Table.Row>
@@ -46,6 +78,20 @@ class LocalStoragePickerModal extends Component {
         </Modal.Content>
         <Modal.Actions>
           <Button onClick={this.onCancel} content="Cancel" />
+          <Button
+            negative
+            disabled={this.state.selectedIds.size === 0}
+            onClick={() => {
+              const ids = Array.from(this.state.selectedIds);
+              const confirmed = window.confirm(
+                `Delete ${ids.length} schema${ids.length > 1 ? 's' : ''}? This operation is irreversible.`
+              );
+              if (!confirmed) return;
+              this.props.onDeleteMany(ids);
+              this.setState({ selectedIds: new Set(), fileId: null });
+            }}
+            content="Delete selected"
+          />
           <Button
             negative
             disabled={this.state.fileId === null}

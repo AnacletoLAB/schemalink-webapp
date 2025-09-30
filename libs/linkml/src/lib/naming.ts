@@ -1,8 +1,11 @@
 import { Node, Relationship, RequiredType } from '@neo4j-arrows/model';
-import { camelCase, snakeCase, upperFirst } from 'lodash';
+import { camelCase, snakeCase, upperFirst, startCase } from 'lodash';
 
 export const toClassName = (str: string): string => upperFirst(camelCase(str));
 export const toAttributeName = (str: string): string => snakeCase(str);
+
+// Visualization-only: insert spaces between camel case words for display
+export const formatClassCaptionForDisplay = (str: string): string => startCase(str);
 
 /**
  * Formats a property name according to naming conventions

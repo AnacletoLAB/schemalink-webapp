@@ -8,7 +8,7 @@ import { neighbourPositions } from '@neo4j-arrows/model';
 import { BoundingBox } from './utils/BoundingBox';
 import { NodeCaptionOutsideNode } from './NodeCaptionOutsideNode';
 import { NodePropertiesInside } from './NodePropertiesInside';
-import { createPropertyNameFormatter, formatTypeString } from '@neo4j-arrows/linkml';
+import { createPropertyNameFormatter, formatTypeString, formatClassCaptionForDisplay } from '@neo4j-arrows/linkml';
 import { bisect } from './bisect';
 import { NodeLabelsInsideNode } from './NodeLabelsInsideNode';
 import { NodeCaptionFillNode } from './NodeCaptionFillNode';
@@ -124,7 +124,7 @@ export class VisualNode {
       }
     }
 
-    const caption = node.caption || '';
+    const caption = node.caption ? formatClassCaptionForDisplay(node.caption) : '';
     if (hasCaption) {
       switch (captionPosition) {
         case 'inside':

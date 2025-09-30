@@ -219,7 +219,10 @@ class Header extends PureComponent {
       </div>
     ));
 
-    const recentlyAccessFiles = this.props.recentStorage
+    const sanitizedRecent = (this.props.recentStorage || []).filter(
+      (entry) => entry && typeof entry.diagramName === 'string'
+    );
+    const recentlyAccessFiles = sanitizedRecent
       .slice(1, 11)
       .map((entry, i) => (
         <div

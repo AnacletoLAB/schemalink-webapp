@@ -21,6 +21,12 @@ const mapDispatchToProps = (dispatch) => {
       deleteGraphFromLocalStorage(fileId);
       dispatch(removeFromRecentStorage('LOCAL_STORAGE', fileId));
     },
+    onDeleteMany: (fileIds) => {
+      fileIds.forEach((fileId) => {
+        deleteGraphFromLocalStorage(fileId);
+        dispatch(removeFromRecentStorage('LOCAL_STORAGE', fileId));
+      });
+    },
     onCancel: () => {
       dispatch(pickDiagramCancel());
     },

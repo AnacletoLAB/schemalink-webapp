@@ -131,8 +131,10 @@ const initialiseStorageFromWindowLocationHash = () => {
     };
   } else {
     const recentlyAccessed = loadRecentlyAccessedDiagrams() || [];
-    if (recentlyAccessed.length > 0) {
-      const mostRecentlyAccessed = recentlyAccessed[0];
+    const valid = (Array.isArray(recentlyAccessed) ? recentlyAccessed : [])
+      .filter((e) => e && e.fileId && typeof e.diagramName === 'string');
+    if (valid.length > 0) {
+      const mostRecentlyAccessed = valid[0];
       return {
         mode: mostRecentlyAccessed.mode,
         status: 'GET',
