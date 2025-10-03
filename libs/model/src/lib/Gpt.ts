@@ -367,11 +367,12 @@ Ensure that the proposed description for the attributes align with the semantics
 Return ONLY the yaml code chunk containing the updated class named ${command.nodes}.
 
 ${command.fullSchema}`;
+    // vedi codice Python ed elimina "Do NOT add any new line between the returned classes." una volta aggiornato limport con mixins in schemalink
     case CommandKind.AddParentClass:
       return `${INTRO}enhance the parent class for the class named ${command.nodes}.
 Ensure that ${command.nodes} has a single parent class. If an appropriate class does not exist in the schema, create one.
 Note that the new class name MUST be different from NamedEntity. Specify its is_a attribute to be either NamedEntity or another relevant class within the existing hierarchy, without introducing the NamedEntity class itself.
-Return ONLY the yaml code chunk containing the updated class named ${command.nodes} and any new class created.
+Return ONLY the yaml code chunk containing the updated class named ${command.nodes} and any new class created. Do NOT add any new line between the returned classes.
 
 ${command.fullSchema}`;
     case CommandKind.AddChildClass:
@@ -560,7 +561,7 @@ Return ONLY the yaml code chunk containing the new classes.
     case CommandKind.AddAssociationsSimilarToEntities:
       return `${INTRO}add one or more new relationships that semantically fit the context defined by the subschema${contextPart ? ` which includes the following ${contextPart}` : ""}.
 The new relationships should logically extend or complement the meaning and structure of these existing classes and relationships.
-Return ONLY the yaml code chunk containing the new relationships and their predicates.
+Return ONLY the yaml code chunk containing the new relationships and their predicates. Every relationship needs to specify its subject and its object.
 
 ${command.fullSchema}`;
     case CommandKind.AnnotateSubschemaOntology:
