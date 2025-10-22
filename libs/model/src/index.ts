@@ -28,3 +28,4 @@ export * from './lib/guides/LineGuide';
 
 export * from './lib/Ontology';
 export * from './lib/Gpt';
+export { adaptLegacyRelationship, adaptLegacyGraph } from './lib/Relationship';

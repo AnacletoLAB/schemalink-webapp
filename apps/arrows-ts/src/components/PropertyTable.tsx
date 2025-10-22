@@ -18,6 +18,8 @@ interface PropertyTableProps {
   onSavePropertyValue: (key: string, value: Attribute) => void;
   onDeleteProperty: (key: string) => void;
   rangeOptions?: string[];
+  attributesHidden?: boolean;
+  onToggleAttributes?: () => void;
 }
 
 interface PropertyTableState {
@@ -78,6 +80,8 @@ export default class PropertyTable extends Component<
       onSavePropertyValue,
       onDeleteProperty,
       rangeOptions = [],
+      attributesHidden = false,
+      onToggleAttributes,
     } = this.props;
     const {
       properties: localProperties,
@@ -190,7 +194,20 @@ export default class PropertyTable extends Component<
     );
     return (
       <Form.Field key="propertiesTable">
-        <label>Attributes</label>
+        <label>
+          Attributes
+          {onToggleAttributes ? (
+            <Button
+              type="button"
+              basic
+              color="red"
+              size="tiny"
+              style={{ marginLeft: 12 }}
+              content={attributesHidden ? 'Show' : 'Hide'}
+              onClick={onToggleAttributes}
+            />
+          ) : null}
+        </label>
         {!!rows.length && (
           <Accordion
             compact

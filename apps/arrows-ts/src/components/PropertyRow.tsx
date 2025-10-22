@@ -300,18 +300,27 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
               selection
               value={attributeValue.range ?? BasicType.STRING}
               options={[
-                ...Object.values(BasicType),
-                ...Object.values(RegexType),
-                ...Object.values(EnumType),
-              ]
-                .map((type) => ({ key: String(type), text: String(type), value: String(type) }))
-                .concat(
-                  rangeOptions.map((name) => ({
-                    key: `class-${name}`,
-                    text: `Reference: ${name}`,
-                    value: name,
-                  }))
-                )}
+                ...Object.values(BasicType).map((type) => ({ 
+                  key: String(type), 
+                  text: String(type), 
+                  value: String(type) 
+                })),
+                ...Object.values(RegexType).map((type) => ({ 
+                  key: String(type), 
+                  text: `Regex: ${String(type)}`, 
+                  value: String(type) 
+                })),
+                ...Object.values(EnumType).map((type) => ({ 
+                  key: String(type), 
+                  text: `Enum: ${String(type)}`, 
+                  value: String(type) 
+                })),
+                ...rangeOptions.map((name) => ({
+                  key: `class-${name}`,
+                  text: `Reference: ${name}`,
+                  value: name,
+                }))
+              ]}
               onChange={(e, { value }) =>
                 onValueChange({ ...attributeValue, range: value as string })
               }

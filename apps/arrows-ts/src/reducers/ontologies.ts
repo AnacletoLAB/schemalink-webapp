@@ -31,11 +31,20 @@ const ontologies = (
     case 'LOAD_ONTOLOGIES_SUCCESS':
       return {
         ...state,
-        ontologies: [
-          ...[...action.ontologies, ...hardcodedOntologies].map((ontology) => {
-            return { ...ontology, annotator: `sqlite:obo:${ontology.id}` };
-          }),
-        ],
+        ontologies: (() => {
+          const merged = [...action.ontologies, ...hardcodedOntologies];
+          const seen: Record<string, boolean> = {};
+          const deduped = merged.filter((o) => {
+            const key = o.id.toLocaleLowerCase();
+            if (seen[key]) return false;
+            seen[key] = true;
+            return true;
+          });
+          return deduped.map((ontology) => ({
+            ...ontology,
+            annotator: `sqlite:obo:${ontology.id}`,
+          }));
+        })(),
         isFetching: false,
       };
     case 'LOAD_ONTOLOGIES_FAILURE':

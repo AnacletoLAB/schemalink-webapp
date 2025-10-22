@@ -59,7 +59,12 @@ export class VisualRelationship {
     const iconImage = style('relationship-icon-image');
     const hasIcon = !!iconImage;
     const hasType = !!resolvedRelationship.type;
+    const attributePosition = style('attribute-position') as
+      | 'inside'
+      | 'outside'
+      | 'hidden';
     const hasProperties =
+      attributePosition !== 'hidden' &&
       Object.keys(resolvedRelationship.relationship.properties).length > 0;
 
     if (hasIcon) {

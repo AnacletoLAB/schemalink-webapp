@@ -166,7 +166,7 @@ class Header extends PureComponent {
       return;
     }
 
-      const jsonGraph = JSON.stringify(this.props.graph, null, 2);
+      const jsonGraph = JSON.stringify(sanitizeInternalGraph(this.props.graph), null, 2);
 
       const response = await fetch(`${import.meta.env.VITE_CONTRIBUTE_ENDPOINT}`, {
         method: "POST",

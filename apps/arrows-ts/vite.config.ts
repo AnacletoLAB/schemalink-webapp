@@ -11,6 +11,13 @@ export default defineConfig({
     host: '0.0.0.0',
     fs: { allow: ['../../node_modules/semantic-ui-css/themes/default/assets'] },
     allowedHosts: ['helix.biodata.di.unimi.it', 'schemalink.biodata.di.unimi.it', 'schemalink.anacleto.di.unimi.it', 'localhost'],
+    proxy: {
+      '/api': {
+        target: process.env.VITE_BACKEND_ORIGIN || 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 
   preview: {

@@ -1,5 +1,4 @@
 import {
-  Cardinality,
   emptyGraph,
   idsMatch,
   moveTo,
@@ -28,8 +27,8 @@ import {
   Guides,
   Attribute,
   SchemaProperties,
-  CustomCardinality,
 } from '@neo4j-arrows/model';
+import { Cardinality } from '../actions/graph';
 import { Action } from 'redux';
 import undoable, { groupByActionTypes } from 'redux-undo';
 
@@ -67,7 +66,6 @@ interface SetExamplesAction extends SelectionAction<'SET_EXAMPLES'> {
 
 interface SetCardinalityAction extends SelectionAction<'SET_CARDINALITY'> {
   cardinality: Cardinality;
-  customCardinality?: CustomCardinality;
 }
 
 interface SetNavigationAction extends SelectionAction<'SET_NAVIGATION'> {
@@ -259,7 +257,10 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
             relationshipType: RelationshipType.ASSOCIATION,
             style: {},
             properties: {},
-            cardinality: Cardinality.ONE_TO_MANY,
+            source_minimum_cardinality: 0,
+            source_maximum_cardinality: 'N' as any,
+            target_minimum_cardinality: 0,
+            target_maximum_cardinality: 'N' as any,
             navigation: Navigation.None,
             fromId: action.sourceNodeIds[i],
             toId: action.targetNodeIds[i],
@@ -286,7 +287,10 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
             relationshipType: RelationshipType.ASSOCIATION,
             style: {},
             properties: {},
-            cardinality: Cardinality.ONE_TO_MANY,
+            source_minimum_cardinality: 0,
+            source_maximum_cardinality: 'N' as any,
+            target_minimum_cardinality: 0,
+            target_maximum_cardinality: 'N' as any,
             navigation: Navigation.None,
             fromId: action.sourceNodeIds[i],
             toId: action.targetNodeIds[i],
@@ -384,14 +388,7 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
           relationshipSelected(action.selection, relationship.id)
             ? {
                 ...relationship,
-                cardinality: action.cardinality,
-                customCardinality:
-                  action.cardinality !== Cardinality.CUSTOM
-                    ? undefined
-                    : {
-                        ...relationship.customCardinality,
-                        ...action.customCardinality,
-                      },
+                ...action.cardinality,
               }
             : relationship
         ),
@@ -616,15 +613,52 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
         ),
       };
 
-    case 'SET_RELATIONSHIP_TYPE':
+    case 'SET_RELATIONSHIP_TYPE': {
+      const actionTyped = action as SetRelationshipTypeAction;
+
+      // If switching to INHERITANCE, prevent duplicates between the same two nodes
+      if (actionTyped.relationshipType === RelationshipType.INHERITANCE) {
+        // Collect existing inheritance pairs so we can block creating a second one
+        const seenInheritancePairs = new Set(
+          state.relationships
+            .filter((r) => r.relationshipType === RelationshipType.INHERITANCE)
+            .map((r) => `${r.fromId}->${r.toId}`)
+        );
+
+        return {
+          ...state,
+          relationships: state.relationships.map((relationship) => {
+            if (!relationshipSelected(actionTyped.selection, relationship.id)) {
+              return relationship;
+            }
+
+            const pairKey = `${relationship.fromId}->${relationship.toId}`;
+
+            // If an inheritance already exists for this pair, do not convert this one
+            if (seenInheritancePairs.has(pairKey)) {
+              return relationship;
+            }
+
+            // Reserve this pair and convert to inheritance
+            seenInheritancePairs.add(pairKey);
+            return setRelationshipType(
+              relationship,
+              actionTyped.relationshipType
+            );
+          }),
+        };
+      }
+
+      // For other relationship types, keep existing behavior
       return {
         ...state,
         relationships: state.relationships.map((relationship) =>
-          relationshipSelected(action.selection, relationship.id)
-            ? setRelationshipType(relationship, action.relationshipType)
+          relationshipSelected(actionTyped.selection, relationship.id)
+            ? setRelationshipType(relationship, actionTyped.relationshipType)
             : relationship
         ),
       };
+    }
 
     case 'DUPLICATE_NODES_AND_RELATIONSHIPS': {
       const newNodes = state.nodes.slice();
@@ -657,7 +691,19 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
           fromId: spec.fromId,
           toId: spec.toId,
         };
-        newRelationships.push(newRelationship);
+        // Prevent duplicate INHERITANCE relationships between the same nodes
+        const isDuplicateInheritance =
+          newRelationship.relationshipType === RelationshipType.INHERITANCE &&
+          newRelationships.some(
+            (r) =>
+              r.relationshipType === RelationshipType.INHERITANCE &&
+              idsMatch(r.fromId, newRelationship.fromId) &&
+              idsMatch(r.toId, newRelationship.toId)
+          );
+
+        if (!isDuplicateInheritance) {
+          newRelationships.push(newRelationship);
+        }
       });
 
       return {
@@ -669,10 +715,21 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
 
     case 'IMPORT_NODES_AND_RELATIONSHIPS': {
       const newNodes = [...state.nodes, ...action.nodes];
-      const newRelationships = [
-        ...state.relationships,
-        ...action.relationships,
-      ];
+      // Merge relationships while preventing duplicate INHERITANCE edges
+      const newRelationships = [...state.relationships];
+      for (const rel of action.relationships) {
+        const duplicateInheritance =
+          rel.relationshipType === RelationshipType.INHERITANCE &&
+          newRelationships.some(
+            (r) =>
+              r.relationshipType === RelationshipType.INHERITANCE &&
+              idsMatch(r.fromId, rel.fromId) &&
+              idsMatch(r.toId, rel.toId)
+          );
+        if (!duplicateInheritance) {
+          newRelationships.push(rel);
+        }
+      }
 
       return {
         ...state,

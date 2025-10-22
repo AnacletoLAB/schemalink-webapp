@@ -48,6 +48,18 @@ class LocalStoragePickerModal extends Component {
       </Table.Row>
     ));
 
+    // Determine button states based on selection rules
+    const hasSelectedCheckboxes = this.state.selectedIds.size > 0;
+    const hasMultipleSelected = this.state.selectedIds.size > 1;
+    const hasRowSelected = this.state.fileId !== null;
+    const hasAnySelection = hasSelectedCheckboxes || hasRowSelected;
+
+    // Delete button should be enabled if there are selected checkboxes OR a selected row
+    const deleteEnabled = hasAnySelection;
+    
+    // Open button should be disabled if multiple checkboxes are selected
+    const openDisabled = hasMultipleSelected || (!hasSelectedCheckboxes && !hasRowSelected);
+
     return (
       <Modal size="medium" centered={false} open={true} onClose={this.onCancel}>
         <Modal.Header>Open diagram from Web Browser local storage</Modal.Header>
@@ -80,35 +92,39 @@ class LocalStoragePickerModal extends Component {
           <Button onClick={this.onCancel} content="Cancel" />
           <Button
             negative
-            disabled={this.state.selectedIds.size === 0}
+            disabled={!deleteEnabled}
             onClick={() => {
-              const ids = Array.from(this.state.selectedIds);
-              const confirmed = window.confirm(
-                `Delete ${ids.length} schema${ids.length > 1 ? 's' : ''}? This operation is irreversible.`
-              );
-              if (!confirmed) return;
-              this.props.onDeleteMany(ids);
-              this.setState({ selectedIds: new Set(), fileId: null });
-            }}
-            content="Delete selected"
-          />
-          <Button
-            negative
-            disabled={this.state.fileId === null}
-            onClick={() => {
-              const fileId = this.state.fileId;
-              if (!fileId) return;
-              const confirmed = window.confirm('Would you like to delete this schema? This operation is irreversible.');
-              if (!confirmed) return;
-              this.props.onDelete(fileId);
-              this.setState({ fileId: null });
+              // If checkboxes are selected, delete those; otherwise delete the selected row
+              if (hasSelectedCheckboxes) {
+                const ids = Array.from(this.state.selectedIds);
+                const confirmed = window.confirm(
+                  `Delete ${ids.length} schema${ids.length > 1 ? 's' : ''}? This operation is irreversible.`
+                );
+                if (!confirmed) return;
+                this.props.onDeleteMany(ids);
+                this.setState({ selectedIds: new Set(), fileId: null });
+              } else if (hasRowSelected) {
+                const fileId = this.state.fileId;
+                const confirmed = window.confirm('Would you like to delete this schema? This operation is irreversible.');
+                if (!confirmed) return;
+                this.props.onDelete(fileId);
+                this.setState({ fileId: null });
+              }
             }}
             content="Delete"
           />
           <Button
             primary
-            disabled={this.state.fileId === null}
-            onClick={() => this.props.onPick(this.state.fileId)}
+            disabled={openDisabled}
+            onClick={() => {
+              // If a single checkbox is selected, open that; otherwise open the selected row
+              if (this.state.selectedIds.size === 1) {
+                const fileId = Array.from(this.state.selectedIds)[0];
+                this.props.onPick(fileId);
+              } else if (hasRowSelected) {
+                this.props.onPick(this.state.fileId);
+              }
+            }}
             content="Open"
           />
         </Modal.Actions>

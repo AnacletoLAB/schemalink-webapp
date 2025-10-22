@@ -7,6 +7,7 @@ import {
 } from '@neo4j-arrows/model';
 import { EmptyObject } from 'lodash';
 import enumRegistry from './enumRegistry.json';
+import { normalizeOntologyListSpec } from './ontologies';
 
 type Array = {
   exact_number_dimensions: number;
@@ -158,7 +159,9 @@ export const recogniseEnumFromDefinition = (
     for (const [key, value] of Object.entries(enumRegistryTyped)) {
       const rf = value.reachable_from as { source_ontology: string; source_nodes: string[]; relationship_types?: string[] } | undefined;
       if (!rf) continue;
-      if (normalize(rf.source_ontology) !== normalize(source_ontology)) continue;
+      // Normalize ontology spec to canonical canonical form so that
+      // obo:go, obo:sqlite:go, sqlite:obo:go all compare equal
+      if (normalizeOntologyListSpec(rf.source_ontology) !== normalizeOntologyListSpec(source_ontology)) continue;
       const registryNodes = toSet(rf.source_nodes);
       const providedNodes = toSet(source_nodes || []);
       if (registryNodes.size === providedNodes.size && [...registryNodes].every((v) => providedNodes.has(v))) {

@@ -124,10 +124,7 @@ export const defaultCallbackFactory = (
       } else {
         const type = (r.type || '').toLowerCase();
         const desc = (r.description ?? '').trim();
-        const card = (r.cardinality ?? 'NONE').toString();
-        const cc = r.customCardinality
-          ? `smin:${r.customCardinality.source_minimum ?? ''},smax:${r.customCardinality.source_maximum ?? ''},tmin:${r.customCardinality.target_minimum ?? ''},tmax:${r.customCardinality.target_maximum ?? ''}`
-          : '-';
+        const card = `smin:${r.source_minimum_cardinality ?? 0},smax:${r.source_maximum_cardinality ?? 'N'},tmin:${r.target_minimum_cardinality ?? 0},tmax:${r.target_maximum_cardinality ?? 'N'}`;
         
         // Build relationship properties efficiently
         const relProps = Object.entries(r.properties || {})

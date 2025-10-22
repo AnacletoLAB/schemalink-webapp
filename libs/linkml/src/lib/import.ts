@@ -1,10 +1,4 @@
-import {
-  Cardinality,
-  CollectionType,
-  Ontology,
-  RelationshipType,
-  RequiredType,
-} from '@neo4j-arrows/model';
+import { CollectionType, Ontology, RelationshipType, RequiredType } from '@neo4j-arrows/model';
 import {
   Attribute,
   LinkMLClass,
@@ -14,6 +8,7 @@ import {
   SpiresCoreClasses,
 } from './types';
 import { EnumType } from '@neo4j-arrows/model';
+import { normalizeOntologyToken } from './ontologies';
 
 interface ImportNodesReturnType {
   nodes: LinkMLNode[];
@@ -105,38 +100,54 @@ export const importNodes = (
         },
       ]) => {
         const self = nodes.find(({ caption }) => caption === key);
-        const parent = nodes.find(
-          ({ caption }) => caption === is_a || (mixins && caption in mixins)
-        );
-        if (!self && (is_a === SpiresCoreClasses.NamedEntity || parent)) {
+        const directParent = nodes.find(({ caption }) => caption === is_a);
+        // Normalize mixins to array of strings
+        const mixinParents: string[] = Array.isArray(mixins)
+          ? (mixins as string[])
+          : typeof mixins === 'string'
+          ? [mixins]
+          : [];
+        const existingMixinParents = mixinParents
+          .map((m) => nodes.find(({ caption }) => caption === m))
+          .filter((p): p is LinkMLNode => !!p);
+        const parentExists = !!directParent || existingMixinParents.length > 0;
+        if (!self && (is_a === SpiresCoreClasses.NamedEntity || parentExists)) {
           noNewNodes = false;
-          if (parent) {
+          // Add inheritance edges to main parent and all mixin parents
+          const parentsToLink: LinkMLNode[] = [
+            ...(directParent ? [directParent] : []),
+            ...existingMixinParents,
+          ];
+          parentsToLink.forEach((parentNode) => {
             nextRelationshipId = relationships.push({
               relationshipType: RelationshipType.INHERITANCE,
               fromId: nextNodeId.toString(),
-              toId: parent.id,
+              toId: parentNode.id,
               properties: {},
               entityType: 'relationship',
               type: '',
               id: nextRelationshipId.toString(),
               description: '',
             });
-          }
+          });
           nextNodeId = nodes.push({
             id: nextNodeId.toString(),
             caption: key,
             properties: attributesToProperties(attributes, classes, enumNameToEnumType),
             entityType: 'node',
-            ontologies: ontologies.filter(
-              ({ id }) =>
-                (id_prefixes && id_prefixes.includes(id.toLocaleUpperCase())) ||
-                annotations?.annotators
-                  ?.split(',')
-                  .map((annotator) => annotator.trim())
-                  .filter((annotator) => annotator.startsWith('sqlite:obo:'))
-                  .map((annotator) => annotator.replace('sqlite:obo:', ''))
-                  .includes(id.toLocaleLowerCase())
-            ),
+            ontologies: ontologies.filter(({ id }) => {
+              if (id_prefixes && id_prefixes.includes(id.toLocaleUpperCase())) {
+                return true;
+              }
+              const annot = (annotations?.annotators || '')
+                .split(',')
+                .map((s) => s.trim())
+                .filter((s) => !!s)
+                .map((s) => normalizeOntologyToken(s))
+                .filter((s) => s.startsWith('sqlite:obo:'))
+                .map((s) => s.split(':').pop() as string);
+              return annot.includes(id.toLocaleLowerCase());
+            }),
             description: description || annotations?.prompt || '',
             examples: [
               ...new Set(
@@ -151,6 +162,41 @@ export const importNodes = (
       }
     );
   }
+  // Final pass: ensure inheritance edges exist for all mixin parents
+  Object.entries(classes).forEach(([key, { is_a, mixins }]) => {
+    const self = nodes.find(({ caption }) => caption === key);
+    if (!self) return;
+    const parentNames: string[] = [
+      ...(typeof is_a === 'string' ? [is_a] : []),
+      ...(Array.isArray(mixins)
+        ? (mixins as string[])
+        : typeof mixins === 'string'
+        ? [mixins]
+        : []),
+    ].filter((p) => !!p);
+    parentNames.forEach((parentName) => {
+      const parent = nodes.find(({ caption }) => caption === parentName);
+      if (!parent) return;
+      const exists = relationships.some(
+        (r) =>
+          r.relationshipType === RelationshipType.INHERITANCE &&
+          r.fromId === self.id &&
+          r.toId === parent.id
+      );
+      if (!exists) {
+        relationships.push({
+          relationshipType: RelationshipType.INHERITANCE,
+          fromId: self.id,
+          toId: parent.id,
+          properties: {},
+          entityType: 'relationship',
+          type: '',
+          id: relationships.length.toString(),
+          description: '',
+        });
+      }
+    });
+  });
   return { nodes, relationships };
 };
 
@@ -201,43 +247,14 @@ export const importTriples = (
           };
           nodes.splice(fromNodeIndex, 1, fromNode);
           nodes.splice(toNodeIndex, 1, toNode);
-          const customCardinality = {
-            source_minimum: slot_usage['subject'].minimum_cardinality ?? 0,
-            source_maximum: slot_usage['subject'].maximum_cardinality,
-            target_minimum: slot_usage['object'].minimum_cardinality ?? 0,
-            target_maximum: slot_usage['object'].maximum_cardinality,
-          };
-
-          const toCardinality = () => {
-            const {
-              source_minimum,
-              source_maximum,
-              target_minimum,
-              target_maximum,
-            } = customCardinality;
-
-            if (
-              source_minimum > 0 ||
-              target_minimum > 0 ||
-              (source_maximum && source_maximum > 1) ||
-              (target_maximum && target_maximum > 1)
-            ) {
-              return Cardinality.CUSTOM;
-            }
-
-            // From here on, minimums are 0 and maximums (if present) are 1.
-            if (source_maximum) {
-              return target_maximum
-                ? Cardinality.ONE_TO_ONE
-                : Cardinality.ONE_TO_MANY;
-            } else {
-              return target_maximum
-                ? Cardinality.MANY_TO_ONE
-                : Cardinality.MANY_TO_MANY;
-            }
-          };
-
-          const cardinality = toCardinality();
+          const source_minimum_cardinality =
+            slot_usage['subject'].minimum_cardinality ?? 0;
+          const source_maximum_cardinality =
+            slot_usage['subject'].maximum_cardinality ?? 'N';
+          const target_minimum_cardinality =
+            slot_usage['object'].minimum_cardinality ?? 0;
+          const target_maximum_cardinality =
+            slot_usage['object'].maximum_cardinality ?? 'N';
           const attributes = Object.entries(slot_usage)
             .filter(
               ([key, value_]) =>
@@ -255,8 +272,10 @@ export const importTriples = (
           const predicateAnnotators = predicate?.annotations?.annotators
             ?.split(',')
             .map((a) => a.trim())
+            .filter((a) => !!a)
+            .map((a) => normalizeOntologyToken(a))
             .filter((a) => a.startsWith('sqlite:obo:'))
-            .map((a) => a.replace('sqlite:obo:', ''));
+            .map((a) => a.split(':').pop() as string);
 
           const predicateOntologies = ontologies.filter(
             ({ id }) =>
@@ -279,9 +298,10 @@ export const importTriples = (
             entityType: 'relationship',
             type: predicateType,
             id: index.toString(),
-            cardinality: cardinality,
-            customCardinality:
-              cardinality === Cardinality.CUSTOM ? customCardinality : undefined,
+            source_minimum_cardinality,
+            source_maximum_cardinality,
+            target_minimum_cardinality,
+            target_maximum_cardinality,
             description: description ?? '',
             annotations: {
               ...(predicate?.annotations ?? {}),
@@ -341,7 +361,10 @@ export const importCompoundTypes = (
             entityType: 'relationship',
             type: '',
             id: index.toString(),
-            cardinality: Cardinality.MANY_TO_MANY,
+            source_minimum_cardinality: 0,
+            source_maximum_cardinality: 'N',
+            target_minimum_cardinality: 0,
+            target_maximum_cardinality: 'N',
             description: '',
             annotations: {},
           });

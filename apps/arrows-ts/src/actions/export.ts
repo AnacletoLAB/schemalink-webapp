@@ -1,6 +1,6 @@
 import { Dispatch } from 'redux';
 import { getPresentGraph } from '../selectors';
-import { selectedNodes, selectedRelationships } from '@neo4j-arrows/model';
+import { selectedNodes, selectedRelationships, RelationshipType } from '@neo4j-arrows/model';
 import { ArrowsState } from '../reducers';
 
 export const handleCopy = () => {
@@ -8,7 +8,11 @@ export const handleCopy = () => {
     const state = getState();
     const graph = getPresentGraph(state);
     const nodes = selectedNodes(graph, state.selection);
-    const relationships = selectedRelationships(graph, state.selection);
+    const relationships = selectedRelationships(graph, state.selection).map((r) =>
+      r.relationshipType === RelationshipType.INHERITANCE
+        ? { ...r, ontologies: undefined }
+        : r
+    );
     const selectedGraph = {
       nodes,
       relationships,

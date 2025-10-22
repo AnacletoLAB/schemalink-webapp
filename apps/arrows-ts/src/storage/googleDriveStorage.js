@@ -3,6 +3,7 @@ import {
   emptyGraph,
   Point,
   RelationshipType,
+  adaptLegacyGraph,
 } from '@neo4j-arrows/model';
 import { gettingDiagramNameSucceeded } from '../actions/diagramName';
 import { gettingGraph, gettingGraphSucceeded } from '../actions/storage';
@@ -56,31 +57,70 @@ export const constructGraphFromFile = (data) => {
     graph = emptyGraph();
   }
 
+  // Build ontology lookup map from top-level metadata (if present)
+  const ontologyLookup = new Map();
+  if (Array.isArray(graph.ontologies)) {
+    graph.ontologies.forEach((o) => {
+      if (o && o.id) {
+        ontologyLookup.set(String(o.id).toLowerCase(), o);
+      }
+    });
+  }
+
+  const rehydrateOntologies = (ont) => {
+    if (!Array.isArray(ont) || ont.length === 0) {
+      return [];
+    }
+
+    // New format: array of ID strings
+    if (typeof ont[0] === 'string') {
+      return ont.map((id) => {
+        const key = String(id).toLowerCase();
+        return (
+          ontologyLookup.get(key) || {
+            id: key,
+            name: undefined,
+            description: undefined,
+            namespace: undefined,
+            annotator: `sqlite:obo:${key}`,
+          }
+        );
+      });
+    }
+
+    // Old format: array of ontology objects (backward compatibility)
+    if (typeof ont[0] === 'object' && ont[0] !== null) {
+      return ont;
+    }
+
+    return [];
+  };
+
   const nodes = graph.nodes.map((node) => ({
     id: node.id,
     position: new Point(node.position.x, node.position.y),
     caption: node.caption,
     description: node.description || '',
-    ontologies: node.ontologies || [],
+    ontologies: rehydrateOntologies(node.ontologies),
     examples: node.examples || [],
     properties: node.properties || {},
     style: node.style || {},
   }));
 
-  const relationships = graph.relationships
+  const relationships = adaptLegacyGraph(graph).relationships
     .filter(
       (relationship) =>
         nodes.some((node) => node.id === relationship.fromId) &&
         nodes.some((node) => node.id === relationship.toId)
     )
     .map((relationship) => ({
-      ...relationship,
+      ...migrateLegacyCardinality(relationship),
       toId: relationship.toId,
       type: relationship.type || '',
       relationshipType:
         relationship.relationshipType || RelationshipType.ASSOCIATION,
       description: relationship.description || '',
-      ontologies: relationship.ontologies || [],
+      ontologies: rehydrateOntologies(relationship.ontologies),
       examples: relationship.examples || [],
       properties: relationship.properties || {},
       style: relationship.style || {},
@@ -95,3 +135,78 @@ export const constructGraphFromFile = (data) => {
     },
   };
 };
+
+// Helper function to sanitize cardinality max values
+function sanitizeCardinalityMax(value) {
+  if (value === 'N' || value === 'n') return 'N';
+  if (value === null || value === undefined || value === '') return 'N';
+  const num = typeof value === 'string' ? parseInt(value, 10) : value;
+  if (typeof num === 'number' && !isNaN(num) && num >= 0) return num;
+  return 'N'; // Revert non-numerical values to 'N'
+}
+
+function migrateLegacyCardinality(relationship) {
+  // If already new fields exist, ensure defaults and return
+  if (
+    'source_minimum_cardinality' in relationship ||
+    'target_minimum_cardinality' in relationship ||
+    'source_maximum_cardinality' in relationship ||
+    'target_maximum_cardinality' in relationship
+  ) {
+    return {
+      ...relationship,
+      source_minimum_cardinality:
+        relationship.source_minimum_cardinality ?? 0,
+      target_minimum_cardinality:
+        relationship.target_minimum_cardinality ?? 0,
+      source_maximum_cardinality:
+        sanitizeCardinalityMax(relationship.source_maximum_cardinality),
+      target_maximum_cardinality:
+        sanitizeCardinalityMax(relationship.target_maximum_cardinality),
+    };
+  }
+
+  // Map legacy enum/custom to new fields
+  const legacy = relationship.cardinality;
+  const cc = relationship.customCardinality || {};
+  let source_minimum_cardinality = cc.source_minimum ?? 0;
+  let target_minimum_cardinality = cc.target_minimum ?? 0;
+  let source_maximum_cardinality =
+    sanitizeCardinalityMax(cc.source_maximum != null ? cc.source_maximum : 'N');
+  let target_maximum_cardinality =
+    sanitizeCardinalityMax(cc.target_maximum != null ? cc.target_maximum : 'N');
+
+  switch (legacy) {
+    case 'ONE_TO_ONE':
+      source_maximum_cardinality = 1;
+      target_maximum_cardinality = 1;
+      break;
+    case 'ONE_TO_MANY':
+      source_maximum_cardinality = 'N';
+      target_maximum_cardinality = 1;
+      break;
+    case 'MANY_TO_ONE':
+      source_maximum_cardinality = 1;
+      target_maximum_cardinality = 'N';
+      break;
+    case 'MANY_TO_MANY':
+      source_maximum_cardinality = 'N';
+      target_maximum_cardinality = 'N';
+      break;
+    default:
+      break;
+  }
+
+  const {
+    cardinality, // drop
+    customCardinality, // drop
+    ...rest
+  } = relationship;
+  return {
+    ...rest,
+    source_minimum_cardinality,
+    source_maximum_cardinality,
+    target_minimum_cardinality,
+    target_maximum_cardinality,
+  };
+}

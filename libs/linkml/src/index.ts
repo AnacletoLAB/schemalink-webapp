@@ -42,6 +42,86 @@ const title = (s?: string): string => s ? startCase(s) : '';
 export * from './lib/types';
 export * from './lib/naming';
 
+// Derive required schema prefixes from enum registry metadata
+const derivePrefixesFromEnums = (
+  enums: string[]
+): Record<string, string> => {
+  const prefixes: Record<string, string> = {};
+
+  const ensure = (key: string, value: string) => {
+    if (!key) return;
+    if (!(key in prefixes)) {
+      prefixes[key] = value;
+    }
+  };
+
+  // Generic OBO prefix adder: turns e.g., "chebi" into CHEBI: http://purl.obolibrary.org/obo/chebi.owl
+  const addOBOPrefix = (idLike: string) => {
+    const norm = (idLike || '').trim();
+    if (!/^[A-Za-z]+$/.test(norm)) return;
+    const upper = norm.toUpperCase();
+    const lower = norm.toLowerCase();
+    ensure(upper, `http://purl.obolibrary.org/obo/${lower}.owl`);
+  };
+
+  // Parse strings like:
+  //   obo:chebi
+  //   sqlite:obo:go
+  //   obo:sqlite:cl
+  //   sqlite:obo:sqlite:cl
+  // Return last alphabetic token as the ontology id (chebi, go, cl)
+  const addFromSourceOntology = (source: string) => {
+    const parts = (source || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => !!s);
+    for (const p of parts) {
+      const tokens = p.split(':').map((t) => t.trim()).filter((t) => !!t);
+      // pick last purely alphabetic token
+      for (let i = tokens.length - 1; i >= 0; i--) {
+        if (/^[A-Za-z]+$/.test(tokens[i])) {
+          addOBOPrefix(tokens[i]);
+          break;
+        }
+      }
+    }
+  };
+
+  for (const enumType of enums) {
+    const reg = getEnumRegistryEntry(enumType as EnumType);
+    if (!reg || !reg.reachable_from) continue;
+
+    const { source_ontology, source_nodes, relationship_types } = reg.reachable_from;
+
+    if (source_ontology) {
+      // Handle cases like obo:chebi, sqlite:obo:go, obo:sqlite:go, sqlite:obo:sqlite:cl
+      addFromSourceOntology(source_ontology);
+    }
+
+    if (Array.isArray(source_nodes)) {
+      for (const sn of source_nodes) {
+        // e.g., "GO:0008150", "CL:0000000", "MESH:D013812", "NCIT:C1908"
+        const prefix = (sn.split(':')[0] || '').trim();
+        addOBOPrefix(prefix);
+      }
+    }
+
+    if (Array.isArray(relationship_types)) {
+      for (const rt of relationship_types) {
+        // e.g., "rdfs:subClassOf", "RO:0000087"
+        if (/^rdfs:/i.test(rt)) {
+          ensure('rdfs', 'http://www.w3.org/2000/01/rdf-schema#');
+        }
+        if (/^RO:/i.test(rt)) {
+          addOBOPrefix('ro');
+        }
+      }
+    }
+  }
+
+  return prefixes;
+};
+
 export const fromGraph = (
   name: string,
   {
@@ -313,6 +393,9 @@ const ontologyPrefixes = toPrefixes([
   ...relationships.flatMap((relationship) => relationship.ontologies ?? []),
 ]);
 
+  // Derive additional prefixes from enums (source_ontology, nodes, relationship types)
+  const enumDerivedPrefixes = derivePrefixesFromEnums(enums);
+
 return {
   id: `https://schemalink.biodata.di.unimi.it/${snakeCasedName}`,
   default_range: BasicType.STRING,
@@ -322,23 +405,37 @@ return {
   license,
   prefixes: (() => {
     if ([SpiresType.LINKML, SpiresType.RE, SpiresType.ER].includes(spiresType)) {
-      return {
+      const base = {
         linkml: 'https://w3id.org/linkml/',
         ontogpt: 'http://w3id.org/ontogpt/',
         rdf: 'https://www.w3.org/1999/02/22-rdf-syntax-ns#',
         ...ontologyPrefixes,
-      };
+      } as Record<string, string>;
+      // Add derived prefixes without overriding existing ones
+      const extras = Object.fromEntries(
+        Object.entries(enumDerivedPrefixes).filter(([k]) => !(k in base))
+      );
+      return { ...base, ...extras };
     }
     if (spiresType === SpiresType.LINKML_PG) {
-      return {
+      const base = {
         linkml: 'https://w3id.org/linkml/',
         rdf: 'https://www.w3.org/1999/02/22-rdf-syntax-ns#',
         rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
         BFO: 'http://purl.obolibrary.org/obo/bfo.owl',
         ...ontologyPrefixes,
-      };
+      } as Record<string, string>;
+      const extras = Object.fromEntries(
+        Object.entries(enumDerivedPrefixes).filter(([k]) => !(k in base))
+      );
+      return { ...base, ...extras };
     }
-    return ontologyPrefixes;
+    // Minimal set for other modes
+    const base = { ...ontologyPrefixes } as Record<string, string>;
+    const extras = Object.fromEntries(
+      Object.entries(enumDerivedPrefixes).filter(([k]) => !(k in base))
+    );
+    return { ...base, ...extras };
   })(),
   imports: (() => {
     if ([SpiresType.LINKML, SpiresType.RE, SpiresType.ER].includes(spiresType)) {

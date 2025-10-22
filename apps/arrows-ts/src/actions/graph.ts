@@ -30,7 +30,6 @@ import {
   Node,
   EntitySelection,
   RelationshipType,
-  Cardinality,
   Navigation,
   Ontology,
   ViewTransformation,
@@ -39,7 +38,6 @@ import {
   Attribute,
   SchemaProperties,
   hardcodedOntologies,
-  CustomCardinality,
 } from '@neo4j-arrows/model';
 import { BoundingBox, calculateBoundingBox } from '@neo4j-arrows/graphics';
 import { lockHandleDragType } from './mouse';
@@ -546,16 +544,21 @@ export const setOntology = (
   ontologies,
 });
 
+export type Cardinality = {
+  source_minimum_cardinality?: number;
+  source_maximum_cardinality?: number | 'N';
+  target_minimum_cardinality?: number;
+  target_maximum_cardinality?: number | 'N';
+};
+
 export const setCardinality = (
   selection: EntitySelection,
-  cardinality: Cardinality,
-  customCardinality?: CustomCardinality
+  cardinality: Cardinality
 ) => ({
   category: 'GRAPH',
   type: 'SET_CARDINALITY',
   selection,
   cardinality,
-  customCardinality,
 });
 
 export const setNavigation = (

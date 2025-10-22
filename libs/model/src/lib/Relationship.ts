@@ -1,14 +1,6 @@
 import { Entity, Id } from './Id';
 import { Ontology } from './Ontology';
 
-export enum Cardinality {
-  ONE_TO_MANY = 'ONE_TO_MANY',
-  MANY_TO_ONE = 'MANY_TO_ONE',
-  ONE_TO_ONE = 'ONE_TO_ONE',
-  MANY_TO_MANY = 'MANY_TO_MANY',
-  CUSTOM = 'CUSTOM',
-}
-
 export enum RelationshipType {
   ASSOCIATION = 'ASSOCIATION',
   INHERITANCE = 'INHERITANCE',
@@ -21,27 +13,16 @@ export enum Navigation {
   Reification = 'Reification',
 }
 
-export function toVisualCardinality(cardinality: Cardinality): string {
-  switch (cardinality) {
-    case Cardinality.ONE_TO_ONE:
-      return '1:1';
-    case Cardinality.ONE_TO_MANY:
-      return '1:N';
-    case Cardinality.MANY_TO_MANY:
-      return 'N:N';
-    case Cardinality.MANY_TO_ONE:
-      return 'N:1';
-    case Cardinality.CUSTOM:
-      return 'Custom';
-  }
-}
+export type CardinalityMax = number | 'N';
 
-export interface CustomCardinality {
-  source_minimum?: number;
-  source_maximum?: number;
-  target_minimum?: number;
-  target_maximum?: number;
-}
+// Helper function to sanitize cardinality max values
+const sanitizeCardinalityMax = (value: any): CardinalityMax => {
+  if (value === 'N' || value === 'n') return 'N';
+  if (value === null || value === undefined || value === '') return 'N';
+  const num = typeof value === 'string' ? parseInt(value, 10) : value;
+  if (typeof num === 'number' && !isNaN(num) && num >= 0) return num;
+  return 'N'; // Revert non-numerical values to 'N'
+};
 
 export interface Relationship extends Entity {
   type: string;
@@ -50,23 +31,12 @@ export interface Relationship extends Entity {
   toId: Id;
   ontologies?: Ontology[];
   examples?: string[];
-  cardinality?: Cardinality;
-  customCardinality?: CustomCardinality;
+  // New cardinality fields (legacy enum-based cardinality is obsolete)
+  source_minimum_cardinality?: number;
+  source_maximum_cardinality?: CardinalityMax;
+  target_minimum_cardinality?: number;
+  target_maximum_cardinality?: CardinalityMax;
   navigation?: Navigation;
-}
-
-export interface RelationshipWithDefaultCardinality extends Relationship {
-  cardinality:
-    | Cardinality.MANY_TO_MANY
-    | Cardinality.MANY_TO_ONE
-    | Cardinality.ONE_TO_MANY
-    | Cardinality.ONE_TO_ONE;
-  customCardinality: undefined;
-}
-
-export interface RelationshipWithCustomCardinality extends Relationship {
-  cardinality: Cardinality.CUSTOM;
-  customCardinality: CustomCardinality;
 }
 
 export const setType = (relationship: Relationship, type: string) => {
@@ -85,12 +55,19 @@ export const setRelationshipType = (
     ...(relationshipType === RelationshipType.INHERITANCE && {
       description: undefined,
       type: undefined,
-      cardinality: undefined,
       ontologies: undefined,
       examples: undefined,
     }),
     ...(relationshipType === RelationshipType.ASSOCIATION && {
-      cardinality: relationship.cardinality ?? Cardinality.ONE_TO_MANY,
+      // ensure new cardinality fields have defaults when association
+      source_minimum_cardinality:
+        relationship.source_minimum_cardinality ?? 0,
+      target_minimum_cardinality:
+        relationship.target_minimum_cardinality ?? 0,
+      source_maximum_cardinality:
+        relationship.source_maximum_cardinality ?? 'N',
+      target_maximum_cardinality:
+        relationship.target_maximum_cardinality ?? 'N',
     }),
     relationshipType,
   };
@@ -110,6 +87,75 @@ export const reverse = (relationship: Relationship) => {
     toId: relationship.fromId,
     fromId: relationship.toId,
   };
+};
+
+// Adapter: migrate legacy relationship cardinality fields to the new format
+export const adaptLegacyRelationship = (
+  relationship: any
+): Relationship => {
+  const hasNew =
+    'source_minimum_cardinality' in relationship ||
+    'source_maximum_cardinality' in relationship ||
+    'target_minimum_cardinality' in relationship ||
+    'target_maximum_cardinality' in relationship;
+
+  if (hasNew) {
+    return {
+      ...relationship,
+      source_minimum_cardinality: relationship.source_minimum_cardinality ?? 0,
+      target_minimum_cardinality: relationship.target_minimum_cardinality ?? 0,
+      source_maximum_cardinality: sanitizeCardinalityMax(relationship.source_maximum_cardinality),
+      target_maximum_cardinality: sanitizeCardinalityMax(relationship.target_maximum_cardinality),
+    } as Relationship;
+  }
+
+  const legacy = relationship.cardinality as
+    | 'ONE_TO_ONE'
+    | 'ONE_TO_MANY'
+    | 'MANY_TO_ONE'
+    | 'MANY_TO_MANY'
+    | 'CUSTOM'
+    | undefined;
+  const cc = relationship.customCardinality || {};
+  let source_minimum_cardinality = cc.source_minimum ?? 0;
+  let target_minimum_cardinality = cc.target_minimum ?? 0;
+  let source_maximum_cardinality: CardinalityMax =
+    sanitizeCardinalityMax(cc.source_maximum != null ? cc.source_maximum : 'N');
+  let target_maximum_cardinality: CardinalityMax =
+    sanitizeCardinalityMax(cc.target_maximum != null ? cc.target_maximum : 'N');
+
+  switch (legacy) {
+    case 'ONE_TO_ONE':
+      source_maximum_cardinality = 1;
+      target_maximum_cardinality = 1;
+      break;
+    case 'ONE_TO_MANY':
+      source_maximum_cardinality = 'N';
+      target_maximum_cardinality = 1;
+      break;
+    case 'MANY_TO_ONE':
+      source_maximum_cardinality = 1;
+      target_maximum_cardinality = 'N';
+      break;
+    case 'MANY_TO_MANY':
+      source_maximum_cardinality = 'N';
+      target_maximum_cardinality = 'N';
+      break;
+  }
+
+  const { cardinality, customCardinality, ...rest } = relationship;
+  return {
+    ...rest,
+    source_minimum_cardinality,
+    source_maximum_cardinality,
+    target_minimum_cardinality,
+    target_maximum_cardinality,
+  } as Relationship;
+};
+
+export const adaptLegacyGraph = (graph: any) => {
+  const relationships = (graph.relationships || []).map(adaptLegacyRelationship);
+  return { ...graph, relationships } as any;
 };
 
 export const isRelationship = (entity: Entity): entity is Relationship =>

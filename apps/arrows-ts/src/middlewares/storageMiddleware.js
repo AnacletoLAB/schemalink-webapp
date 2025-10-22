@@ -4,6 +4,7 @@ import {
   loadGraphFromLocalStorage,
   saveGraphToLocalStorage,
 } from '../actions/localStorage';
+import { RelationshipType } from '@neo4j-arrows/model';
 import {
   postedFileToLocalStorage,
   puttingGraph,
@@ -24,6 +25,23 @@ const historyActions = [
 ];
 
 export const storageMiddleware = (store) => (next) => (action) => {
+  const sanitizeInternalGraph = (graph) => {
+    const relationships = (graph.relationships || []).map((r) => {
+      if (r.relationshipType !== RelationshipType.INHERITANCE) return r;
+      const {
+        source_minimum_cardinality,
+        source_maximum_cardinality,
+        target_minimum_cardinality,
+        target_maximum_cardinality,
+        navigation,
+        ontologies,
+        ...rest
+      } = r;
+      return rest;
+    });
+    return { ...graph, relationships };
+  };
+  // use shared sanitizer
   const hideGraphHistory = (state) => ({
     ...state,
     graph: getPresentGraph(state),
@@ -39,7 +57,7 @@ export const storageMiddleware = (store) => (next) => (action) => {
   if (action.type === 'RENAME_DIAGRAM') {
     switch (storage.mode) {
       case 'LOCAL_STORAGE':
-        saveGraphToLocalStorage(storage.fileId, { graph, diagramName });
+        saveGraphToLocalStorage(storage.fileId, { graph: sanitizeInternalGraph(graph), diagramName });
         break;
     }
   }
@@ -54,7 +72,7 @@ export const storageMiddleware = (store) => (next) => (action) => {
 
       case 'POST': {
         const fileId = storage.fileId;
-        saveGraphToLocalStorage(fileId, { graph, diagramName });
+        saveGraphToLocalStorage(fileId, { graph: sanitizeInternalGraph(graph), diagramName });
         store.dispatch(postedFileToLocalStorage());
         break;
       }
@@ -69,7 +87,7 @@ export const storageMiddleware = (store) => (next) => (action) => {
             store.dispatch(puttingGraph());
           }
           deBounce(() => {
-            saveGraphToLocalStorage(storage.fileId, { graph, diagramName });
+            saveGraphToLocalStorage(storage.fileId, { graph: sanitizeInternalGraph(graph), diagramName });
             store.dispatch(puttingGraphSucceeded());
           }, localUpdateInterval);
         }

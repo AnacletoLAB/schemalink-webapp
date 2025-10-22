@@ -14,6 +14,7 @@ import {
   Relationship,
   translate,
   Vector,
+  adaptLegacyGraph,
 } from '@neo4j-arrows/model';
 import { hideImportDialog } from './applicationDialogs';
 import { shrinkImageUrl } from '@neo4j-arrows/graphics';
@@ -188,7 +189,7 @@ const createLinkMLFormat = (
   },
   outputType: 'graph',
   parse: (plainText: string, separation: number, ontologies: Ontology[]) => {
-    const graph = graphBuilder(load(plainText) as LinkML, ontologies);
+    const graph = adaptLegacyGraph(graphBuilder(load(plainText) as LinkML, ontologies));
     const nodes = graph.nodes.map((node: any, index: number) => ({
       ...node,
       position: new Point(
@@ -208,7 +209,7 @@ const createLinkMLFormat = (
     const vector = new Vector(-left, -top);
     const originNodes = nodes.map((node: any) => translate(node, vector));
     return {
-      ...graph,
+      ...adaptLegacyGraph(graph),
       nodes: originNodes,
       relationships,
     };

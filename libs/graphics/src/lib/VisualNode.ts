@@ -85,7 +85,10 @@ export class VisualNode {
     const hasIcon = !!iconImage;
     const hasCaption = !!node.caption;
     const hasLabels = node.ontologies && node.ontologies.length > 0;
-    const hasProperties = Object.keys(node.properties).length > 0;
+    const hasProperties =
+      propertyPosition !== 'hidden' && Object.keys(node.properties).length > 0;
+    const showPropertiesInside = hasProperties && propertyPosition === 'inside';
+    const showPropertiesOutside = hasProperties && propertyPosition === 'outside';
 
     const outsidePosition = style('outside-position');
     switch (outsidePosition) {
@@ -130,7 +133,7 @@ export class VisualNode {
         case 'inside':
           if (
             (hasLabels && labelPosition === 'inside') ||
-            (hasProperties && propertyPosition === 'inside') ||
+            showPropertiesInside ||
             (hasIcon && iconPosition === 'inside')
           ) {
             this.insideComponents.push(
@@ -200,7 +203,7 @@ export class VisualNode {
     }
 
     // Format node properties for display 
-    if (hasProperties) {
+    if (showPropertiesInside || showPropertiesOutside) {
       const formatNodePropertyName = createPropertyNameFormatter(false);
       const propertyDisplayStrings = Object.entries(node.properties).map(
         ([key, attr]) => {

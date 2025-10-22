@@ -1,6 +1,6 @@
 import { Graph, RelationshipType, getStyleSelector } from '@neo4j-arrows/model';
 import { adaptForBackground } from './backgroundColorAdaption';
-import { selectionBorder, Cardinality } from '@neo4j-arrows/model';
+import { selectionBorder } from '@neo4j-arrows/model';
 import { ResolvedRelationship } from './ResolvedRelationship';
 import { VisualNode } from './VisualNode';
 
@@ -29,8 +29,8 @@ export const relationshipArrowDimensions = (
 ): ArrowDimensions => {
   const {
     relationshipType,
-    cardinality,
-    customCardinality: { source_maximum, target_maximum } = {},
+    source_maximum_cardinality,
+    target_maximum_cardinality,
   } = resolvedRelationship.relationship;
   const style = (styleKey: string) =>
     getStyleSelector(resolvedRelationship.relationship, styleKey)(graph);
@@ -51,14 +51,8 @@ export const relationshipArrowDimensions = (
   let hasOutgoingArrowHead = false;
 
   if (relationshipType === RelationshipType.ASSOCIATION) {
-    hasIngoingArrowHead =
-      cardinality === Cardinality.MANY_TO_ONE ||
-      cardinality === Cardinality.ONE_TO_ONE ||
-      target_maximum === 1;
-    hasOutgoingArrowHead =
-      cardinality === Cardinality.ONE_TO_MANY ||
-      cardinality === Cardinality.ONE_TO_ONE ||
-      source_maximum === 1;
+    hasIngoingArrowHead = target_maximum_cardinality === 1;
+    hasOutgoingArrowHead = source_maximum_cardinality === 1;
   }
 
   if (relationshipType === RelationshipType.INHERITANCE) {

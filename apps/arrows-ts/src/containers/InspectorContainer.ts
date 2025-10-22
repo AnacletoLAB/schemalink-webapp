@@ -25,16 +25,7 @@ import { getSelectedNodes } from '@neo4j-arrows/selectors';
 import { getOntologies, getPresentGraph } from '../selectors';
 import { toggleSelection } from '../actions/selection';
 import { Dispatch } from 'redux';
-import {
-  Attribute,
-  Cardinality,
-  CustomCardinality,
-  Entity,
-  EntitySelection,
-  Ontology,
-  RelationshipType,
-  Navigation,
-} from '@neo4j-arrows/model';
+import { Attribute, Entity, EntitySelection, Ontology, RelationshipType, Navigation } from '@neo4j-arrows/model';
 import { ArrowsState } from '../reducers';
 
 const mapStateToProps = (state: ArrowsState) => {
@@ -50,7 +41,7 @@ const mapStateToProps = (state: ArrowsState) => {
   };
 };
 
-const mapDispatchToProps = (dispatch: Dispatch) => {
+const mapDispatchToProps = (dispatch: any) => {
   return {
     onSaveCaption: (selection: EntitySelection, caption: string) => {
       dispatch(setNodeCaption(selection, caption));
@@ -117,12 +108,8 @@ const mapDispatchToProps = (dispatch: Dispatch) => {
     },
     onSaveOntology: (selection: EntitySelection, ontologies: Ontology[]) =>
       onSaveOntology(selection, ontologies)(dispatch),
-    onSaveCardinality: (
-      selection: EntitySelection,
-      cardinality: Cardinality,
-      customCardinality?: CustomCardinality
-    ) => {
-      dispatch(setCardinality(selection, cardinality, customCardinality));
+    onSaveCardinality: (selection: EntitySelection, cardinality: any) => {
+      dispatch(setCardinality(selection, cardinality));
     },
     onSaveNavigation: (selection: EntitySelection, navigation: Navigation) => {
       dispatch(setNavigation(selection, navigation));

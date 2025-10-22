@@ -1,9 +1,4 @@
-import {
-  Relationship,
-  Node,
-  Cardinality,
-  CustomCardinality,
-} from '@neo4j-arrows/model';
+import { Relationship, Node } from '@neo4j-arrows/model';
 import { toAnnotators } from './ontologies';
 import { Attribute, LinkMLClass, SpiresCoreClasses } from './types';
 import { toClassName } from './naming';
@@ -15,55 +10,26 @@ enum RelationshipMember {
   OBJECT = 'object',
 }
 
-const customCardinalityGetterFactory =
-  <T>(predicate: (minimum: number, maximum?: number) => T) =>
-  (
-    member: RelationshipMember,
-    customCardinality: CustomCardinality | undefined
-  ) =>
-    predicate(
-      member === RelationshipMember.SUBJECT
-        ? customCardinality?.source_minimum ?? 0
-        : customCardinality?.target_minimum ?? 0,
-      member === RelationshipMember.SUBJECT
-        ? customCardinality?.source_maximum
-        : customCardinality?.target_maximum
-    );
-
 const toMinimumCardinality = (
-  { cardinality, customCardinality }: Relationship,
+  relationship: Relationship,
   relationshipMember: RelationshipMember
 ): number => {
-  switch (cardinality) {
-    case Cardinality.CUSTOM:
-      return customCardinalityGetterFactory(
-        (minimum: number, maximum: number | undefined) =>
-          !maximum || minimum < maximum ? minimum : 0
-      )(relationshipMember, customCardinality);
-    default:
-      return 0;
+  if (relationshipMember === RelationshipMember.SUBJECT) {
+    return relationship.source_minimum_cardinality ?? 0;
   }
+  return relationship.target_minimum_cardinality ?? 0;
 };
 
 const toMaximumCardinality = (
-  { cardinality, customCardinality }: Relationship,
+  relationship: Relationship,
   relationshipMember: RelationshipMember
 ): number | undefined => {
-  switch (cardinality) {
-    case Cardinality.CUSTOM:
-      return customCardinalityGetterFactory(
-        (minimum: number, maximum: number | undefined) =>
-          maximum && minimum < maximum ? maximum : undefined
-      )(relationshipMember, customCardinality);
-    case Cardinality.ONE_TO_ONE:
-      return 1;
-    case Cardinality.ONE_TO_MANY:
-      return relationshipMember === RelationshipMember.SUBJECT ? 1 : undefined;
-    case Cardinality.MANY_TO_ONE:
-      return relationshipMember === RelationshipMember.OBJECT ? 1 : undefined;
-    default:
-      return undefined;
-  }
+  const raw =
+    relationshipMember === RelationshipMember.SUBJECT
+      ? relationship.source_maximum_cardinality
+      : relationship.target_maximum_cardinality;
+  if (raw === 'N' || raw === undefined) return undefined;
+  return raw;
 };
 
 export const findRelationshipsFromNodeFactory = (

@@ -14,7 +14,6 @@ import {
   Label,
 } from 'semantic-ui-react';
 import {
-  Cardinality,
   categoriesPresent,
   combineProperties,
   combineStyle,
@@ -25,7 +24,6 @@ import {
   selectedRelationships,
   styleAttributeGroups,
   summarizeProperties,
-  toVisualCardinality,
   RelationshipType,
   Navigation,
   Graph,
@@ -36,8 +34,7 @@ import {
   Relationship,
   isRelationship,
   Attribute,
-  CustomCardinality,
-  RelationshipWithCustomCardinality,
+  getStyleSelector,
 } from '@neo4j-arrows/model';
 import { renderCounters } from './EntityCounters';
 import PropertyTable from './PropertyTable';
@@ -47,6 +44,7 @@ import { CaptionInspector } from './CaptionInspector';
 import { OntologyState } from '../reducers/ontologies';
 import { ImageInfo } from '@neo4j-arrows/graphics';
 import _ from 'lodash';
+import { ontologiesByIdsWithOptions } from '@neo4j-arrows/ontology-search';
 
 interface DetailInspectorProps {
   cachedImages: Record<string, ImageInfo>;
@@ -59,8 +57,12 @@ interface DetailInspectorProps {
   onConvertCaptionsToPropertyValues: () => void;
   onSaveCardinality: (
     selection: EntitySelection,
-    cardinality: Cardinality,
-    customCardinality?: CustomCardinality
+    update: {
+      source_minimum_cardinality?: number;
+      source_maximum_cardinality?: number | 'N';
+      target_minimum_cardinality?: number;
+      target_maximum_cardinality?: number | 'N';
+    }
   ) => void;
   onSaveRelationshipType: (
     selection: EntitySelection,
@@ -99,6 +101,15 @@ interface DetailInspectorProps {
 interface DetailInspectorState {
   additionalExamplesOptions: string[];
   styleActive: boolean;
+  cardinalityPreset?: 'ONE_TO_ONE' | 'ONE_TO_MANY' | 'MANY_TO_ONE' | 'MANY_TO_MANY' | 'CUSTOM';
+  sourceMaxDraft?: string;
+  targetMaxDraft?: string;
+  // dynamic suggestion options fetched on dropdown open
+  nameOptions?: string[];
+  exampleOptions?: string[];
+  isFetchingNameOptions?: boolean;
+  isFetchingExampleOptions?: boolean;
+  suggestionsRequestSeq?: number;
 }
 
 export default class DetailInspector extends Component<
@@ -107,7 +118,7 @@ export default class DetailInspector extends Component<
 > {
   constructor(props: DetailInspectorProps) {
     super(props);
-    this.state = { additionalExamplesOptions: [], styleActive: false };
+    this.state = { additionalExamplesOptions: [], styleActive: false, nameOptions: [], exampleOptions: [], isFetchingNameOptions: false, isFetchingExampleOptions: false, suggestionsRequestSeq: 0 };
   }
 
   captionInput: any;
@@ -122,7 +133,12 @@ export default class DetailInspector extends Component<
           this.props.selection !== nextProps.selection ||
           this.props.ontologies !== nextProps.ontologies ||
           this.props.cachedImages !== nextProps.cachedImages)) ||
-      this.state.styleActive !== nextState.styleActive
+      this.state.styleActive !== nextState.styleActive ||
+      this.state.cardinalityPreset !== nextState.cardinalityPreset ||
+      this.state.sourceMaxDraft !== nextState.sourceMaxDraft ||
+      this.state.targetMaxDraft !== nextState.targetMaxDraft ||
+      this.state.exampleOptions !== nextState.exampleOptions ||
+      this.state.nameOptions !== nextState.nameOptions
     );
   }
 
@@ -137,7 +153,113 @@ export default class DetailInspector extends Component<
     if (this.props.inspectorVisible && !prevProps.inspectorVisible) {
       this.captionInput && this.captionInput.focus();
     }
+    // When selection changes (e.g., user clicks on canvas and reselects),
+    // ensure draft max inputs don't stick around and auto-fix invalid min>max.
+    const prevSel = prevProps.selection;
+    const currSel = this.props.selection;
+    if (prevSel !== currSel) {
+      const needsReset =
+        this.state.sourceMaxDraft !== undefined ||
+        this.state.targetMaxDraft !== undefined ||
+        this.state.cardinalityPreset !== undefined;
+      if (needsReset) {
+        this.setState({
+          ...this.state,
+          sourceMaxDraft: undefined,
+          targetMaxDraft: undefined,
+          cardinalityPreset: undefined,
+        });
+      }
+
+      // Enforce consistency after reselection: if min>max and max!='N', set max to 'N'
+      const relationships = selectedRelationships(this.props.graph, currSel);
+      if (relationships.length > 0) {
+        const sMin = commonValue(relationships.map((r) => r.source_minimum_cardinality)) ?? 0;
+        const sMaxAny: any = commonValue(relationships.map((r) => r.source_maximum_cardinality));
+        const sMaxIsN = (sMaxAny ?? 'N') === 'N';
+        const sMaxNum = sMaxIsN ? Number.POSITIVE_INFINITY : Number(sMaxAny);
+        if (Number(sMin) > sMaxNum && !sMaxIsN) {
+          this.props.onSaveCardinality(currSel, { source_maximum_cardinality: ('N' as any) });
+        }
+
+        const tMin = commonValue(relationships.map((r) => r.target_minimum_cardinality)) ?? 0;
+        const tMaxAny: any = commonValue(relationships.map((r) => r.target_maximum_cardinality));
+        const tMaxIsN = (tMaxAny ?? 'N') === 'N';
+        const tMaxNum = tMaxIsN ? Number.POSITIVE_INFINITY : Number(tMaxAny);
+        if (Number(tMin) > tMaxNum && !tMaxIsN) {
+          this.props.onSaveCardinality(currSel, { target_maximum_cardinality: ('N' as any) });
+        }
+      }
+    }
   }
+
+  // Simple and robust sampling: concat, unique, shuffle, take N
+  private sampleUniqueShuffled = (sources: string[][], limit: number): string[] => {
+    const merged: string[] = ([] as string[]).concat(...sources);
+    const unique = Array.from(new Set(merged));
+    // Fisher–Yates shuffle (partial up to limit)
+    for (let i = unique.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [unique[i], unique[j]] = [unique[j], unique[i]];
+    }
+    return unique.slice(0, limit);
+  };
+
+  // Fetch 10 random suggestions for class Examples (ontology terms)
+  private fetchRandomExampleOptions = async () => {
+    const { selection, ontologies } = this.props;
+    const entities = [...this.props.selectedNodes, ...selectedRelationships(this.props.graph, selection)];
+    if (entities.length === 0) return;
+    const entity = entities[0] as Entity;
+    if (isRelationship(entity)) return; // only for class examples
+    const node = entity as Node;
+    const ids = (node.ontologies ?? []).map((o: Ontology) => o.id);
+    if (ids.length === 0) {
+      this.setState({ exampleOptions: [] });
+      return;
+    }
+    const reqId = (this.state.suggestionsRequestSeq ?? 0) + 1;
+    this.setState({ isFetchingExampleOptions: true, suggestionsRequestSeq: reqId });
+    try {
+      const data = await ontologiesByIdsWithOptions(ids, { limit: 10, random_sample: true });
+      // Map to terms arrays; random_sample already applied by backend
+      const perOntology: string[][] = data.map((o) => (o.terms as any) || []);
+      // Simple mix across ontologies
+      const mixed = this.sampleUniqueShuffled(perOntology, 10);
+      // Only apply latest
+      if ((this.state.suggestionsRequestSeq ?? 0) === reqId) {
+        this.setState({ exampleOptions: mixed, isFetchingExampleOptions: false });
+      }
+    } catch (e) {
+      this.setState({ isFetchingExampleOptions: false });
+      // keep silent; UI will show cached fallback if any
+    }
+  };
+
+  // Fetch 10 random suggestions for relationship Names (ontology properties)
+  private fetchRandomNameOptions = async () => {
+    const { graph, selection } = this.props;
+    const relationships = selectedRelationships(graph, selection);
+    if (relationships.length === 0) return;
+    const rel = relationships[0];
+    const ids = (rel.ontologies ?? []).map((o: Ontology) => o.id);
+    if (ids.length === 0) {
+      this.setState({ nameOptions: [] });
+      return;
+    }
+    const reqId = (this.state.suggestionsRequestSeq ?? 0) + 1;
+    this.setState({ isFetchingNameOptions: true, suggestionsRequestSeq: reqId });
+    try {
+      const data = await ontologiesByIdsWithOptions(ids, { limit: 10, random_sample: true });
+      const perOntology: string[][] = data.map((o) => (o.properties as any) || []);
+      const mixed = this.sampleUniqueShuffled(perOntology, 10);
+      if ((this.state.suggestionsRequestSeq ?? 0) === reqId) {
+        this.setState({ nameOptions: mixed, isFetchingNameOptions: false });
+      }
+    } catch (e) {
+      this.setState({ isFetchingNameOptions: false });
+    }
+  };
 
   render() {
     const {
@@ -177,6 +299,16 @@ export default class DetailInspector extends Component<
       nodes: selectedNodes.length > 0,
       relationships: relationships.length > 0,
     };
+
+    // Resolve current attribute-position from selection (fall back to graph style)
+    const resolvedAttributePosition = (() => {
+      if (entities.length > 0) {
+        const entity = entities[0] as Entity;
+        const selector = getStyleSelector(entity, 'attribute-position');
+        return selector(graph) as string;
+      }
+      return (graph.style && (graph.style['attribute-position'] as any)) || 'outside';
+    })();
 
     // Build class reference options from node captions, excluding current node when single selection
     const allCaptions = graph.nodes.map((node) => node.caption).filter(Boolean);
@@ -241,8 +373,17 @@ export default class DetailInspector extends Component<
       const commonRelationshipType = commonValue(
         relationships.map((relationship) => relationship.relationshipType)
       );
-      const commonCardinality = commonValue(
-        relationships.map((relationship) => relationship.cardinality)
+      const commonSourceMin = commonValue(
+        relationships.map((r) => r.source_minimum_cardinality)
+      );
+      const commonSourceMax = commonValue(
+        relationships.map((r) => r.source_maximum_cardinality)
+      );
+      const commonTargetMin = commonValue(
+        relationships.map((r) => r.target_minimum_cardinality)
+      );
+      const commonTargetMax = commonValue(
+        relationships.map((r) => r.target_maximum_cardinality)
       );
       const commonNavigation = commonValue(
         relationships.map((relationship) => relationship.navigation)
@@ -260,13 +401,33 @@ export default class DetailInspector extends Component<
               commonType === undefined ? '<multiple types>' : undefined
             }
             selection
-            options={Object.keys(RelationshipType).map((relationshipType) => {
-              return {
-                key: relationshipType,
-                text: relationshipType,
-                value: relationshipType,
-              };
-            })}
+            options={(() => {
+              // Hide INHERITANCE when an inheritance already exists between
+              // the selected relationship's source and target nodes.
+              const inheritanceBlockedForAnySelectedPair = relationships.some(
+                (rel) =>
+                  graph.relationships.some(
+                    (r) =>
+                      r.relationshipType === RelationshipType.INHERITANCE &&
+                      r.fromId === rel.fromId &&
+                      r.toId === rel.toId &&
+                      // allow the option when the selected relationship IS the inheritance
+                      r.id !== rel.id
+                  )
+              );
+
+              return Object.keys(RelationshipType)
+                .filter(
+                  (rt) =>
+                    rt !== RelationshipType.INHERITANCE ||
+                    !inheritanceBlockedForAnySelectedPair
+                )
+                .map((relationshipType) => ({
+                  key: relationshipType,
+                  text: relationshipType,
+                  value: relationshipType,
+                }));
+            })()}
           />
         </Form.Field>
       );
@@ -299,9 +460,12 @@ export default class DetailInspector extends Component<
                 .sort(() => Math.random() - 0.5).slice(0, 10)
             : [];
 
+          const nameOptions = (this.state.nameOptions && this.state.nameOptions.length)
+            ? this.state.nameOptions
+            : ontologiesExamples;
           const examplesOptions = [
             ...(commonType ? [commonType] : []),
-            ...ontologiesExamples,
+            ...nameOptions,
             ...this.state.additionalExamplesOptions,
           ].map((example, index) => ({
             key: index,
@@ -325,19 +489,39 @@ export default class DetailInspector extends Component<
   .map(r => r.type)
   .filter(Boolean);
 
-const isDuplicateRelationship = (relationship: Relationship) =>
+const isDuplicateAssociationByName = (relationship: Relationship) =>
   relationship &&
-  graph.relationships.some(r =>
-    r !== relationship && 
-    (r.type?.toLowerCase() === relationship.type?.toLowerCase()) &&
-    r.fromId === relationship.fromId &&
-    r.toId === relationship.toId
+  relationship.relationshipType === RelationshipType.ASSOCIATION &&
+  !!relationship.type &&
+  graph.relationships.some(
+    (r) =>
+      r !== relationship &&
+      r.relationshipType === RelationshipType.ASSOCIATION &&
+      (r.type?.toLowerCase() === relationship.type?.toLowerCase()) &&
+      r.fromId === relationship.fromId &&
+      r.toId === relationship.toId
+  );
+
+const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
+  relationship &&
+  relationship.relationshipType === RelationshipType.ASSOCIATION &&
+  !relationship.type &&
+  graph.relationships.some(
+    (r) =>
+      r !== relationship &&
+      r.relationshipType === RelationshipType.ASSOCIATION &&
+      (!r.type || r.type.trim() === '') &&
+      r.fromId === relationship.fromId &&
+      r.toId === relationship.toId
   );
           fields.push(
 
 <Form.Field
   key="_type"
-  error={relationships.some(isDuplicateRelationship)}
+  error={
+    relationships.some(isDuplicateAssociationByName) ||
+    relationships.some(isDuplicateUnnamedAssociation)
+  }
 >
   <label>Name</label>
   <Dropdown
@@ -352,8 +536,9 @@ const isDuplicateRelationship = (relationship: Relationship) =>
         ? "Choose or add a name"
         : "Provide a name for this relationship"
     }
-    loading={isFetching}
+    loading={isFetching || this.state.isFetchingNameOptions}
     noResultsMessage={null}
+    onOpen={this.fetchRandomNameOptions}
     onChange={(event, { value }) => {
       if (value) onSaveType(selection, value as string);
       else onSaveType(selection, '');
@@ -370,9 +555,14 @@ const isDuplicateRelationship = (relationship: Relationship) =>
       }
     }}
   />
-  {relationships.some(isDuplicateRelationship) && (
+  {relationships.some(isDuplicateAssociationByName) && (
     <Label pointing color="red">
       A relationship with this name already exists between the selected classes
+    </Label>
+  )}
+  {relationships.some(isDuplicateUnnamedAssociation) && (
+    <Label pointing color="red">
+      A relationship with no name already exists between the selected classes
     </Label>
   )}
 </Form.Field>
@@ -382,28 +572,260 @@ const isDuplicateRelationship = (relationship: Relationship) =>
           );
         }
         fields.push(
-          <Form.Field key="_cardinality">
-            <label>Cardinality</label>
-            <Dropdown
-              selection
-              value={commonCardinality ?? Cardinality.ONE_TO_MANY}
-              placeholder={
-                commonCardinality === undefined
-                  ? '<multiple cardinalities>'
-                  : undefined
-              }
-              options={Object.values(Cardinality).map((cardinality) => {
-                return {
-                  key: cardinality,
-                  text: toVisualCardinality(cardinality),
-                  value: cardinality,
+          <div key="_cardinality_fields" style={{ display: 'flex', flexWrap: 'wrap', gap: '1em' }}>
+            {/* Cardinality preset selector */}
+            <Form.Field style={{ width: '100%' }}>
+              <label>Cardinality</label>
+              {(() => {
+                const derivePreset = () => {
+                  const sMin = commonSourceMin ?? 0;
+                  const sMax = (commonSourceMax as any) ?? 'N';
+                  const tMin = commonTargetMin ?? 0;
+                  const tMax = (commonTargetMax as any) ?? 'N';
+                  const isZeroMins = (sMin === 0) && (tMin === 0);
+                  if (isZeroMins && sMax === 1 && tMax === 1) return 'ONE_TO_ONE';
+                  if (isZeroMins && sMax === 1 && tMax === 'N') return 'ONE_TO_MANY';
+                  if (isZeroMins && sMax === 'N' && tMax === 1) return 'MANY_TO_ONE';
+                  if (isZeroMins && sMax === 'N' && tMax === 'N') return 'MANY_TO_MANY';
+                  return 'CUSTOM';
                 };
-              })}
-              onChange={(e, { value }) =>
-                onSaveCardinality(selection, value as Cardinality)
-              }
-            />
-          </Form.Field>
+
+                const currentPreset = this.state.cardinalityPreset ?? derivePreset();
+
+                const toCardinality = (
+                  preset: 'ONE_TO_ONE' | 'ONE_TO_MANY' | 'MANY_TO_ONE' | 'MANY_TO_MANY'
+                ) => {
+                  switch (preset) {
+                    case 'ONE_TO_ONE':
+                      return {
+                        source_minimum_cardinality: 0,
+                        source_maximum_cardinality: 1 as any,
+                        target_minimum_cardinality: 0,
+                        target_maximum_cardinality: 1 as any,
+                      };
+                    case 'ONE_TO_MANY':
+                      return {
+                        source_minimum_cardinality: 0,
+                        source_maximum_cardinality: 1 as any,
+                        target_minimum_cardinality: 0,
+                        target_maximum_cardinality: 'N' as any,
+                      };
+                    case 'MANY_TO_ONE':
+                      return {
+                        source_minimum_cardinality: 0,
+                        source_maximum_cardinality: 'N' as any,
+                        target_minimum_cardinality: 0,
+                        target_maximum_cardinality: 1 as any,
+                      };
+                    case 'MANY_TO_MANY':
+                      return {
+                        source_minimum_cardinality: 0,
+                        source_maximum_cardinality: 'N' as any,
+                        target_minimum_cardinality: 0,
+                        target_maximum_cardinality: 'N' as any,
+                      };
+                  }
+                };
+
+                return (
+                  <Dropdown
+                    selection
+                    options={[
+                      { key: 'one_one', text: '1:1', value: 'ONE_TO_ONE' },
+                      { key: 'one_many', text: '1:N', value: 'ONE_TO_MANY' },
+                      { key: 'many_one', text: 'N:1', value: 'MANY_TO_ONE' },
+                      { key: 'many_many', text: 'N:N', value: 'MANY_TO_MANY' },
+                      { key: 'custom', text: 'Custom', value: 'CUSTOM' },
+                    ]}
+                    value={currentPreset}
+                    onChange={(e, { value }) => {
+                      const preset = value as any;
+                      this.setState({ ...this.state, cardinalityPreset: preset });
+                      if (preset !== 'CUSTOM') {
+                        onSaveCardinality(selection, toCardinality(preset));
+                      }
+                    }}
+                  />
+                );
+              })()}
+            </Form.Field>
+
+            {/* Custom cardinality editor */}
+            {(() => {
+              const derivePreset = () => {
+                const sMin = commonSourceMin ?? 0;
+                const sMax = (commonSourceMax as any) ?? 'N';
+                const tMin = commonTargetMin ?? 0;
+                const tMax = (commonTargetMax as any) ?? 'N';
+                const isZeroMins = (sMin === 0) && (tMin === 0);
+                if (isZeroMins && sMax === 1 && tMax === 1) return 'ONE_TO_ONE';
+                if (isZeroMins && sMax === 1 && tMax === 'N') return 'ONE_TO_MANY';
+                if (isZeroMins && sMax === 'N' && tMax === 1) return 'MANY_TO_ONE';
+                if (isZeroMins && sMax === 'N' && tMax === 'N') return 'MANY_TO_MANY';
+                return 'CUSTOM';
+              };
+              const effectivePreset = this.state.cardinalityPreset ?? derivePreset();
+              const showCustom = effectivePreset === 'CUSTOM';
+              if (!showCustom) return null;
+              const sMinVal = (commonSourceMin ?? 0) as number;
+              const sMaxRaw: any = (commonSourceMax as any) ?? 'N';
+              const sMaxVal = sMaxRaw === 'N' ? Number.POSITIVE_INFINITY : Number(sMaxRaw);
+              const tMinVal = (commonTargetMin ?? 0) as number;
+              const tMaxRaw: any = (commonTargetMax as any) ?? 'N';
+              const tMaxVal = tMaxRaw === 'N' ? Number.POSITIVE_INFINITY : Number(tMaxRaw);
+              const sourceInvalid = sMinVal > sMaxVal;
+              const targetInvalid = tMinVal > tMaxVal;
+              return (
+                <>
+                  {(sourceInvalid || targetInvalid) && (
+                    <Label pointing color="red" style={{ marginBottom: '0.5em' }}>
+                      Minimum cannot be higher than maximum
+                    </Label>
+                  )}
+                  <Form.Field style={{ width: '45%' }} error={sourceInvalid}>
+                    <label>Source minimum</label>
+                    <Input
+                      type="number"
+                      value={commonSourceMin ?? 0}
+                      min={0}
+                      onChange={(e) =>
+                        onSaveCardinality(selection, {
+                          source_minimum_cardinality: parseInt(e.target.value),
+                        })
+                      }
+                      onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                        const minVal = parseInt(e.target.value);
+                        const maxRaw: any = (commonSourceMax as any) ?? 'N';
+                        const maxIsN = maxRaw === 'N';
+                        const maxVal = maxIsN ? Number.POSITIVE_INFINITY : Number(maxRaw);
+                        if (!isNaN(minVal) && minVal > maxVal && !maxIsN) {
+                          // Min > Max: fix max to N and reflect in UI
+                          onSaveCardinality(selection, { source_maximum_cardinality: ('N' as any) });
+                          this.setState({ ...this.state, sourceMaxDraft: 'N' });
+                        }
+                      }}
+                    />
+                  </Form.Field>
+                  <Form.Field style={{ width: '45%' }} error={sourceInvalid}>
+                    <label>Source maximum</label>
+                    <Input
+                      type="text"
+                      placeholder={'N'}
+                      value={
+                        this.state.sourceMaxDraft !== undefined
+                          ? this.state.sourceMaxDraft
+                          : (((commonSourceMax as any) ?? 'N') === 'N'
+                              ? 'N'
+                              : String(commonSourceMax))
+                      }
+                      onChange={(e: any) => {
+                        const raw = e.target.value;
+                        this.setState({ ...this.state, sourceMaxDraft: raw });
+                        const val = parseInt(raw);
+                        if (!isNaN(val) && val >= 0) {
+                          onSaveCardinality(selection, { source_maximum_cardinality: (val as any) });
+                        }
+                      }}
+                      onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                        const raw = this.state.sourceMaxDraft;
+                        if (raw === '' || raw === undefined) {
+                          onSaveCardinality(selection, { source_maximum_cardinality: ('N' as any) });
+                          this.setState({ ...this.state, sourceMaxDraft: 'N' });
+                        } else {
+                          const val = parseInt(raw);
+                          const minVal = (commonSourceMin ?? 0) as number;
+                          if (!isNaN(val) && val >= 0) {
+                            if (val < minVal) {
+                              // Min > max: fix to N
+                              onSaveCardinality(selection, { source_maximum_cardinality: ('N' as any) });
+                              this.setState({ ...this.state, sourceMaxDraft: 'N' });
+                            } else {
+                              onSaveCardinality(selection, { source_maximum_cardinality: (val as any) });
+                              this.setState({ ...this.state, sourceMaxDraft: undefined });
+                            }
+                          } else {
+                            // Invalid value, revert to N and show N
+                            onSaveCardinality(selection, { source_maximum_cardinality: ('N' as any) });
+                            this.setState({ ...this.state, sourceMaxDraft: 'N' });
+                          }
+                        }
+                      }}
+                    />
+                  </Form.Field>
+                  <Form.Field style={{ width: '45%' }} error={targetInvalid}>
+                    <label>Target minimum</label>
+                    <Input
+                      type="number"
+                      value={commonTargetMin ?? 0}
+                      min={0}
+                      onChange={(e) =>
+                        onSaveCardinality(selection, {
+                          target_minimum_cardinality: parseInt(e.target.value),
+                        })
+                      }
+                      onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                        const minVal = parseInt(e.target.value);
+                        const maxRaw: any = (commonTargetMax as any) ?? 'N';
+                        const maxIsN = maxRaw === 'N';
+                        const maxVal = maxIsN ? Number.POSITIVE_INFINITY : Number(maxRaw);
+                        if (!isNaN(minVal) && minVal > maxVal && !maxIsN) {
+                          // Min > Max: fix max to N and reflect in UI
+                          onSaveCardinality(selection, { target_maximum_cardinality: ('N' as any) });
+                          this.setState({ ...this.state, targetMaxDraft: 'N' });
+                        }
+                      }}
+                    />
+                  </Form.Field>
+                  <Form.Field style={{ width: '45%' }} error={targetInvalid}>
+                    <label>Target maximum</label>
+                    <Input
+                      type="text"
+                      placeholder={'N'}
+                      value={
+                        this.state.targetMaxDraft !== undefined
+                          ? this.state.targetMaxDraft
+                          : (((commonTargetMax as any) ?? 1) === 'N'
+                              ? 'N'
+                              : String(commonTargetMax))
+                      }
+                      onChange={(e: any) => {
+                        const raw = e.target.value;
+                        this.setState({ ...this.state, targetMaxDraft: raw });
+                        const val = parseInt(raw);
+                        if (!isNaN(val) && val >= 0) {
+                          onSaveCardinality(selection, { target_maximum_cardinality: (val as any) });
+                        }
+                      }}
+                      onBlur={(e: any) => {
+                        const raw = this.state.targetMaxDraft;
+                        if (raw === '' || raw === undefined) {
+                          onSaveCardinality(selection, { target_maximum_cardinality: ('N' as any) });
+                          this.setState({ ...this.state, targetMaxDraft: 'N' });
+                        } else {
+                          const val = parseInt(raw);
+                          const minVal = (commonTargetMin ?? 0) as number;
+                          if (!isNaN(val) && val >= 0) {
+                            if (val < minVal) {
+                              // Min > max: fix to N
+                              onSaveCardinality(selection, { target_maximum_cardinality: ('N' as any) });
+                              this.setState({ ...this.state, targetMaxDraft: 'N' });
+                            } else {
+                              onSaveCardinality(selection, { target_maximum_cardinality: (val as any) });
+                              this.setState({ ...this.state, targetMaxDraft: undefined });
+                            }
+                          } else {
+                            // Invalid value, revert to N and show N
+                            onSaveCardinality(selection, { target_maximum_cardinality: ('N' as any) });
+                            this.setState({ ...this.state, targetMaxDraft: 'N' });
+                          }
+                        }
+                      }}
+                    />
+                  </Form.Field>
+                </>
+              );
+            })()}
+          </div>
         );
 
         fields.push(
@@ -424,66 +846,7 @@ const isDuplicateRelationship = (relationship: Relationship) =>
           </Form.Field>
         );
 
-        if (commonCardinality === Cardinality.CUSTOM && entities.length === 1) {
-          // We know this because of the if statement above
-          const { customCardinality } =
-            entities[0] as RelationshipWithCustomCardinality;
 
-          const inconsistentSource =
-            !!customCardinality.source_minimum &&
-            !!customCardinality.source_maximum &&
-            customCardinality.source_minimum >=
-              customCardinality.source_maximum;
-
-          const inconsistentTarget =
-            !!customCardinality.target_minimum &&
-            !!customCardinality.target_maximum &&
-            customCardinality.target_minimum >=
-              customCardinality.target_maximum;
-
-          const labels: (keyof CustomCardinality)[] = [
-            'source_minimum',
-            'source_maximum',
-            'target_minimum',
-            'target_maximum',
-          ];
-
-          const errorMap: Record<keyof CustomCardinality, boolean> = {
-            source_minimum: inconsistentSource,
-            source_maximum: inconsistentSource,
-            target_minimum: inconsistentTarget,
-            target_maximum: inconsistentTarget,
-          };
-
-          fields.push(
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1em' }}>
-              {labels.map((label) => (
-                <Form.Field
-                  key={label}
-                  style={{ width: '40%' }}
-                  error={errorMap[label]}
-                >
-                  <label>
-                    {label
-                      .split('_')
-                      .map((string) => _.capitalize(string))
-                      .join(' ')}
-                  </label>
-                  <Input
-                    type="number"
-                    value={customCardinality[label]}
-                    onChange={(event) =>
-                      onSaveCardinality(selection, Cardinality.CUSTOM, {
-                        [label]: parseInt(event.target.value),
-                      })
-                    }
-                    min={0}
-                  />
-                </Form.Field>
-              ))}
-            </div>
-          );
-        }
       }
     }
 
@@ -523,9 +886,13 @@ const isDuplicateRelationship = (relationship: Relationship) =>
             })
             .sort(() => Math.random() - 0.5).slice(0, 10)
         : [];
+      const exampleFallback = ontologiesExamples;
+      const currentExamples = (this.state.exampleOptions && this.state.exampleOptions.length)
+        ? this.state.exampleOptions
+        : exampleFallback;
       const examplesOptions = [
         ...(examples ?? []),
-        ...ontologiesExamples,
+        ...currentExamples,
         ...this.state.additionalExamplesOptions,
       ].map((example, index) => {
         return { key: index, text: example, value: example };
@@ -639,6 +1006,7 @@ if (
         onChange={(event, { value }) => onSaveExamples(selection, value as string[])}
         onAddItem={(event, { value }) => onAddExample(value as string)}
         disabled={isFetching || !examplesReady}
+        onOpen={this.fetchRandomExampleOptions}
       />
     </Form.Field>
   );
@@ -660,9 +1028,10 @@ if (
               onSaveExamples(selection, value as string[])
             }
             placeholder={'Provide examples for this entity'}
-            loading={isFetching || !examplesReady}
+            loading={isFetching || !examplesReady || this.state.isFetchingExampleOptions}
             onAddItem={(event, { value }) => onAddExample(value as string)}
             disabled={isFetching || !examplesReady}
+            onOpen={this.fetchRandomExampleOptions}
           />
         </Form.Field>
       );
@@ -687,6 +1056,12 @@ if (
           properties={properties}
           propertySummary={propertySummary}
           rangeOptions={rangeOptions}
+          attributesHidden={resolvedAttributePosition === 'hidden'}
+          onToggleAttributes={() => {
+            const curr = resolvedAttributePosition;
+            const next = curr === 'hidden' ? 'outside' : 'hidden';
+            onSaveArrowsPropertyValue(selection, 'attribute-position', next);
+          }}
           onMergeOnValues={(propertyKey: string) =>
             onMergeOnValues(selection, propertyKey)
           }
@@ -732,7 +1107,11 @@ if (
             title={group.name}
             style={combineStyle(entities)}
             graphStyle={graph.style}
-            possibleStyleAttributes={groupToRelevantKeys(group)}
+            possibleStyleAttributes={group
+              ? groupToRelevantKeys(group).filter(
+                  (key) => key !== 'attribute-position'
+                )
+              : []}
             cachedImages={this.props.cachedImages}
             onSaveStyle={(styleKey: string, styleValue: string) =>
               onSaveArrowsPropertyValue(selection, styleKey, styleValue)
