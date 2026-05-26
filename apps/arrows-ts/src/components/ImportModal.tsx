@@ -21,8 +21,9 @@ interface ImportModalProps {
     text: string,
     separation: number,
     ontologies: Ontology[],
-    selectedFormat?: string
-  ) => { errorMessage?: string };
+    selectedFormat?: string,
+    signal?: AbortSignal
+  ) => Promise<{ errorMessage?: string }>;
 }
 
 interface ImportModalState {
@@ -30,7 +31,8 @@ interface ImportModalState {
   text: string;
   messageProps: MessageItemProps;
   selectedFormat: 'JSON' | 'LinkML PG' | 'LinkML RDF' | 'LinkML OO';
-  ooPopupOpen: boolean;
+  isImporting: boolean;
+  abortController?: AbortController;
 }
 
 class ImportModal extends Component<ImportModalProps, ImportModalState> {
@@ -46,13 +48,21 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
         content: 'Paste LinkML schema and click Import',
       },
       selectedFormat: 'LinkML RDF',
-      ooPopupOpen: false,
+      isImporting: false,
+      abortController: undefined,
     };
+  }
+
+  componentWillUnmount() {
+    // Cancel any ongoing requests when component unmounts
+    if (this.state.abortController) {
+      this.state.abortController.abort();
+    }
   }
 
   fileInputRef: HTMLInputElement | null = null;
 
-  tryImport = () => {
+  tryImport = async () => {
     const isJson = new RegExp('^{.*}$', 's').test(this.state.text.trim());
     if ((this.state.selectedFormat === 'LinkML PG' || this.state.selectedFormat === 'LinkML RDF') && isJson) {
       this.setState({
@@ -62,16 +72,52 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
       return;
     }
 
-    const result = this.props.tryImport(
-      this.state.text,
-      this.props.separation,
-      this.props.ontologies,
-      this.state.selectedFormat
-    );
-    if (result.errorMessage) {
-      this.setState({
-        errorMessage: result.errorMessage,
-      });
+    // Cancel any existing request
+    if (this.state.abortController) {
+      this.state.abortController.abort();
+    }
+
+    // Create new abort controller for this request
+    const abortController = new AbortController();
+    this.setState({
+      isImporting: true,
+      errorMessage: undefined,
+      abortController,
+    });
+
+    try {
+      const result = await this.props.tryImport(
+        this.state.text,
+        this.props.separation,
+        this.props.ontologies,
+        this.state.selectedFormat,
+        abortController.signal
+      );
+      
+      // Only update state if request wasn't cancelled
+      if (!abortController.signal.aborted) {
+        if (result.errorMessage) {
+          this.setState({
+            errorMessage: result.errorMessage,
+            isImporting: false,
+            abortController: undefined,
+          });
+        } else {
+          this.setState({
+            isImporting: false,
+            abortController: undefined,
+          });
+        }
+      }
+    } catch (error: any) {
+      // Only show error if request wasn't cancelled
+      if (!abortController.signal.aborted) {
+        this.setState({
+          errorMessage: error.message || 'An unexpected error occurred during import.',
+          isImporting: false,
+          abortController: undefined,
+        });
+      }
     }
   };
 
@@ -221,8 +267,7 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
                     label="LinkML OO"
                     checked={this.state.selectedFormat === 'LinkML OO'}
                     onChange={() => {
-                      this.setState({ selectedFormat: 'LinkML OO', ooPopupOpen: true });
-                      window.setTimeout(() => this.setState({ ooPopupOpen: false }), 2500);
+                      this.setState({ selectedFormat: 'LinkML OO' });
                       this.validateText(this.state.text);
                     }}
                   />
@@ -230,13 +275,6 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
                     content="Object-Oriented LinkML representation"
                     position="top center"
                     trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
-                  />
-                  <Popup
-                    open={this.state.ooPopupOpen}
-                    position="top center"
-                    content="Available soon: Import for LinkML OO is not yet available."
-                    onClose={() => this.setState({ ooPopupOpen: false })}
-                    trigger={<span />}
                   />
                 </div>
                 <div>
@@ -253,15 +291,6 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
                 </div>
               </div>
             </Form.Field>
-            {this.state.selectedFormat === 'LinkML OO' ? (
-              <Message warning icon>
-                <Icon name="clock outline" />
-                <Message.Content>
-                  <Message.Header>Available soon</Message.Header>
-                  Import for LinkML OO is not yet available.
-                </Message.Content>
-              </Message>
-            ) : null}
           </Form>
           <Form>
             <Form.Field>
@@ -294,6 +323,15 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
               <Message {...this.state.messageProps} />
             ) : null}
           </Form>
+          {this.state.isImporting && this.state.selectedFormat === 'LinkML OO' ? (
+            <Message info icon>
+              <Icon name="spinner" loading />
+              <Message.Content>
+                <Message.Header>Importing LinkML OO schema</Message.Header>
+                <p>Please wait while we translate your schema. This may take a few moments...</p>
+              </Message.Content>
+            </Message>
+          ) : null}
           {this.state.errorMessage ? (
             <Message negative>
               <Message.Header>Unable to import</Message.Header>
@@ -302,16 +340,27 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
           ) : null}
         </Modal.Content>
         <Modal.Actions>
-          <Button onClick={this.props.onCancel} content="Cancel" />
+          <Button 
+            onClick={() => {
+              // Cancel ongoing request if importing
+              if (this.state.abortController) {
+                this.state.abortController.abort();
+              }
+              this.props.onCancel();
+            }} 
+            content="Cancel" 
+            disabled={this.state.isImporting}
+          />
           <Button
             primary
             disabled={
+              this.state.isImporting ||
               this.state.text.length === 0 ||
-              this.state.selectedFormat === 'LinkML OO' ||
               ((this.state.selectedFormat === 'LinkML PG' || this.state.selectedFormat === 'LinkML RDF') && isJson)
             }
             onClick={this.tryImport}
-            content="Import"
+            loading={this.state.isImporting}
+            content={this.state.isImporting ? 'Importing...' : 'Import'}
           />
         </Modal.Actions>
       </Modal>

@@ -1,4 +1,4 @@
-import { Entity, Id } from './Id';
+import { Entity, Id, PatternDefinition } from './Id';
 import { Ontology } from './Ontology';
 
 export enum RelationshipType {
@@ -8,9 +8,7 @@ export enum RelationshipType {
 
 export enum Navigation {
   None = 'None',
-  L2R = 'L2R',
-  R2L = 'R2L',
-  Reification = 'Reification',
+  Directional = 'Directional',
 }
 
 export type CardinalityMax = number | 'N';
@@ -29,6 +27,8 @@ export interface Relationship extends Entity {
   relationshipType: RelationshipType;
   fromId: Id;
   toId: Id;
+  ieGuidelines?: string;
+  pattern?: PatternDefinition;
   ontologies?: Ontology[];
   examples?: string[];
   // New cardinality fields (legacy enum-based cardinality is obsolete)
@@ -55,8 +55,11 @@ export const setRelationshipType = (
     ...(relationshipType === RelationshipType.INHERITANCE && {
       description: undefined,
       type: undefined,
+      ieGuidelines: undefined,
+      pattern: undefined,
       ontologies: undefined,
       examples: undefined,
+      properties: {},
     }),
     ...(relationshipType === RelationshipType.ASSOCIATION && {
       // ensure new cardinality fields have defaults when association
@@ -82,10 +85,20 @@ export const databaseTypeToStringType = (databaseType: string) => {
 };
 
 export const reverse = (relationship: Relationship) => {
+  const reverseArrowHeads =
+    relationship.style?.['reverse-arrow-heads'] === 'true' ? 'false' : 'true';
   return {
     ...relationship,
     toId: relationship.fromId,
     fromId: relationship.toId,
+    source_minimum_cardinality: relationship.target_minimum_cardinality,
+    source_maximum_cardinality: relationship.target_maximum_cardinality,
+    target_minimum_cardinality: relationship.source_minimum_cardinality,
+    target_maximum_cardinality: relationship.source_maximum_cardinality,
+    style: {
+      ...(relationship.style || {}),
+      'reverse-arrow-heads': reverseArrowHeads,
+    },
   };
 };
 

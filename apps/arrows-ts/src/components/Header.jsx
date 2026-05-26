@@ -1,8 +1,9 @@
 import React, { PureComponent } from 'react';
-import { Icon, Menu, Button, ButtonGroup, Dropdown } from 'semantic-ui-react';
+import { Icon, Menu, Button, ButtonGroup, Dropdown, Modal, Checkbox } from 'semantic-ui-react';
 import { DiagramNameEditor } from './DiagramNameEditor';
 import arrows_logo from '../images/arrows_logo.svg';
 import { defaultCallbackFactory } from './GptModal';
+import { sanitizeInternalGraph } from '../utils/sanitizeGraph';
 
 import {
   CommandKind
@@ -49,6 +50,12 @@ class Header extends PureComponent {
     canGenerate: false,
     reason: '',
     userPolicy: null,
+    extractOpen: false,
+    mockSelected: {
+      Drug: true,
+      InfectiousDisease: true,
+      Relation: true,
+    },
   };
 
   componentDidMount() {
@@ -191,6 +198,15 @@ class Header extends PureComponent {
       console.error('Request error: ', error);
       alert('Contribute error: ' + (error.message || 'Communication error with the server.'));
     }
+  };
+
+  toggleMock = (key) => {
+    this.setState((prev) => ({
+      mockSelected: {
+        ...prev.mockSelected,
+        [key]: !prev.mockSelected[key],
+      },
+    }));
   };
 
   render() {
@@ -409,6 +425,9 @@ class Header extends PureComponent {
                 {userData.username === "schemalink" && (
                   <Dropdown.Item onClick={this.props.onDashboardClick}>Dashboard</Dropdown.Item>
                 )}
+                {userData.username === "schemalink" && (
+                  <Dropdown.Item onClick={this.props.onOntologiesClick}>Ontologies</Dropdown.Item>
+                )}
                 <Dropdown.Item onClick={this.handleLogout}>Logout</Dropdown.Item>
                 {userData.username !== "schemalink" && (
                     <Dropdown.Item onClick={this.handleDeleteAccount}>Delete Account</Dropdown.Item>
@@ -426,6 +445,14 @@ class Header extends PureComponent {
           )}
             <span style={{ marginRight: '10px' }}></span>
             <Button
+              onClick={this.props.onEnumRegexClick}
+              icon="list"
+              basic
+              color="black"
+              content="Enums / Regexes"
+            />
+            <span style={{ marginRight: '10px' }}></span>
+            <Button
               onClick={this.props.onExportClick}
               icon="download"
               basic
@@ -433,6 +460,16 @@ class Header extends PureComponent {
               content="Download / Export"
             />
             <div>
+              <span style={{ marginRight: '10px' }}></span>
+              <Button
+                icon="file text"
+                basic
+                color="black"
+                content="Extract"
+                title="Extract (mock)"
+                onClick={() => this.setState({ extractOpen: true })}
+              />
+
               <span style={{ marginRight: '10px' }}></span>
               <Button
                 onClick={() => {
@@ -461,6 +498,279 @@ class Header extends PureComponent {
                 }
               />
             </div>
+            <Modal
+              open={this.state.extractOpen}
+              onClose={() => this.setState({ extractOpen: false })}
+              size="large"
+              style={{ width: '86%', maxWidth: '1200px' }}
+            >
+              <Modal.Header>Extraction result</Modal.Header>
+              <Modal.Content>
+                <div className="ui top attached tabular menu" style={{ marginBottom: 0 }}>
+                  <a className="active item">Text</a>
+                  <a className="item">Entities</a>
+                  <a className="item">Relations</a>
+                  <a className="item">JSON</a>
+                </div>
+
+                <div
+                  style={{
+                    border: '1px solid rgba(34, 36, 38, 0.15)',
+                    borderTop: 'none',
+                    borderRadius: '0 0 4px 4px',
+                    padding: '12px',
+                    minHeight: '420px',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 0.8fr',
+                      gap: '12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+                        <strong style={{ marginRight: '6px' }}>Show:</strong>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => this.toggleMock('Drug')}>
+                            <Checkbox checked={this.state.mockSelected?.Drug} onChange={() => this.toggleMock('Drug')} />
+                            <span style={{ color: '#b91c1c' }}>Drug</span>
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => this.toggleMock('InfectiousDisease')}>
+                            <Checkbox checked={this.state.mockSelected?.InfectiousDisease} onChange={() => this.toggleMock('InfectiousDisease')} />
+                            <span style={{ color: '#1d4ed8' }}>InfectiousDisease</span>
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => this.toggleMock('Relation')}>
+                            <Checkbox checked={this.state.mockSelected?.Relation} onChange={() => this.toggleMock('Relation')} />
+                            <span style={{ color: '#gray' }}>Drug-treats-InfectiousDisease</span>
+                          </label>
+                      </div>
+                      <div
+                        style={{
+                          border: '1px solid rgba(34, 36, 38, 0.15)',
+                          borderRadius: '4px',
+                          padding: '8px',
+                          minHeight: '90px',
+                          background: '#fafafa',
+                        }}
+                      >
+                        <div
+                          style={{
+                            marginTop: '6px',
+                            minHeight: '60px',
+                            border: '1px solid rgba(34, 36, 38, 0.12)',
+                            borderRadius: '4px',
+                            padding: '6px',
+                            background: 'white',
+                            lineHeight: 1.6,
+                            fontSize: '16px',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <span style={{ color: 'red', fontWeight: 600 }}>Doxycycline</span>
+                          {' '}100 mg twice daily, was administered to patients with{' '}
+                          <span style={{ color: 'blue', fontWeight: 600 }}>Lyme disease</span>
+                          . Joint pain improved during follow-up, and disease severity was reduced within two weeks. A transient inflammatory condition was then observed.
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          border: '1px solid rgba(34, 36, 38, 0.2)',
+                          borderRadius: '4px',
+                          padding: '10px',
+                          minHeight: '260px',
+                          background: '#fafafa',
+                        }}
+                      >
+                        <strong>Dependency Trace</strong>
+                        <div
+                          style={{
+                            marginTop: '8px',
+                            border: '1px solid rgba(34, 36, 38, 0.2)',
+                            borderRadius: '4px',
+                            background: 'white',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                          }}
+                        >
+                          <table
+                            style={{
+                              width: '100%',
+                              borderCollapse: 'collapse',
+                              fontSize: '12px',
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            <thead>
+                              <tr style={{ background: '#f3f4f6' }}>
+                                <th
+                                  style={{
+                                    textAlign: 'left',
+                                    padding: '8px',
+                                    borderBottom: '1px solid rgba(34, 36, 38, 0.15)',
+                                  }}
+                                >
+                                  Prompt / Operation
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: 'left',
+                                    padding: '8px',
+                                    borderBottom: '1px solid rgba(34, 36, 38, 0.15)',
+                                  }}
+                                >
+                                  Outcome
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr style={{ background: '#eff6ff' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>Disease_I</code></td>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><em>Lyme disease</em>; <em>transient inflammatory condition</em></td>
+                              </tr>
+                              <tr style={{ background: '#eff6ff' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>Disease</code> constraint check</td>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><em>Lyme disease</em>; <em>transient inflammatory condition</em></td>
+                              </tr>
+                              <tr style={{ background: '#eff6ff' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>Disease</code> grounding</td>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><em>Lyme disease</em> -&gt; <code>MONDO:0019632</code>; <span style={{ textDecoration: 'line-through' }}><em>transient inflammatory condition</em></span></td>
+                              </tr>
+                              <tr style={{ background: '#eff6ff' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>Disease_A</code></td>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>label</code>: <em>Lyme disease</em>; <code>symptoms</code>: <em>[joint pain]</em></td>
+                              </tr>
+                              <tr style={{ background: '#fff1f2' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>Drug_I</code></td>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><em>doxycycline</em></td>
+                              </tr>
+                              <tr style={{ background: '#fff1f2' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}>Drug mapping</td>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><em>doxycycline</em> -&gt; <code>DrugBank:DB00254</code></td>
+                              </tr>
+                              <tr style={{ background: '#fff1f2' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>Drug_A</code></td>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>label</code>: <em>doxycycline</em></td>
+                              </tr>
+                              <tr style={{ background: '#f9fafb' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>Virus_I</code>, <code>Bacteria_I</code></td>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}>no mentions extracted</td>
+                              </tr>
+                              <tr style={{ background: '#f9fafb' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>Pathogen</code> aggregation</td>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}>skipped</td>
+                              </tr>
+                              <tr style={{ background: '#eff6ff' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>Pathogen-causes-InfectiousDisease_I</code></td>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}>removed</td>
+                              </tr>
+                              <tr style={{ background: '#eff6ff' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>InfectiousDisease_I</code></td>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>MONDO:0019632</code></td>
+                              </tr>
+                              <tr style={{ background: '#f3e8ff' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>Drug-treats-InfectiousDisease_I</code></td>
+                                <td style={{ padding: '8px', verticalAlign: 'top', borderBottom: '1px solid #ececec' }}><code>DrugBank:DB00254</code>-<code>treats</code>-<code>MONDO:0019632</code></td>
+                              </tr>
+                              <tr style={{ background: '#f3e8ff' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top' }}><code>Drug-treats-InfectiousDisease_A</code></td>
+                                <td style={{ padding: '8px', verticalAlign: 'top' }}><code>dosage</code>: <em>100 mg twice daily</em>; <code>time_to_response</code>: <em>two weeks</em></td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        border: '1px solid rgba(34, 36, 38, 0.2)',
+                        borderRadius: '4px',
+                        padding: '10px',
+                        minHeight: '412px',
+                        background: '#fafafa',
+                      }}
+                    >
+                      <strong>Structured output</strong>
+                      <div
+                        style={{
+                          marginTop: '8px',
+                          minHeight: '356px',
+                          border: '1px solid rgba(34, 36, 38, 0.2)',
+                          borderRadius: '4px',
+                          padding: '10px',
+                          background: 'white',
+                          overflowY: 'auto',
+                        }}
+                      >
+                       
+
+                        {this.state.mockSelected?.Drug && (
+                          <div
+                            style={{
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              padding: '8px',
+                              marginBottom: '8px',
+                              background: '#fff1f2',
+                            }}
+                          >
+                            <div style={{ fontWeight: 700, marginBottom: '4px', color: '#b91c1c' }}>Class: Drug</div>
+                            <div><code>ID</code>: <code>DrugBank:DB00254</code></div>
+                            <div><code>label</code>: <em>doxycycline</em></div>
+                          </div>
+                        )}
+
+                        {this.state.mockSelected?.InfectiousDisease && (
+                          <div
+                            style={{
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              padding: '8px',
+                              marginBottom: '8px',
+                              background: '#eff6ff',
+                            }}
+                          >
+                            <div style={{ fontWeight: 700, marginBottom: '4px', color: '#1d4ed8' }}>Class: InfectiousDisease</div>
+                            <div><code>ID</code>: <code>MONDO:0019632</code></div>
+                            <div><code>label</code>: <em>Lyme disease</em></div>
+                            <div><code>symptoms</code>: <em>[joint pain]</em></div>
+                          </div>
+                        )}
+
+                        {this.state.mockSelected?.Relation && (
+                          <div
+                            style={{
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              padding: '8px',
+                              marginBottom: '8px',
+                              background: '#eef6ff',
+                            }}
+                          >
+                            <div style={{ fontWeight: 700, marginBottom: '4px' }}>
+                              Relation: Drug-treats-InfectiousDisease
+                            </div>
+                            <div><code>source</code>: <code>DrugBank:DB00254</code></div>
+                            <div><code>predicate</code>: <code>treats</code></div>
+                            <div><code>target</code>: <code>MONDO:0019632</code></div>
+                            <div><code>dosage</code>: <em>100 mg twice daily</em></div>
+                            <div><code>time_to_response</code>: <em>two weeks</em></div>
+                          </div>
+                        )}
+
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Modal.Content>
+              <Modal.Actions>
+                <Button onClick={() => this.setState({ extractOpen: false })} basic>
+                  Close
+                </Button>
+              </Modal.Actions>
+            </Modal>
           </Menu.Item>
           <Menu.Item
             title="Open/Close Inspector"

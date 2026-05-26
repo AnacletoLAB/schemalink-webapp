@@ -30,7 +30,9 @@ export class RelationshipType {
     orientation: TextOrientation,
     editing: boolean,
     style: StyleFunction,
-    textMeasurement: TextMeasurementContext
+    textMeasurement: TextMeasurementContext,
+    ontologyCount: number = 0,
+    hasAttributesBelow: boolean = false
   ) {
     this.text = text;
     this.editing = editing;
@@ -62,7 +64,22 @@ export class RelationshipType {
           return -this.width;
       }
     })();
-    this.boxPosition = new Point(horizontalPosition, 0);
+    // Adjust vertical position based on ontology count and attributes presence
+    // When ontologies are present, position RelationshipType above the line with spacing
+    const verticalOffset = (() => {
+      if (ontologyCount === 0) return 0; // No ontologies, no adjustment needed
+      // Position RelationshipType above the line so pills can be on the line
+      // Use relationship type height + spacing to ensure it's completely above
+      const spacing = this.height * 0.5; // Half the height as spacing
+      if (hasAttributesBelow) {
+        // Smaller offset when attributes present, but still above line
+        return -(this.height / 2 + spacing * 0.5);
+      }
+      // Larger offset when no attributes - position well above the line
+      return -(this.height / 2 + spacing);
+    })();
+    
+    this.boxPosition = new Point(horizontalPosition, verticalOffset);
   }
 
   get type() {

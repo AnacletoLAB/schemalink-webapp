@@ -26,7 +26,7 @@ export default class extends Component {
 
     const onPaste = (event) => {
       const clipboardData = event.clipboardData;
-      interpretClipboardData(clipboardData, 0, {
+      interpretClipboardData(clipboardData, 0, [], {
         onPngImageUrl: (imageUrl) => {
           shrinkImageUrl(imageUrl, 1024 * 10).then((shrunkenImageUrl) => {
             onChange(shrunkenImageUrl);

@@ -2,6 +2,9 @@ import { connect } from 'react-redux';
 import {
   setProperty,
   setNodeCaption,
+  setNodeAbstract,
+  setIeGuidelines,
+  setPattern,
   setRelationshipType,
   setType,
   renameProperty,
@@ -25,7 +28,7 @@ import { getSelectedNodes } from '@neo4j-arrows/selectors';
 import { getOntologies, getPresentGraph } from '../selectors';
 import { toggleSelection } from '../actions/selection';
 import { Dispatch } from 'redux';
-import { Attribute, Entity, EntitySelection, Ontology, RelationshipType, Navigation } from '@neo4j-arrows/model';
+import { Attribute, Entity, EntitySelection, Ontology, PatternDefinition, RelationshipType, Navigation } from '@neo4j-arrows/model';
 import { ArrowsState } from '../reducers';
 
 const mapStateToProps = (state: ArrowsState) => {
@@ -45,6 +48,9 @@ const mapDispatchToProps = (dispatch: any) => {
   return {
     onSaveCaption: (selection: EntitySelection, caption: string) => {
       dispatch(setNodeCaption(selection, caption));
+    },
+    onSaveAbstract: (selection: EntitySelection, abstract: boolean) => {
+      dispatch(setNodeAbstract(selection, abstract));
     },
     onConvertCaptionsToPropertyValues: () => {
       dispatch(convertCaptionsToPropertyValues());
@@ -116,6 +122,15 @@ const mapDispatchToProps = (dispatch: any) => {
     },
     onSaveDescription: (selection: EntitySelection, description: string) => {
       dispatch(setDescription(selection, description));
+    },
+    onSaveIeGuidelines: (selection: EntitySelection, ieGuidelines: string) => {
+      dispatch(setIeGuidelines(selection, ieGuidelines));
+    },
+    onSavePattern: (
+      selection: EntitySelection,
+      pattern: PatternDefinition | undefined
+    ) => {
+      dispatch(setPattern(selection, pattern));
     },
   };
 };

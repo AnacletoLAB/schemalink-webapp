@@ -57,6 +57,27 @@ export interface Attribute {
   dimensions?: number;
 }
 
+export type PatternOperator =
+  | 'ends_with'
+  | 'not_ends_with'
+  | 'starts_with'
+  | 'not_starts_with'
+  | 'contains'
+  | 'not_contains'
+  | 'equals'
+  | 'not_equals'
+  | 'regex'
+  | 'not_regex';
+
+export interface PatternRule {
+  operator: PatternOperator;
+  value: string;
+}
+
+export interface PatternDefinition {
+  rules: PatternRule[];
+}
+
 export interface Entity {
   id: Id;
   entityType: string;

@@ -17,7 +17,11 @@ export class CaptionInspector extends Component<CaptionInspectorProps> {
       captions,
     } = this.props;
 
-    const label = 'Class name';
+    const label = (
+      <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+        Class name
+      </label>
+    );
     const fieldValue = value || '';
     const placeholder = value === undefined ? '<multiple values>' : null;
     const error = (value: string) =>

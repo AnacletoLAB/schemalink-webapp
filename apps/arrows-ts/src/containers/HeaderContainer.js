@@ -11,6 +11,8 @@ import {
   showSubscribeToPolicyDialog,
   showInfoAccountDialog,
   showExportDialog,
+  showEnumRegexDialog,
+  showOntologiesDialog,
   showHelpDialog,
   showAcknowledgementsDialog,
   showImportDialog,
@@ -87,6 +89,12 @@ const mapDispatchToProps = (dispatch) => {
     },
     onInfoAccountClick: () => {
       dispatch(showInfoAccountDialog());
+    },
+    onEnumRegexClick: () => {
+      dispatch(showEnumRegexDialog());
+    },
+    onOntologiesClick: () => {
+      dispatch(showOntologiesDialog());
     },
     onExportClick: () => {
       dispatch(showExportDialog());

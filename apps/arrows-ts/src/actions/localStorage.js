@@ -9,6 +9,7 @@ const key_recentlyAccessedDiagrams =
   'neo4j-arrows-app.recentlyAccessedDiagrams';
 const key_favoriteExportTab = 'neo4j-arrows-app.favoriteExportTab';
 const key_appData = 'neo4j-arrows-app.appData';
+const key_enumRegexPreferences = 'neo4j-arrows-app.enumRegexPreferences';
 
 export const rememberHelpDismissed = () => save(key_helpDismissed, true);
 
@@ -72,4 +73,13 @@ export const loadFavoriteExportTab = () => {
 
 export const saveFavoriteExportTab = (index) => {
   save(key_favoriteExportTab, index);
+};
+
+export const loadEnumRegexPreferences = () => {
+  const preferences = load(key_enumRegexPreferences);
+  return preferences || { hiddenEnums: [], hiddenRegexes: [] };
+};
+
+export const saveEnumRegexPreferences = (preferences) => {
+  save(key_enumRegexPreferences, preferences);
 };

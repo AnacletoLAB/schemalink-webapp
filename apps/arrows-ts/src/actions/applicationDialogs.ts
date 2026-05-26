@@ -184,3 +184,27 @@ export const updateUserData = (updatedData: Partial<UserData>) => ({
   type: 'UPDATE_USER_DATA',
   payload: updatedData
 });
+
+export const showEnumRegexDialog = () => {
+  return {
+    type: 'SHOW_ENUM_REGEX_DIALOG',
+  };
+};
+
+export const hideEnumRegexDialog = () => {
+  return {
+    type: 'HIDE_ENUM_REGEX_DIALOG',
+  };
+};
+
+export const showOntologiesDialog = () => {
+  return {
+    type: 'SHOW_ONTOLOGIES_DIALOG',
+  };
+};
+
+export const hideOntologiesDialog = () => {
+  return {
+    type: 'HIDE_ONTOLOGIES_DIALOG',
+  };
+};

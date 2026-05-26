@@ -135,7 +135,10 @@ export const defaultCallbackFactory = (
         const relExamples = (r.examples || []).map(ex => ex.trim()).sort().join(',');
         const relOntologies = (r.ontologies || []).map(ont => ont.id.toLowerCase()).sort().join(',');
         
-        relationshipSignatures.add(`${from}|${type}|${to}|d:${desc}|c:${card}|cc:${cc}|props:[${relProps}]|ex:[${relExamples}]|ont:[${relOntologies}]`);
+        // Guard for cc - only include if defined (for future extensibility)
+        const cc = (r as any).cc; // Check if cc property exists on relationship
+        const ccPart = cc !== undefined && cc !== null ? `|cc:${cc}` : '';
+        relationshipSignatures.add(`${from}|${type}|${to}|d:${desc}|c:${card}${ccPart}|props:[${relProps}]|ex:[${relExamples}]|ont:[${relOntologies}]`);
       }
     });
 
@@ -194,15 +197,16 @@ export const defaultCallbackFactory = (
     return true;
   };
 
-  return (text) =>
-    generate(
+  return (text) => {
+    const linkML = fromGraph(diagramName, graph, SpiresType.LINKML);
+    return generate(
       text,
       import.meta.env.VITE_OPENAI_GENERATE_ENDPOINT,
       CommandKind[kind],
       nodes,
       // readableRelations
       relationships.map(toRelationshipClassName),
-      toYaml(fromGraph(diagramName, graph, SpiresType.LINKML))
+      toYaml(linkML)
     ).then((returnedSchema) => {
       const diagramName = (yaml.load(returnedSchema) as LinkML).title;
       const returnedGraph = toGraph(
@@ -264,6 +268,7 @@ export const defaultCallbackFactory = (
       });
       renameDiagram(diagramName);
     });
+  };
 };
 
 export const GptModal = ({

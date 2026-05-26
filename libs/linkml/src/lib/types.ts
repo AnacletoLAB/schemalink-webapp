@@ -6,8 +6,8 @@ import {
   Relationship,
 } from '@neo4j-arrows/model';
 import { EmptyObject } from 'lodash';
-import enumRegistry from './enumRegistry.json';
 import { normalizeOntologyListSpec } from './ontologies';
+import { fetchEnumRegistry, getCachedEnumRegistry } from './registryService';
 
 type Array = {
   exact_number_dimensions: number;
@@ -36,6 +36,10 @@ type Annotations = {
   prompt?: string;
   ['prompt.examples']?: string;
   annotators?: string;
+  annotation_rules?: string;
+  annotationRules?: string;
+  algorithmic_rules?: string;
+  algorithmicRules?: string;
 };
 
 export enum SpiresCoreClasses {
@@ -72,6 +76,8 @@ export type LinkML = {
   license?: string;
   enums?: Record<string, LinkMLEnum>;
   description: string;
+  general_entity_annotation_rules?: string;
+  general_relation_annotation_rules?: string;
 };
 
 export enum SpiresType {
@@ -128,22 +134,20 @@ type EnumRegistryEntry = {
   };
 };
 
-const enumRegistryTyped: Record<string, EnumRegistryEntry> =
-  (enumRegistry as unknown) as Record<string, EnumRegistryEntry>;
-
 const normalize = (s?: string) => (s || '').trim().toLowerCase();
 const toSet = (arr: string[]) => new Set(arr.map((x) => normalize(x)));
 
 export const recogniseEnumFromDefinition = (
   name: string,
-  def: LinkMLEnum
+  def: LinkMLEnum,
+  enumRegistry: Record<string, EnumRegistryEntry>
 ): EnumType | undefined => {
   const direct = (Object.values(EnumType) as string[]).find((t) => t === name);
   if (direct) return (direct as unknown) as EnumType;
 
   if (def.permissible_values) {
     const provided = Object.keys(def.permissible_values).map(normalize);
-    for (const [key, value] of Object.entries(enumRegistryTyped)) {
+    for (const [key, value] of Object.entries(enumRegistry)) {
       const pv = value.permissible_values as string[] | undefined;
       if (!pv) continue;
       const registrySet = toSet(pv);
@@ -156,7 +160,7 @@ export const recogniseEnumFromDefinition = (
 
   if (def.reachable_from) {
     const { source_ontology, source_nodes, relationship_types } = def.reachable_from;
-    for (const [key, value] of Object.entries(enumRegistryTyped)) {
+    for (const [key, value] of Object.entries(enumRegistry)) {
       const rf = value.reachable_from as { source_ontology: string; source_nodes: string[]; relationship_types?: string[] } | undefined;
       if (!rf) continue;
       // Normalize ontology spec to canonical canonical form so that
@@ -185,20 +189,28 @@ export const mapImportedEnums = (
 ): Record<string, EnumType> => {
   const map: Record<string, EnumType> = {};
   if (!enums) return map;
+  
+  // Use cached registry (synchronous) - should be available if preloaded
+  const enumRegistry = getCachedEnumRegistry();
+  
+  if (!enumRegistry) {
+    console.warn('Enum registry not preloaded - returning empty map');
+    return map;
+  }
+  
   for (const [name, def] of Object.entries(enums)) {
-    const recognised = recogniseEnumFromDefinition(name, def);
+    const recognised = recogniseEnumFromDefinition(name, def, enumRegistry);
     if (recognised) map[name] = recognised;
   }
   return map;
 };
 
-export const getEnumRegistryEntry = (t: EnumType): EnumRegistryEntry | undefined =>
-  enumRegistryTyped[(t as unknown) as string];
-
 export type LinkMLNode = Omit<Node, 'style' | 'position'>;
 export type LinkMLRelationship = Omit<Relationship, 'style'> & { annotations?: Annotations };
 export type LinkMLGraph = {
   description: string;
+  general_entity_annotation_rules?: string;
+  general_relation_annotation_rules?: string;
   nodes: LinkMLNode[];
   relationships: LinkMLRelationship[];
 };

@@ -36,6 +36,7 @@ import {
   Coordinate,
   Component,
   Attribute,
+  PatternDefinition,
   SchemaProperties,
   hardcodedOntologies,
 } from '@neo4j-arrows/model';
@@ -534,6 +535,36 @@ export const setNodeCaption = (
   caption,
 });
 
+export const setNodeAbstract = (
+  selection: EntitySelection,
+  abstract: boolean
+): GraphAction => ({
+  category: 'GRAPH',
+  type: 'SET_NODE_ABSTRACT',
+  selection,
+  abstract,
+});
+
+export const setIeGuidelines = (
+  selection: EntitySelection,
+  ieGuidelines: string
+): GraphAction => ({
+  category: 'GRAPH',
+  type: 'SET_IE_GUIDELINES',
+  selection,
+  ieGuidelines,
+});
+
+export const setPattern = (
+  selection: EntitySelection,
+  pattern: PatternDefinition | undefined
+): GraphAction => ({
+  category: 'GRAPH',
+  type: 'SET_PATTERN',
+  selection,
+  pattern,
+});
+
 export const setOntology = (
   selection: EntitySelection,
   ontologies: Ontology[]
@@ -945,10 +976,17 @@ export const importNodesAndRelationships = (importedGraph: Graph) => {
       const newNode = {
         ...oldNode,
         id: newNodeId,
+        abstract: oldNode.abstract ?? false,
       };
       newNodes.push(translate(newNode, vector));
       newNodeId = nextId(newNodeId);
     });
+
+    const sanitizeCardinalityMax = (value: any): number | 'N' => {
+      if (value === 'N' || value === 'n') return 'N';
+      if (typeof value === 'number' && isFinite(value) && value >= 0) return value;
+      return 'N';
+    };
 
     let newRelationshipId = nextAvailableId(graph.relationships);
     importedGraph.relationships.forEach((oldRelationship) => {
@@ -957,12 +995,23 @@ export const importNodesAndRelationships = (importedGraph: Graph) => {
         id: newRelationshipId,
         fromId: nodeIdMap[oldRelationship.fromId],
         toId: nodeIdMap[oldRelationship.toId],
+        pattern:
+          oldRelationship.relationshipType === RelationshipType.INHERITANCE
+            ? undefined
+            : oldRelationship.pattern,
         navigation: oldRelationship.navigation ?? Navigation.None,
+        source_minimum_cardinality: oldRelationship.source_minimum_cardinality ?? 0,
+        target_minimum_cardinality: oldRelationship.target_minimum_cardinality ?? 0,
+        source_maximum_cardinality: sanitizeCardinalityMax(oldRelationship.source_maximum_cardinality),
+        target_maximum_cardinality: sanitizeCardinalityMax(oldRelationship.target_maximum_cardinality),
       };
       newRelationships.push(newRelationship);
       newRelationshipId = nextId(newRelationshipId);
     });
 
+    // Diagnostics: log relationships being dispatched (types and values)
+    // eslint-disable-next-line no-console
+      console.log('IMPORT_NODES_AND_RELATIONSHIPS dispatching relationships:', newRelationships.map(r => ({ id: r.id, source_maximum_cardinality: r.source_maximum_cardinality, target_maximum_cardinality: r.target_maximum_cardinality })));
     dispatch({
       category: 'GRAPH',
       type: 'IMPORT_NODES_AND_RELATIONSHIPS',

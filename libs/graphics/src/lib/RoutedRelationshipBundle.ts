@@ -32,8 +32,13 @@ export class RoutedRelationshipBundle {
   ) {
     const arrows = [];
 
-    const leftNode = relationships[0].from;
-    const rightNode = relationships[0].to;
+    // Determine left and right nodes based on actual screen position (x-coordinate),
+    // not by assuming from/to direction. The from/to are semantic (Entry -> Person),
+    // not positional (left -> right).
+    const fromNode = relationships[0].from;
+    const toNode = relationships[0].to;
+    const leftNode = fromNode.position.x < toNode.position.x ? fromNode : toNode;
+    const rightNode = fromNode.position.x < toNode.position.x ? toNode : fromNode;
 
     const arrowDimensions = relationships.map((relationship) =>
       relationshipArrowDimensions(relationship, graph, leftNode)

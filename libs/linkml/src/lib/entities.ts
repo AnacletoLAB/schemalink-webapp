@@ -7,18 +7,25 @@ import {
   RegexType,
 } from '@neo4j-arrows/model';
 import { toAttributeName } from './naming';
-import { Attribute as LinkMLAttribute, regexToPattern } from './types';
+import { Attribute as LinkMLAttribute } from './types';
+import { getRegexPattern } from './registryService';
 
 export const propertiesToAttributes = (
   attributes: Record<string, Attribute>
 ): Record<string, LinkMLAttribute> => {
-  return Object.entries(attributes).reduce(
-    (
-      attributes: Record<string, LinkMLAttribute>,
-      [key, { description, collectionType, requiredType, range, dimensions }]
-    ) => ({
-      ...attributes,
-      [toAttributeName(key)]: {
+  const result: Record<string, LinkMLAttribute> = {};
+
+  Object.entries(attributes).forEach(([key, { description, collectionType, requiredType, range, dimensions }]) => {
+    let pattern: string | undefined;
+    
+    // If range is a regex type, get pattern from cache (synchronous)
+    if (range && Object.values(RegexType).includes(range as RegexType)) {
+      const fetchedPattern = getRegexPattern(range as string);
+      pattern = fetchedPattern || undefined;
+    }
+
+      const attributeName = toAttributeName(key);
+      result[attributeName] = {
         ...{
           description,
           required: requiredType !== RequiredType.OPTIONAL,
@@ -46,16 +53,14 @@ export const propertiesToAttributes = (
         ...(collectionType === CollectionType.SET
           ? { unique_values: true }
           : {}),
-        ...(range && Object.values(RegexType).includes(range as RegexType)
-          ? { pattern: regexToPattern[range as RegexType] }
-          : {}),
+        ...(pattern ? { pattern } : {}),
         ...(collectionType === CollectionType.ARRAY && range && dimensions
           ? {
               array: { exact_number_dimensions: dimensions },
             }
           : {}),
-      },
-    }),
-    {}
-  );
+    };
+  });
+
+  return result;
 };

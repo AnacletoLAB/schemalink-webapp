@@ -8,7 +8,7 @@ import { neighbourPositions } from '@neo4j-arrows/model';
 import { BoundingBox } from './utils/BoundingBox';
 import { NodeCaptionOutsideNode } from './NodeCaptionOutsideNode';
 import { NodePropertiesInside } from './NodePropertiesInside';
-import { createPropertyNameFormatter, formatTypeString, formatClassCaptionForDisplay } from '@neo4j-arrows/linkml';
+import { createPropertyNameFormatter, formatTypeString, formatClassCaptionForDisplay, formatRangeForDisplay } from '@neo4j-arrows/linkml';
 import { bisect } from './bisect';
 import { NodeLabelsInsideNode } from './NodeLabelsInsideNode';
 import { NodeCaptionFillNode } from './NodeCaptionFillNode';
@@ -63,6 +63,7 @@ export class VisualNode {
       node.position,
       this.internalRadius,
       editing,
+      node.abstract ?? false,
       style,
       imageCache
     );
@@ -79,6 +80,7 @@ export class VisualNode {
 
     const captionPosition = style('class-name-position');
     const labelPosition = style('label-position');
+    const ontologyPosition = style('ontology-position');
     const propertyPosition = style('attribute-position');
     const iconImage = style('class-icon-image');
     const iconPosition = style('icon-position');
@@ -177,28 +179,33 @@ export class VisualNode {
     }
 
     if (hasLabels) {
-      switch (labelPosition) {
-        case 'inside':
-          this.insideComponents.push(
-            (this.labels = new NodeLabelsInsideNode(
-              node.ontologies?.map((ontology) => ontology.id) ?? [],
-              editing,
-              style,
-              measureTextContext
-            ))
-          );
-          break;
+      if (ontologyPosition === 'hidden') {
+        // skip rendering ontologies entirely
+      } else {
+        switch (labelPosition) {
+          case 'inside':
+            this.insideComponents.push(
+              (this.labels = new NodeLabelsInsideNode(
+                node.ontologies?.map((ontology) => ontology.id) ?? [],
+                editing,
+                style,
+                measureTextContext
+              ))
+            );
+            break;
 
-        default:
-          this.outsideComponents.push(
-            (this.labels = new NodeLabelsOutsideNode(
-              node.ontologies?.map((ontology) => ontology.id) ?? [],
-              this.outsideOrientation,
-              editing,
-              style,
-              measureTextContext
-            ))
-          );
+          default:
+            this.outsideComponents.push(
+              (this.labels = new NodeLabelsOutsideNode(
+                node.ontologies?.map((ontology) => ontology.id) ?? [],
+                this.outsideOrientation,
+                editing,
+                style,
+                measureTextContext
+              ))
+            );
+            break;
+        }
       }
     }
 
@@ -207,9 +214,10 @@ export class VisualNode {
       const formatNodePropertyName = createPropertyNameFormatter(false);
       const propertyDisplayStrings = Object.entries(node.properties).map(
         ([key, attr]) => {
-          let typeStr = attr.range || '';
+          const rangeDisplay = formatRangeForDisplay(attr.range);
+          let typeStr = rangeDisplay;
           if (attr.collectionType) {
-            typeStr = `${attr.collectionType}(${typeStr})`;
+            typeStr = `${attr.collectionType}(${rangeDisplay})`;
           }
           const formattedKey = formatNodePropertyName(key, attr.requiredType);
           const formattedType = formatTypeString(typeStr, attr.requiredType);

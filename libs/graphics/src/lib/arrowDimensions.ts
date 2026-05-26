@@ -34,6 +34,9 @@ export const relationshipArrowDimensions = (
   } = resolvedRelationship.relationship;
   const style = (styleKey: string) =>
     getStyleSelector(resolvedRelationship.relationship, styleKey)(graph);
+  const reverseArrowHeads =
+    resolvedRelationship.relationship.style?.['reverse-arrow-heads'] ===
+    'true';
   const startRadius = resolvedRelationship.from.radius + style('margin-start');
   const endRadius = resolvedRelationship.to.radius + style('margin-end');
   const arrowWidth = style('arrow-width');
@@ -50,9 +53,19 @@ export const relationshipArrowDimensions = (
   let hasIngoingArrowHead = false;
   let hasOutgoingArrowHead = false;
 
+  const isOne = (value: unknown) =>
+    value === 1 || value === '1' || Number(value) === 1;
+
   if (relationshipType === RelationshipType.ASSOCIATION) {
-    hasIngoingArrowHead = target_maximum_cardinality === 1;
-    hasOutgoingArrowHead = source_maximum_cardinality === 1;
+    // Arrow head should point TO the target when target is ONE (many-to-one)
+    // Arrow head should point FROM the source when source is ONE (one-to-many)
+    // For directional relationships, arrow head is at the end (target) when target is ONE
+    hasOutgoingArrowHead = reverseArrowHeads
+      ? isOne(source_maximum_cardinality)
+      : isOne(target_maximum_cardinality);
+    hasIngoingArrowHead = reverseArrowHeads
+      ? isOne(target_maximum_cardinality)
+      : isOne(source_maximum_cardinality);
   }
 
   if (relationshipType === RelationshipType.INHERITANCE) {

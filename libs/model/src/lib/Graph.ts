@@ -11,6 +11,8 @@ export enum License {
 export interface SchemaProperties {
   description?: string;
   license?: License;
+  nerGuidelines?: string;
+  reGuidelines?: string;
 }
 
 export interface Graph extends SchemaProperties {
@@ -96,7 +98,9 @@ export const graphsDifferInMoreThanPositions = (
     graph1.relationships !== graph2.relationships ||
     graph1.style !== graph2.style ||
     graph1.description !== graph2.description ||
-    graph1.license !== graph2.license
+    graph1.license !== graph2.license ||
+    graph1.nerGuidelines !== graph2.nerGuidelines ||
+    graph1.reGuidelines !== graph2.reGuidelines
   );
 };
 
@@ -107,6 +111,10 @@ const nodesDifferInMoreThanPositions = (nodes1: Node[], nodes2: Node[]) => {
     return (
       node1.id !== node2.id ||
       node1.caption !== node2.caption ||
+      node1.abstract !== node2.abstract ||
+      node1.ieGuidelines !== node2.ieGuidelines ||
+      node1.pattern !== node2.pattern ||
+      node1.description !== node2.description ||
       node1.style !== node2.style ||
       node1.properties !== node2.properties
     );

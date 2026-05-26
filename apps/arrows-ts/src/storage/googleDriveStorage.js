@@ -100,6 +100,9 @@ export const constructGraphFromFile = (data) => {
     id: node.id,
     position: new Point(node.position.x, node.position.y),
     caption: node.caption,
+    abstract: node.abstract ?? false,
+    ieGuidelines: node.ieGuidelines,
+    pattern: node.pattern,
     description: node.description || '',
     ontologies: rehydrateOntologies(node.ontologies),
     examples: node.examples || [],
@@ -119,6 +122,8 @@ export const constructGraphFromFile = (data) => {
       type: relationship.type || '',
       relationshipType:
         relationship.relationshipType || RelationshipType.ASSOCIATION,
+      ieGuidelines: relationship.relationshipType === RelationshipType.INHERITANCE ? undefined : relationship.ieGuidelines,
+      pattern: relationship.relationshipType === RelationshipType.INHERITANCE ? undefined : relationship.pattern,
       description: relationship.description || '',
       ontologies: rehydrateOntologies(relationship.ontologies),
       examples: relationship.examples || [],

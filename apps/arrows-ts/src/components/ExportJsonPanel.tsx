@@ -67,6 +67,20 @@ class ExportJsonPanel extends Component<ExportJsonPanelProps> {
 
     // Build export object with only defined fields
     const exportObject: any = {
+      // Top-level diagram title
+      name: this.props.diagramName,
+      ...((graph as any).description !== undefined
+        ? { description: (graph as any).description }
+        : {}),
+      ...((graph as any).nerGuidelines !== undefined
+        ? { nerGuidelines: (graph as any).nerGuidelines }
+        : {}),
+      ...((graph as any).reGuidelines !== undefined
+        ? { reGuidelines: (graph as any).reGuidelines }
+        : {}),
+      ...((graph as any).license !== undefined
+        ? { license: (graph as any).license }
+        : {}),
       nodes: compactNodes,
       relationships: compactRelationships,
       style: graph.style,
@@ -75,14 +89,6 @@ class ExportJsonPanel extends Component<ExportJsonPanelProps> {
     // Add top-level ontologies metadata if any exist
     if (ontologyMap.size > 0) {
       exportObject.ontologies = Array.from(ontologyMap.values());
-    }
-
-    // Preserve schema-level properties if present
-    if ((graph as any).description) {
-      exportObject.description = (graph as any).description;
-    }
-    if ((graph as any).license) {
-      exportObject.license = (graph as any).license;
     }
 
     const jsonString = JSON.stringify(exportObject, null, 2);

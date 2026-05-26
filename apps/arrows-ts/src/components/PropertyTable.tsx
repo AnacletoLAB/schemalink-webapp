@@ -47,7 +47,7 @@ export default class PropertyTable extends Component<
     };
   }
 
-  focusHandlers: unknown[];
+  focusHandlers: any[];
 
   static propertyInput(property: Property) {
     switch (property.status) {
@@ -193,21 +193,25 @@ export default class PropertyTable extends Component<
       }
     );
     return (
-      <Form.Field key="propertiesTable">
-        <label>
-          Attributes
+      <Form.Field 
+        key="propertiesTable"
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '0.5em' }}>
+          <label style={{ margin: 0, cursor: 'default', fontWeight: 'bold', fontSize: '14px' }}>Attributes</label>
           {onToggleAttributes ? (
             <Button
               type="button"
               basic
               color="red"
               size="tiny"
-              style={{ marginLeft: 12 }}
               content={attributesHidden ? 'Show' : 'Hide'}
-              onClick={onToggleAttributes}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleAttributes();
+              }}
             />
           ) : null}
-        </label>
+        </div>
         {!!rows.length && (
           <Accordion
             compact

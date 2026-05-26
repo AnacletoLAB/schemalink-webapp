@@ -26,8 +26,10 @@ import {
   Node,
   Guides,
   Attribute,
+  PatternDefinition,
   SchemaProperties,
 } from '@neo4j-arrows/model';
+import { toClassName } from '@neo4j-arrows/linkml';
 import { Cardinality } from '../actions/graph';
 import { Action } from 'redux';
 import undoable, { groupByActionTypes } from 'redux-undo';
@@ -74,6 +76,18 @@ interface SetNavigationAction extends SelectionAction<'SET_NAVIGATION'> {
 
 interface SetNodeCaptionAction extends SelectionAction<'SET_NODE_CAPTION'> {
   caption: string;
+}
+
+interface SetNodeAbstractAction extends SelectionAction<'SET_NODE_ABSTRACT'> {
+  abstract: boolean;
+}
+
+interface SetIeGuidelinesAction extends SelectionAction<'SET_IE_GUIDELINES'> {
+  ieGuidelines: string;
+}
+
+interface SetPatternAction extends SelectionAction<'SET_PATTERN'> {
+  pattern?: PatternDefinition;
 }
 
 interface RenamePropertyAction extends SelectionAction<'RENAME_PROPERTY'> {
@@ -183,6 +197,9 @@ export type GraphAction =
   | SetCardinalityAction
   | SetNavigationAction
   | SetNodeCaptionAction
+  | SetNodeAbstractAction
+  | SetIeGuidelinesAction
+  | SetPatternAction
   | RenamePropertyAction
   | AccessPropertyAction
   | SetArrowsPropertyAction
@@ -222,6 +239,7 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
         id: action.newNodeId,
         position: action.newNodePosition,
         caption: action.caption,
+        abstract: false,
         style: action.style,
         properties: {},
         description: '',
@@ -241,6 +259,7 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
             id: targetNodeId,
             position: action.targetNodePositions[i],
             caption: action.caption,
+            abstract: false,
             style: action.style,
             properties: {},
             description: '',
@@ -311,6 +330,70 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
           nodeSelected(action.selection, node.id)
             ? setCaption(node, action.caption)
             : node
+        ),
+      };
+    }
+
+    case 'SET_NODE_ABSTRACT': {
+      const actionTyped = action as SetNodeAbstractAction;
+      return {
+        ...state,
+        nodes: state.nodes.map((node) =>
+          nodeSelected(actionTyped.selection, node.id)
+            ? {
+                ...node,
+                abstract: actionTyped.abstract,
+                ieGuidelines: actionTyped.abstract ? undefined : node.ieGuidelines,
+              }
+            : node
+        ),
+      };
+    }
+
+    case 'SET_IE_GUIDELINES': {
+      const actionTyped = action as SetIeGuidelinesAction;
+      return {
+        ...state,
+        nodes: state.nodes.map((node) =>
+          nodeSelected(actionTyped.selection, node.id)
+            ? {
+                ...node,
+                ieGuidelines: actionTyped.ieGuidelines,
+              }
+            : node
+        ),
+        relationships: state.relationships.map((relationship) =>
+          relationshipSelected(actionTyped.selection, relationship.id) &&
+          relationship.relationshipType !== RelationshipType.INHERITANCE
+            ? {
+                ...relationship,
+                ieGuidelines: actionTyped.ieGuidelines,
+              }
+            : relationship
+        ),
+      };
+    }
+
+    case 'SET_PATTERN': {
+      const actionTyped = action as SetPatternAction;
+      return {
+        ...state,
+        nodes: state.nodes.map((node) =>
+          nodeSelected(actionTyped.selection, node.id)
+            ? {
+                ...node,
+                pattern: actionTyped.pattern,
+              }
+            : node
+        ),
+        relationships: state.relationships.map((relationship) =>
+          relationshipSelected(actionTyped.selection, relationship.id) &&
+          relationship.relationshipType !== RelationshipType.INHERITANCE
+            ? {
+                ...relationship,
+                pattern: actionTyped.pattern,
+              }
+            : relationship
         ),
       };
     }
@@ -672,6 +755,9 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
           id: newNodeId,
           position: spec.position,
           caption: oldNode?.caption,
+          abstract: oldNode?.abstract ?? false,
+          ieGuidelines: oldNode?.ieGuidelines,
+          pattern: oldNode?.pattern,
           style: { ...oldNode?.style },
           properties: { ...oldNode?.properties },
           description: oldNode?.description,
@@ -738,14 +824,45 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
       };
     }
 
-    case 'DELETE_NODES_AND_RELATIONSHIPS':
+    case 'DELETE_NODES_AND_RELATIONSHIPS': {
+      const deletedCaptions = new Set<string>();
+      state.nodes.forEach((node) => {
+        if (action.nodeIdMap[node.id] && node.caption) {
+          deletedCaptions.add(node.caption);
+          deletedCaptions.add(toClassName(node.caption));
+        }
+      });
+
+      const fallbackRangeIfDeleted = (
+        attrs: Record<string, Attribute>
+      ): Record<string, Attribute> => {
+        if (!attrs || Object.keys(attrs).length === 0) return attrs;
+        return Object.fromEntries(
+          Object.entries(attrs).map(([k, a]) => [
+            k,
+            a.range && deletedCaptions.has(a.range)
+              ? { ...a, range: 'string' }
+              : a,
+          ])
+        );
+      };
+
       return {
         ...state,
-        nodes: state.nodes.filter((node) => !action.nodeIdMap[node.id]),
-        relationships: state.relationships.filter(
-          (relationship) => !action.relationshipIdMap[relationship.id]
-        ),
+        nodes: state.nodes
+          .filter((node) => !action.nodeIdMap[node.id])
+          .map((node) => ({
+            ...node,
+            properties: fallbackRangeIfDeleted(node.properties),
+          })),
+        relationships: state.relationships
+          .filter((rel) => !action.relationshipIdMap[rel.id])
+          .map((rel) => ({
+            ...rel,
+            properties: fallbackRangeIfDeleted(rel.properties),
+          })),
       };
+    }
 
     case 'REVERSE_RELATIONSHIPS':
       return {

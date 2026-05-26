@@ -13,6 +13,7 @@ export class NodeBackground {
   position: Coordinate;
   internalRadius: number;
   editing: boolean;
+  abstract: boolean;
   backgroundColor: string;
   borderWidth: number;
   borderColor: string;
@@ -22,12 +23,14 @@ export class NodeBackground {
     position: Coordinate,
     internalRadius: number,
     editing: boolean,
+    abstract: boolean,
     style: StyleFunction,
     imageCache: Record<string, ImageInfo>
   ) {
     this.position = position;
     this.internalRadius = internalRadius;
     this.editing = editing;
+    this.abstract = abstract;
     this.backgroundColor = style('class-color') as string;
     this.borderWidth = style('border-width') as number;
     this.borderColor = style('border-color') as string;
@@ -47,6 +50,7 @@ export class NodeBackground {
     ctx.fillStyle = this.backgroundColor;
     ctx.strokeStyle = this.borderColor;
     ctx.lineWidth = this.borderWidth;
+    ctx.setLineDash(this.abstract ? [12, 8] : []);
     ctx.circle(
       this.position.x,
       this.position.y,

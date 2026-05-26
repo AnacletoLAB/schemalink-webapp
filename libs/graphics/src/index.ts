@@ -16,6 +16,8 @@ export * from './lib/PropertiesBox';
 export * from './lib/RectilinearArrow';
 export * from './lib/relationshipAttachment';
 export * from './lib/RelationshipType';
+export * from './lib/RelationshipOntologies';
+export * from './lib/ScaledPill';
 export * from './lib/visualsRenderer';
 export * from './lib/ResolvedRelationship';
 export * from './lib/RoutedRelationshipBundle';

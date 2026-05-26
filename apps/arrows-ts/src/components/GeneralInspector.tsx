@@ -87,7 +87,9 @@ export default class GeneralInspector extends Component<
           </Form.Field>
           <GeneralToolbox onPlusNodeClick={this.props.onPlusNodeClick} />
           <Form.Field key="_description">
-            <label>Description</label>
+            <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+              Description
+            </label>
             <Input
               defaultValue={graph.description}
               onChange={(e, { value }) =>
@@ -97,8 +99,36 @@ export default class GeneralInspector extends Component<
               }
             />
           </Form.Field>
+          <Form.Field key="_ner_guidelines">
+            <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+              NER Guidelines
+            </label>
+            <Input
+              defaultValue={graph.nerGuidelines}
+              onChange={(e, { value }) =>
+                onSchemaPropertiesChange({
+                  nerGuidelines: value,
+                })
+              }
+            />
+          </Form.Field>
+          <Form.Field key="_re_guidelines">
+            <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+              RE Guidelines
+            </label>
+            <Input
+              defaultValue={graph.reGuidelines}
+              onChange={(e, { value }) =>
+                onSchemaPropertiesChange({
+                  reGuidelines: value,
+                })
+              }
+            />
+          </Form.Field>
           <Form.Field key="_license">
-            <label>License</label>
+            <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+              License
+            </label>
             <Dropdown
               selection
               clearable

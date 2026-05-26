@@ -9,6 +9,7 @@ import {
 } from './types';
 import { EnumType } from '@neo4j-arrows/model';
 import { normalizeOntologyToken } from './ontologies';
+import { algorithmicRulesToPatternDefinition } from './patterns';
 
 interface ImportNodesReturnType {
   nodes: LinkMLNode[];
@@ -97,6 +98,7 @@ export const importNodes = (
           id_prefixes,
           description,
           annotations,
+          abstract: isAbstract,
         },
       ]) => {
         const self = nodes.find(({ caption }) => caption === key);
@@ -121,6 +123,7 @@ export const importNodes = (
           parentsToLink.forEach((parentNode) => {
             nextRelationshipId = relationships.push({
               relationshipType: RelationshipType.INHERITANCE,
+              // Inheritance follows UML: FROM child → TO parent
               fromId: nextNodeId.toString(),
               toId: parentNode.id,
               properties: {},
@@ -135,6 +138,7 @@ export const importNodes = (
             caption: key,
             properties: attributesToProperties(attributes, classes, enumNameToEnumType),
             entityType: 'node',
+            abstract: !!isAbstract,
             ontologies: ontologies.filter(({ id }) => {
               if (id_prefixes && id_prefixes.includes(id.toLocaleUpperCase())) {
                 return true;
@@ -157,11 +161,17 @@ export const importNodes = (
                   .filter((s) => s.length > 0)
               ),
             ],
+            // Preserve per-class annotation rules into ieGuidelines for UI compatibility
+            ...(annotations?.annotation_rules ? { ieGuidelines: annotations.annotation_rules } : {}),
+            ...(annotations?.annotationRules ? { ieGuidelines: annotations.annotationRules } : {}),
+            // Also support older direct property on class (annotation_rules / annotationRules)
+            ...(((self as any)?.annotation_rules && !(annotations?.annotation_rules || annotations?.annotationRules)) ? { ieGuidelines: (self as any).annotation_rules } : {}),
+            ...(((self as any)?.annotationRules && !(annotations?.annotation_rules || annotations?.annotationRules)) ? { ieGuidelines: (self as any).annotationRules } : {}),
+            ...(annotations?.['algorithmic_rules'] || annotations?.algorithmicRules ? { pattern: algorithmicRulesToPatternDefinition((annotations?.['algorithmic_rules'] || annotations?.algorithmicRules) as string) } : {}),
           });
         }
-      }
-    );
-  }
+      });
+    }
   // Final pass: ensure inheritance edges exist for all mixin parents
   Object.entries(classes).forEach(([key, { is_a, mixins }]) => {
     const self = nodes.find(({ caption }) => caption === key);
@@ -186,6 +196,7 @@ export const importNodes = (
       if (!exists) {
         relationships.push({
           relationshipType: RelationshipType.INHERITANCE,
+          // Inheritance follows UML: FROM child → TO parent
           fromId: self.id,
           toId: parent.id,
           properties: {},
@@ -307,6 +318,13 @@ export const importTriples = (
               ...(predicate?.annotations ?? {}),
               ...(annotations ?? {}),
             },
+            // Preserve per-relationship annotation rules into ieGuidelines for UI compatibility
+            ...(annotations?.annotation_rules ? { ieGuidelines: annotations.annotation_rules } : {}),
+            ...(annotations?.annotationRules ? { ieGuidelines: annotations.annotationRules } : {}),
+            ...((predicate?.annotations?.annotation_rules && !(annotations?.annotation_rules || annotations?.annotationRules)) ? { ieGuidelines: predicate.annotations.annotation_rules } : {}),
+            ...((predicate?.annotations?.annotationRules && !(annotations?.annotation_rules || annotations?.annotationRules)) ? { ieGuidelines: predicate.annotations.annotationRules } : {}),
+            // Parse algorithmic_rules into relationship.pattern
+            ...(annotations?.['algorithmic_rules'] || annotations?.algorithmicRules ? { pattern: algorithmicRulesToPatternDefinition((annotations?.['algorithmic_rules'] || annotations?.algorithmicRules) as string) } : {}),
             examples: [
               ...new Set([
                 ...((annotations?.['prompt.examples'] ?? '')

@@ -219,19 +219,22 @@ const ContextMenu = ({
       diagramName
     );
 
-  const explanationCallback = (kind: CommandKind): Callback => (text: string) =>
-    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT, CommandKind[kind], nodes, relationships.map(toRelationshipClassName), toYaml(fromGraph(diagramName, graph, SpiresType.LINKML))).then(
+  const explanationCallback = (kind: CommandKind): Callback => (text: string) => {
+    const linkML = fromGraph(diagramName, graph, SpiresType.LINKML);
+    return generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT, CommandKind[kind], nodes, relationships.map(toRelationshipClassName), toYaml(linkML)).then(
       (explanation) => {
         openGtpExplanationModal(explanation);
       }
     );
+  };
 
   const ontologiesCallbackFactory = (
     kind: CommandKind,
     selection: EntitySelection,
     ontologies: Ontology[]
-  ): Callback => (text: string) =>
-    generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT, CommandKind[kind], nodes, relationships.map(toRelationshipClassName), toYaml(fromGraph(diagramName, graph, SpiresType.LINKML))).then(
+  ): Callback => (text: string) => {
+    const linkML = fromGraph(diagramName, graph, SpiresType.LINKML);
+    return generate(text, import.meta.env.VITE_OPENAI_ASK_ENDPOINT, CommandKind[kind], nodes, relationships.map(toRelationshipClassName), toYaml(linkML)).then(
       (returnedOntologies) => {
         const ids = returnedOntologies.split(',').map((id) => id.trim());
         onSaveOntology(
@@ -240,6 +243,7 @@ const ContextMenu = ({
         );
       }
     );
+  };
 
   const selectionToActions: Record<
     Selection,
@@ -260,7 +264,7 @@ const ContextMenu = ({
         {
           action: Action.ASSOCIATION_RELATIONSHIP,
           commandKind: CommandKind.AddClassAssociatedToClass,
-          label: 'Class associated to',
+          label: 'Class associated with',
         },
         {
           action: Action.CLASS,
@@ -574,13 +578,14 @@ const ContextMenu = ({
                           </span>
                         }
                         title={isAllowed ? '' : reason || 'You do not have permission to request intelligent operations.'}
-                        onClick={async () => {
+                        onClick={() => {
                         if (isAllowed) {
+                            const linkML = fromGraph(diagramName, graph, SpiresType.LINKML);
                             const startingPrompt = computePrompt({
                               kind: commandKind,
                               nodes: nodes.map(({ caption }) => caption),
                               relationships: relationships.map(toRelationshipClassName),
-                              fullSchema: toYaml(fromGraph(diagramName, graph, SpiresType.LINKML)),
+                              fullSchema: toYaml(linkML),
                             } as any);
                             console.log("Opening GPT modal with operationName:", CommandKind[commandKind]);
                             openGtpModal(callback ?? defaultCallback(commandKind), startingPrompt, CommandKind[commandKind]);
@@ -603,14 +608,15 @@ const ContextMenu = ({
                     ? ''
                     : permissions[CommandKind[actions[0].commandKind]]?.reason || 'You do not have permission to request intelligent operations.'
                 }
-                onClick={async () => {
+                onClick={() => {
                   const permission = permissions[CommandKind[actions[0].commandKind]];
                   if (permission?.allowed) {
+                    const linkML = fromGraph(diagramName, graph, SpiresType.LINKML);
                     const startingPrompt = computePrompt({
                       kind: actions[0].commandKind,
                       nodes: nodes.map(({ caption }) => caption),
                       relationships: relationships.map(toRelationshipClassName),
-                      fullSchema: toYaml(fromGraph(diagramName, graph, SpiresType.LINKML)),
+                      fullSchema: toYaml(linkML),
                     } as any);
                     console.log("Opening GPT modal with operationName:", CommandKind[actions[0].commandKind]);
                     openGtpModal(actions[0].callback ?? defaultCallback(actions[0].commandKind), startingPrompt, CommandKind[actions[0].commandKind]);

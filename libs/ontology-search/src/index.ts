@@ -1,8 +1,5 @@
+/// <reference types="vite/client" />
 import { Ontology } from '@neo4j-arrows/model';
-
-// New internal API endpoints (relative; handled by dev proxy or same-origin backend)
-const LIST_ENDPOINT = '/api/ontologies/list';
-const BY_IDS_ENDPOINT = '/api/ontologies/by_ids';
 
 export const MAX_PAGE_SIZE = 1000;
 
@@ -18,6 +15,7 @@ const fetchJson = async <T>(input: RequestInfo, init?: RequestInit): Promise<T> 
 
 // Returns full cached ontologies list
 export const ontologies = async (_size = 20): Promise<Ontology[]> => {
+  const LIST_ENDPOINT = import.meta.env['VITE_ONTOLOGIES_LIST_ENDPOINT'];
   const data = await fetchJson<CacheResponse | Ontology[]>(LIST_ENDPOINT);
   if (Array.isArray(data)) return data as Ontology[];
   if (data && Array.isArray((data as CacheResponse).ontologies)) {
@@ -28,6 +26,7 @@ export const ontologies = async (_size = 20): Promise<Ontology[]> => {
 
 // Returns label examples for terms for a given ontology (capped by n)
 export const nTerms = async (ontology: Ontology, n: number): Promise<string[]> => {
+  const BY_IDS_ENDPOINT = import.meta.env['VITE_ONTOLOGIES_BY_IDS_ENDPOINT'];
   const body = JSON.stringify({ ids: [ontology.id] });
   const data = await fetchJson<Ontology[] | CacheResponse>(BY_IDS_ENDPOINT, {
     method: 'POST',
@@ -48,6 +47,7 @@ export const properties = async (
   ontology: Ontology,
   size = 20
 ): Promise<string[]> => {
+  const BY_IDS_ENDPOINT = import.meta.env['VITE_ONTOLOGIES_BY_IDS_ENDPOINT'];
   const body = JSON.stringify({ ids: [ontology.id] });
   const data = await fetchJson<Ontology[] | CacheResponse>(BY_IDS_ENDPOINT, {
     method: 'POST',
@@ -66,6 +66,7 @@ export const properties = async (
 // Optional helper: fetch by multiple IDs (not currently used by callers)
 export const ontologiesByIds = async (ids: string[]): Promise<Ontology[]> => {
   if (!ids.length) return [];
+  const BY_IDS_ENDPOINT = import.meta.env['VITE_ONTOLOGIES_BY_IDS_ENDPOINT'];
   const data = await fetchJson<Ontology[] | CacheResponse>(BY_IDS_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -82,6 +83,7 @@ export const ontologiesByIdsWithOptions = async (
   options?: { limit?: number; random_sample?: boolean }
 ): Promise<Ontology[]> => {
   if (!ids.length) return [];
+  const BY_IDS_ENDPOINT = import.meta.env['VITE_ONTOLOGIES_BY_IDS_ENDPOINT'];
   const params: string[] = [];
   if (options?.limit != null) params.push(`limit=${encodeURIComponent(String(options.limit))}`);
   if (options?.random_sample) params.push('random_sample=true');

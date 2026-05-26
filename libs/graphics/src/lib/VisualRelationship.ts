@@ -8,7 +8,7 @@ import {
   alignmentForShaftAngle,
   readableAngle,
 } from './relationshipTextAlignment';
-import { boundingBoxOfPoints } from './utils/BoundingBox';
+import { BoundingBox, boundingBoxOfPoints } from './utils/BoundingBox';
 import { ComponentStack } from './ComponentStack';
 import { ResolvedRelationship } from './ResolvedRelationship';
 import { ImageInfo } from './utils/ImageCache';
@@ -16,7 +16,9 @@ import { TextMeasurementContext } from './utils/TextMeasurementContext';
 import { AnyArrow } from './AnyArrow';
 import { TextOrientation } from './circumferentialTextAlignment';
 import { DrawingContext } from './utils/DrawingContext';
-import { createPropertyNameFormatter, formatTypeString } from '@neo4j-arrows/linkml';
+import { createPropertyNameFormatter, formatTypeString, formatRangeForDisplay } from '@neo4j-arrows/linkml';
+import { RelationshipOntologies } from './RelationshipOntologies';
+import { DrawableComponent } from './DrawableComponent';
 
 export class VisualRelationship {
   resolvedRelationship: ResolvedRelationship;
@@ -26,6 +28,7 @@ export class VisualRelationship {
   components: ComponentStack;
   icon?: IconOutside;
   type?: RelationshipType;
+  ontologies?: RelationshipOntologies;
   properties?: PropertiesOutside;
   componentOffset: Vector;
   constructor(
@@ -59,6 +62,14 @@ export class VisualRelationship {
     const iconImage = style('relationship-icon-image');
     const hasIcon = !!iconImage;
     const hasType = !!resolvedRelationship.type;
+    const ontologyPosition = style('ontology-position') as
+      | 'inside'
+      | 'outside'
+      | 'hidden';
+    const hasOntologies = 
+      resolvedRelationship.relationship.ontologies && 
+      resolvedRelationship.relationship.ontologies.length > 0 &&
+      ontologyPosition !== 'hidden';
     const attributePosition = style('attribute-position') as
       | 'inside'
       | 'outside'
@@ -78,16 +89,88 @@ export class VisualRelationship {
         ))
       );
     }
+    let relationshipTypeWidth: number | undefined = undefined;
+    let relationshipTypeHeight: number | undefined = undefined;
+    let relationshipTypeVerticalOffset: number | undefined = undefined;
     if (hasType) {
+      const ontologyCount = hasOntologies ? 
+        Math.min(resolvedRelationship.relationship.ontologies?.length || 0, 3) : 0;
       this.components.push(
         (this.type = new RelationshipType(
           resolvedRelationship.type,
           alignment,
           editing,
           style,
-          measureTextContext
+          measureTextContext,
+          ontologyCount,
+          hasProperties
         ))
       );
+      // Store relationship type dimensions for proper alignment of ontologies
+      relationshipTypeWidth = this.type.width;
+      relationshipTypeHeight = this.type.height;
+      relationshipTypeVerticalOffset = this.type.boxPosition.y;
+    }
+    // Add ontologies after type label
+    if (hasOntologies) {
+      const isSelfLoop =
+        this.resolvedRelationship.relationship.fromId ===
+        this.resolvedRelationship.relationship.toId;
+      // Get relationship type font size to ensure ontology font size is <= relationship name
+      const relationshipTypeFontSize = style('type-font-size') as number;
+      // Calculate the top position of RelationshipOntologies in the ComponentStack
+      // ComponentStack positions components sequentially: RelationshipOntologies top = RelationshipType.height + margin
+      // But RelationshipType has boxPosition.y offset, so its actual bottom is at: boxPosition.y + height
+      // We want pills to be at y=0 (the line), so we need to account for this
+      const safeMargin = (component: DrawableComponent) => component.margin || 0;
+      const componentMargin = hasType && this.type
+        ? Math.max(safeMargin(this.type), 0) // Default margin is 0 if not specified
+        : 0;
+      // ComponentStack will position RelationshipOntologies at: RelationshipType.height + margin
+      // But we want pills at y=0, so we'll offset pills by -(RelationshipType.height + margin)
+      // However, we also need to account for RelationshipType's boxPosition.y and add spacing
+      // Calculate where RelationshipType's actual bottom edge is
+      const relationshipTypeBottom = hasType && relationshipTypeHeight !== undefined && relationshipTypeVerticalOffset !== undefined
+        ? relationshipTypeVerticalOffset + relationshipTypeHeight
+        : (hasType && relationshipTypeHeight !== undefined ? relationshipTypeHeight : 0);
+      // Add spacing to ensure pills don't overlap with relationship type (at least 4px)
+      const spacing = hasType && relationshipTypeHeight !== undefined
+        ? Math.max(relationshipTypeHeight * 0.5, 4)
+        : 4;
+      // ComponentStack positions RelationshipOntologies at: relationshipTypeHeight + componentMargin
+      // But we want to position it so pills end up at y=0 with spacing
+      // So we calculate the top position that ComponentStack will use
+      // Then in RelationshipOntologies, we'll offset pills to y=0
+      const relationshipOntologiesTop = hasType 
+        ? relationshipTypeHeight! + componentMargin
+        : 0;
+      // Store the spacing separately so RelationshipOntologies can use it for positioning
+      const spacingForPills = spacing;
+      this.components.push(
+        (this.ontologies = new RelationshipOntologies(
+          resolvedRelationship.relationship.ontologies?.map((ontology) => ontology.id) ?? [],
+          alignment,
+          editing,
+          style,
+          measureTextContext,
+          isSelfLoop,
+          hasProperties,
+          relationshipTypeFontSize,
+          relationshipTypeWidth,
+          relationshipTypeHeight,
+          relationshipTypeVerticalOffset,
+          0, // We'll position it manually at top=0
+          spacingForPills
+        ))
+      );
+      // Manually set RelationshipOntologies top to 0 so it's positioned at the same level as RelationshipType
+      // This allows pills to be positioned at y=0 (the line)
+      if (this.ontologies && this.components.offsetComponents.length > 0) {
+        const lastComponent = this.components.offsetComponents[this.components.offsetComponents.length - 1];
+        if (lastComponent.component === this.ontologies) {
+          lastComponent.top = 0;
+        }
+      }
     }
     // Format relationship properties for display 
     if (hasProperties) {
@@ -95,9 +178,10 @@ export class VisualRelationship {
       const propertyDisplayStrings = Object.entries(
         resolvedRelationship.relationship.properties
       ).map(([key, attr]) => {
-        let typeStr = attr.range || '';
+        const rangeDisplay = formatRangeForDisplay(attr.range);
+        let typeStr = rangeDisplay;
         if (attr.collectionType) {
-          typeStr = `${attr.collectionType}(${typeStr})`;
+          typeStr = `${attr.collectionType}(${rangeDisplay})`;
         }
         const formattedKey = formatRelationshipPropertyName(
           key,
@@ -156,8 +240,13 @@ export class VisualRelationship {
       return boundingBoxOfPoints([midPoint]);
     }
 
-    const points = this.components.boundingBox().corners();
-    const transformedPoints = points.map((point) =>
+    const componentBB = this.components.boundingBox() as BoundingBox | null;
+    if (!componentBB) {
+      return boundingBoxOfPoints([midPoint]);
+    }
+
+    const points = componentBB.corners();
+    const transformedPoints = points.map((point: Point) =>
       point
         .translate(this.componentOffset)
         .rotate(this.componentRotation)

@@ -10,6 +10,7 @@ import {
   puttingGraph,
   puttingGraphSucceeded,
 } from '../actions/storage';
+import { sanitizeInternalGraph } from '../utils/sanitizeGraph';
 
 const localUpdateInterval = 500; // ms
 let waiting;
@@ -25,22 +26,7 @@ const historyActions = [
 ];
 
 export const storageMiddleware = (store) => (next) => (action) => {
-  const sanitizeInternalGraph = (graph) => {
-    const relationships = (graph.relationships || []).map((r) => {
-      if (r.relationshipType !== RelationshipType.INHERITANCE) return r;
-      const {
-        source_minimum_cardinality,
-        source_maximum_cardinality,
-        target_minimum_cardinality,
-        target_maximum_cardinality,
-        navigation,
-        ontologies,
-        ...rest
-      } = r;
-      return rest;
-    });
-    return { ...graph, relationships };
-  };
+  // use shared sanitizer
   // use shared sanitizer
   const hideGraphHistory = (state) => ({
     ...state,

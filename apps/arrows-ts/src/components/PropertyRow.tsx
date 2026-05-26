@@ -9,6 +9,7 @@ import {
   ValueSummary,
 } from '@neo4j-arrows/model';
 import React, { Component } from 'react';
+import { getFilteredEnumTypes, getFilteredRegexTypes } from '../utils/enumRegexFilter';
 import {
   Table,
   Input,
@@ -68,6 +69,10 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
   keyInput: Input | null = null;
   valueInput: Input | null = null;
 
+  handlePreferencesChange = () => {
+    this.forceUpdate();
+  };
+
   componentDidMount() {
     if (!this.props.propertyKey || this.props.propertyKey.length === 0) {
       this.keyInput && this.keyInput.focus();
@@ -76,6 +81,16 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
     this.props.setFocusHandler(
       () => this.valueInput && this.valueInput.focus()
     );
+    
+    // Listen for preference changes to force re-render
+    window.addEventListener('enumRegexPreferencesChanged', this.handlePreferencesChange);
+    
+    // Trigger initial load of server registries
+    this.handlePreferencesChange();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('enumRegexPreferencesChanged', this.handlePreferencesChange);
   }
 
   render = () => {
@@ -109,7 +124,8 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
 
     const handleKeyDown = (evt: KeyboardEvent) => {
       if (evt.key === 'Enter' && evt.metaKey) {
-        evt.target?.blur();
+        const targetEl = evt.target as unknown as { blur?: () => void };
+        targetEl?.blur && targetEl.blur();
       }
     };
 
@@ -266,6 +282,20 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
         disabled={valueDisabled}
       />
     );
+
+    const isReferenceRange =
+      !!attributeValue.range && rangeOptions.includes(attributeValue.range);
+    const identifierForbiddenByCollection =
+      attributeValue.collectionType === CollectionType.LIST ||
+      attributeValue.collectionType === CollectionType.SET;
+    const identifierNotAllowed =
+      isReferenceRange || identifierForbiddenByCollection;
+    const effectiveRequiredType =
+      identifierNotAllowed &&
+      attributeValue.requiredType === RequiredType.IDENTIFIER
+        ? RequiredType.REQUIRED
+        : attributeValue.requiredType;
+
     return (
       <div onMouseEnter={this.onMouseEnter} onMouseLeave={this.onMouseLeave}>
         <AccordionTitle active={active} onClick={(e) => onClick()} collapsing>
@@ -305,12 +335,12 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
                   text: String(type), 
                   value: String(type) 
                 })),
-                ...Object.values(RegexType).map((type) => ({ 
+                ...getFilteredRegexTypes().map((type) => ({ 
                   key: String(type), 
                   text: `Regex: ${String(type)}`, 
                   value: String(type) 
                 })),
-                ...Object.values(EnumType).map((type) => ({ 
+                ...getFilteredEnumTypes().map((type) => ({ 
                   key: String(type), 
                   text: `Enum: ${String(type)}`, 
                   value: String(type) 
@@ -321,31 +351,71 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
                   value: name,
                 }))
               ]}
-              onChange={(e, { value }) =>
-                onValueChange({ ...attributeValue, range: value as string })
-              }
+              onChange={(e, { value }) => {
+                const newRange = value as string;
+                const newIsReferenceRange = rangeOptions.includes(newRange);
+                if (
+                  newIsReferenceRange &&
+                  attributeValue.requiredType === RequiredType.IDENTIFIER
+                ) {
+                  onValueChange({
+                    ...attributeValue,
+                    range: newRange,
+                    requiredType: RequiredType.REQUIRED,
+                  });
+                } else {
+                  onValueChange({ ...attributeValue, range: newRange });
+                }
+              }}
               disabled={valueDisabled}
             />
           </Form.Field>
           <Form.Field>
-            <label>Collection Type</label>
+            <label>
+              Collection Type
+              {attributeValue.requiredType === RequiredType.IDENTIFIER && (
+                <Popup
+                  trigger={<Icon name="question circle" color="grey" style={{ marginLeft: '4px' }} />}
+                  content="Identifier cannot be a collection."
+                  position="top center"
+                />
+              )}
+            </label>
             <Dropdown
               selection
-              clearable
-              value={attributeValue.collectionType}
-              options={Object.values(CollectionType).map((type) => {
-                return {
-                  key: type,
-                  text: type,
-                  value: type,
-                };
-              })}
-              onChange={(e, { value }) =>
-                onValueChange({
-                  ...attributeValue,
-                  collectionType: value as CollectionType,
-                })
+              clearable={attributeValue.requiredType !== RequiredType.IDENTIFIER}
+              value={attributeValue.collectionType ?? undefined}
+              options={
+                attributeValue.requiredType === RequiredType.IDENTIFIER
+                  ? []
+                  : Object.values(CollectionType).map((type) => {
+                      return {
+                        key: type,
+                        text: type,
+                        value: type,
+                      };
+                    })
               }
+              onChange={(e, { value }) => {
+                const newCollectionType = value as CollectionType | undefined;
+                // If selecting list or set, and current requiredType is identifier, change it to required
+                if (
+                  (newCollectionType === CollectionType.LIST ||
+                    newCollectionType === CollectionType.SET) &&
+                  attributeValue.requiredType === RequiredType.IDENTIFIER
+                ) {
+                  onValueChange({
+                    ...attributeValue,
+                    collectionType: newCollectionType,
+                    requiredType: RequiredType.REQUIRED,
+                  });
+                } else {
+                  onValueChange({
+                    ...attributeValue,
+                    collectionType: newCollectionType,
+                  });
+                }
+              }}
               disabled={valueDisabled}
             />
           </Form.Field>
@@ -379,20 +449,51 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
             <label>Required</label>
             <Dropdown
               selection
-              value={attributeValue.requiredType}
-              options={Object.values(RequiredType).map((type) => {
-                return {
-                  key: type,
-                  text: type,
-                  value: type,
-                };
-              })}
-              onChange={(e, { value }) =>
-                onValueChange({
-                  ...attributeValue,
-                  requiredType: value as RequiredType,
+              value={effectiveRequiredType}
+              options={Object.values(RequiredType)
+                .filter((type) => {
+                  // Remove identifier option if forbidden by range or collection
+                  if (
+                    type === RequiredType.IDENTIFIER &&
+                    identifierNotAllowed
+                  ) {
+                    return false;
+                  }
+                  return true;
                 })
-              }
+                .map((type) => {
+                  return {
+                    key: type,
+                    text: type,
+                    value: type,
+                  };
+                })}
+              onChange={(e, { value }) => {
+                const newRequiredType = value as RequiredType;
+                if (
+                  newRequiredType === RequiredType.IDENTIFIER &&
+                  identifierNotAllowed
+                ) {
+                  onValueChange({
+                    ...attributeValue,
+                    requiredType: RequiredType.REQUIRED,
+                  });
+                  return;
+                }
+                if (newRequiredType === RequiredType.IDENTIFIER) {
+                  onValueChange({
+                    ...attributeValue,
+                    requiredType: newRequiredType,
+                    collectionType: undefined,
+                    dimensions: undefined,
+                  });
+                } else {
+                  onValueChange({
+                    ...attributeValue,
+                    requiredType: newRequiredType,
+                  });
+                }
+              }}
               disabled={valueDisabled}
             />
           </Form.Field>

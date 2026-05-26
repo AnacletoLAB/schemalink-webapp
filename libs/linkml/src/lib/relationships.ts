@@ -4,6 +4,7 @@ import { Attribute, LinkMLClass, SpiresCoreClasses } from './types';
 import { toClassName } from './naming';
 import { propertiesToAttributes } from './entities';
 import { camelCase, startCase } from 'lodash';
+import { patternDefinitionToAlgorithmicRules } from './patterns';
 
 enum RelationshipMember {
   SUBJECT = 'subject',
@@ -93,9 +94,14 @@ export const relationshipToRelationshipClass = (
     },
 
     annotations: {
-      'prompt.examples': relationship.examples
-        ? relationship.examples.join(', ')
-        : '',
+      'prompt.examples': relationship.examples ? relationship.examples.join(', ') : '',
+      // Support per-relationship annotation rules (string): prefer ieGuidelines
+      ...((relationship as any).ieGuidelines ? { annotation_rules: (relationship as any).ieGuidelines } : {}),
+      ...((relationship as any).annotation_rules ? { annotation_rules: (relationship as any).annotation_rules } : {}),
+      ...((relationship as any).annotationRules ? { annotation_rules: (relationship as any).annotationRules } : {}),
+      ...((relationship as any).annotations?.annotation_rules ? { annotation_rules: (relationship as any).annotations.annotation_rules } : {}),
+      ...((relationship as any).annotations?.annotationRules ? { annotation_rules: (relationship as any).annotations.annotationRules } : {}),
+      ...(patternDefinitionToAlgorithmicRules((relationship as any).pattern) ? { algorithmic_rules: patternDefinitionToAlgorithmicRules((relationship as any).pattern) } : {}),
     },
   };
 };
@@ -125,11 +131,12 @@ export const relationshipToPredicateClass = (
     id_prefixes: relationshipOntologies.map((ontology) =>
       ontology.id.toLocaleUpperCase()
     ),
-    annotations: relationshipOntologies.length
-      ? {
-          annotators: toAnnotators(relationshipOntologies),
-        }
-      : {},
+    annotations: {
+      ...(relationshipOntologies.length ? { annotators: toAnnotators(relationshipOntologies) } : {}),
+      // Support per-relationship annotation rules (string)
+      ...((relationship as any).annotation_rules ? { annotation_rules: (relationship as any).annotation_rules } : {}),
+      ...((relationship as any).annotations?.annotation_rules ? { annotation_rules: (relationship as any).annotations.annotation_rules } : {}),
+    },
   };
 };
 
@@ -189,6 +196,10 @@ export const relationshipToRelationshipClassPG = (
       'prompt.examples': relationship.examples
         ? relationship.examples.join(', ')
         : '',
+      // Support per-relationship annotation rules (string)
+      ...((relationship as any).annotation_rules ? { annotation_rules: (relationship as any).annotation_rules } : {}),
+      ...((relationship as any).annotations?.annotation_rules ? { annotation_rules: (relationship as any).annotations.annotation_rules } : {}),
+      ...(patternDefinitionToAlgorithmicRules((relationship as any).pattern) ? { algorithmic_rules: patternDefinitionToAlgorithmicRules((relationship as any).pattern) } : {}),
       },
   };
 };

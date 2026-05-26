@@ -4,6 +4,7 @@ import {
   Divider,
   Dropdown,
   Form,
+  Checkbox,
   Input,
   ButtonGroup,
   Button,
@@ -34,6 +35,8 @@ import {
   Relationship,
   isRelationship,
   Attribute,
+  PatternDefinition,
+  PatternOperator,
   getStyleSelector,
 } from '@neo4j-arrows/model';
 import { renderCounters } from './EntityCounters';
@@ -44,7 +47,7 @@ import { CaptionInspector } from './CaptionInspector';
 import { OntologyState } from '../reducers/ontologies';
 import { ImageInfo } from '@neo4j-arrows/graphics';
 import _ from 'lodash';
-import { ontologiesByIdsWithOptions } from '@neo4j-arrows/ontology-search';
+import { ontologiesByIds, ontologiesByIdsWithOptions } from '@neo4j-arrows/ontology-search';
 
 interface DetailInspectorProps {
   cachedImages: Record<string, ImageInfo>;
@@ -53,6 +56,7 @@ interface DetailInspectorProps {
   mergeNodes: (selection: EntitySelection) => void;
   ontologies: OntologyState;
   onSaveCaption: (selection: EntitySelection, caption: string) => void;
+  onSaveAbstract: (selection: EntitySelection, abstract: boolean) => void;
   onSaveExamples: (selection: EntitySelection, examples: string[]) => void;
   onConvertCaptionsToPropertyValues: () => void;
   onSaveCardinality: (
@@ -96,11 +100,20 @@ interface DetailInspectorProps {
   selectedNodes: Node[];
   selection: EntitySelection;
   onSaveDescription: (selection: EntitySelection, description: string) => void;
+  onSaveIeGuidelines: (selection: EntitySelection, ieGuidelines: string) => void;
+  onSavePattern: (
+    selection: EntitySelection,
+    pattern: PatternDefinition | undefined
+  ) => void;
 }
 
 interface DetailInspectorState {
   additionalExamplesOptions: string[];
   styleActive: boolean;
+  exampleSearchActive?: boolean;
+  ieGuidelines?: string;
+  pattern?: string;
+  patternOp?: string;
   cardinalityPreset?: 'ONE_TO_ONE' | 'ONE_TO_MANY' | 'MANY_TO_ONE' | 'MANY_TO_MANY' | 'CUSTOM';
   sourceMaxDraft?: string;
   targetMaxDraft?: string;
@@ -109,6 +122,7 @@ interface DetailInspectorState {
   exampleOptions?: string[];
   isFetchingNameOptions?: boolean;
   isFetchingExampleOptions?: boolean;
+  // lastNameSearchQuery removed; selection requires explicit click
   suggestionsRequestSeq?: number;
 }
 
@@ -118,10 +132,11 @@ export default class DetailInspector extends Component<
 > {
   constructor(props: DetailInspectorProps) {
     super(props);
-    this.state = { additionalExamplesOptions: [], styleActive: false, nameOptions: [], exampleOptions: [], isFetchingNameOptions: false, isFetchingExampleOptions: false, suggestionsRequestSeq: 0 };
+    this.state = { additionalExamplesOptions: [], styleActive: false, exampleSearchActive: false, nameOptions: [], exampleOptions: [], isFetchingNameOptions: false, isFetchingExampleOptions: false, suggestionsRequestSeq: 0, ieGuidelines: '', pattern: '', patternOp: 'ends_with' };
   }
 
   captionInput: any;
+  patternInput: any;
 
   shouldComponentUpdate(
     nextProps: DetailInspectorProps,
@@ -137,6 +152,10 @@ export default class DetailInspector extends Component<
       this.state.cardinalityPreset !== nextState.cardinalityPreset ||
       this.state.sourceMaxDraft !== nextState.sourceMaxDraft ||
       this.state.targetMaxDraft !== nextState.targetMaxDraft ||
+      this.state.ieGuidelines !== nextState.ieGuidelines ||
+      this.state.pattern !== nextState.pattern ||
+      this.state.patternOp !== nextState.patternOp ||
+      this.state.exampleSearchActive !== nextState.exampleSearchActive ||
       this.state.exampleOptions !== nextState.exampleOptions ||
       this.state.nameOptions !== nextState.nameOptions
     );
@@ -168,6 +187,8 @@ export default class DetailInspector extends Component<
           sourceMaxDraft: undefined,
           targetMaxDraft: undefined,
           cardinalityPreset: undefined,
+          exampleSearchActive: false,
+          exampleOptions: [],
         });
       }
 
@@ -191,7 +212,55 @@ export default class DetailInspector extends Component<
         }
       }
     }
+
+    // Keep cardinality preset in sync with graph updates (e.g. Reverse):
+    // local preset/drafts can otherwise keep showing stale 1:N vs N:1 values.
+    if (
+      prevSel === currSel &&
+      selectedRelationshipIds(this.props.selection).length > 0
+    ) {
+      const relationshipSignature = (g: Graph, selection: EntitySelection) =>
+        selectedRelationships(g, selection)
+          .map(
+            (r) =>
+              `${r.id}:${r.fromId}->${r.toId}:${r.source_minimum_cardinality ?? 0}/${
+                (r.source_maximum_cardinality as any) ?? 'N'
+              }:${r.target_minimum_cardinality ?? 0}/${
+                (r.target_maximum_cardinality as any) ?? 'N'
+              }`
+          )
+          .join('|');
+
+      const prevSignature = relationshipSignature(prevProps.graph, currSel);
+      const currSignature = relationshipSignature(this.props.graph, currSel);
+
+      if (
+        prevSignature !== currSignature &&
+        (this.state.cardinalityPreset !== undefined ||
+          this.state.sourceMaxDraft !== undefined ||
+          this.state.targetMaxDraft !== undefined)
+      ) {
+        this.setState({
+          ...this.state,
+          sourceMaxDraft: undefined,
+          targetMaxDraft: undefined,
+          cardinalityPreset: undefined,
+          exampleSearchActive: false,
+          exampleOptions: [],
+        });
+      }
+    }
   }
+
+  // Helper to normalize values to strings (handles both strings and objects with value property)
+  private normalizeToString = (item: any): string | null => {
+    if (typeof item === 'string') return item;
+    if (item && typeof item === 'object' && 'value' in item && typeof item.value === 'string') {
+      return item.value;
+    }
+    if (item != null) return String(item);
+    return null;
+  };
 
   // Simple and robust sampling: concat, unique, shuffle, take N
   private sampleUniqueShuffled = (sources: string[][], limit: number): string[] => {
@@ -205,15 +274,66 @@ export default class DetailInspector extends Component<
     return unique.slice(0, limit);
   };
 
+  private filterByQuery = (items: string[], searchQuery: string): string[] => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
+    return Array.from(new Set(items))
+      .filter((item) => item.toLowerCase().includes(query))
+      .sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' }));
+  };
+
+  // Collect all parent classes recursively through inheritance
+  // Inheritance follows UML: FROM child → TO parent (arrow points to parent)
+  private getAllParentClasses = (node: Node, graph: Graph): Node[] => {
+    const parentClasses: Node[] = [];
+    const visited = new Set<string>();
+
+    const collectParents = (currentNode: Node) => {
+      if (visited.has(currentNode.id)) return;
+      visited.add(currentNode.id);
+
+      const inheritanceRels = graph.relationships.filter(
+        (rel) =>
+          rel.relationshipType === RelationshipType.INHERITANCE &&
+          rel.fromId === currentNode.id
+      );
+
+      for (const rel of inheritanceRels) {
+        const parentNode = graph.nodes.find((n) => n.id === rel.toId);
+        if (parentNode && parentNode.id !== currentNode.id && !visited.has(parentNode.id)) {
+          parentClasses.push(parentNode);
+          collectParents(parentNode);
+        }
+      }
+    };
+
+    collectParents(node);
+    return parentClasses;
+  };
+
   // Fetch 10 random suggestions for class Examples (ontology terms)
   private fetchRandomExampleOptions = async () => {
-    const { selection, ontologies } = this.props;
-    const entities = [...this.props.selectedNodes, ...selectedRelationships(this.props.graph, selection)];
+    const { selection, ontologies, graph } = this.props;
+    const entities = [...this.props.selectedNodes, ...selectedRelationships(graph, selection)];
     if (entities.length === 0) return;
     const entity = entities[0] as Entity;
     if (isRelationship(entity)) return; // only for class examples
     const node = entity as Node;
-    const ids = (node.ontologies ?? []).map((o: Ontology) => o.id);
+    
+    // Collect ontologies from the node itself and all its parent classes
+    let allOntologies = node.ontologies ?? [];
+    const parentClasses = this.getAllParentClasses(node, graph);
+    const parentOntologies = parentClasses.flatMap((parentNode: Node) => parentNode.ontologies ?? []);
+    // Combine child's own ontologies with parent ontologies
+    const ontologyMap = new Map<string, Ontology>();
+    [...allOntologies, ...parentOntologies].forEach((o: Ontology) => {
+      if (!ontologyMap.has(o.id)) {
+        ontologyMap.set(o.id, o);
+      }
+    });
+    allOntologies = Array.from(ontologyMap.values());
+    
+    const ids = allOntologies.map((o: Ontology) => o.id);
     if (ids.length === 0) {
       this.setState({ exampleOptions: [] });
       return;
@@ -223,16 +343,130 @@ export default class DetailInspector extends Component<
     try {
       const data = await ontologiesByIdsWithOptions(ids, { limit: 10, random_sample: true });
       // Map to terms arrays; random_sample already applied by backend
-      const perOntology: string[][] = data.map((o) => (o.terms as any) || []);
+      // Ensure all terms are strings, filter out any objects
+      const perOntology: string[][] = data.map((o) => {
+        const terms = (o.terms as any) || [];
+        return terms.filter((item: any): item is string => typeof item === 'string');
+      });
       // Simple mix across ontologies
       const mixed = this.sampleUniqueShuffled(perOntology, 10);
       // Only apply latest
       if ((this.state.suggestionsRequestSeq ?? 0) === reqId) {
-        this.setState({ exampleOptions: mixed, isFetchingExampleOptions: false });
+        this.setState({ exampleOptions: mixed, exampleSearchActive: false, isFetchingExampleOptions: false });
       }
     } catch (e) {
       this.setState({ isFetchingExampleOptions: false });
       // keep silent; UI will show cached fallback if any
+    }
+  };
+
+  private resetExampleSearch = () => {
+    this.setState({ exampleSearchActive: false, exampleOptions: [], isFetchingExampleOptions: false });
+  };
+
+  private searchExampleOptions = async (searchQuery: string) => {
+    const query = searchQuery.trim();
+    if (!query) {
+      this.resetExampleSearch();
+      return;
+    }
+
+    const { selection, ontologies, graph } = this.props;
+    const entities = [...this.props.selectedNodes, ...selectedRelationships(graph, selection)];
+    if (entities.length === 0) return;
+
+    const reqId = (this.state.suggestionsRequestSeq ?? 0) + 1;
+    this.setState({ exampleSearchActive: true, isFetchingExampleOptions: true, suggestionsRequestSeq: reqId });
+
+    const entity = entities[0] as Entity;
+    try {
+      if (isRelationship(entity)) {
+        const rel = entity as Relationship;
+        const sourceNode = graph.nodes.find((n) => n.id === rel.fromId);
+        const targetNode = graph.nodes.find((n) => n.id === rel.toId);
+        const sourceExamples = (sourceNode?.examples ?? []).filter((item): item is string => typeof item === 'string');
+        const targetExamples = (targetNode?.examples ?? []).filter((item): item is string => typeof item === 'string');
+        const relName = rel.type ? [rel.type] : [];
+
+        const concatenatedExamples: string[] = [];
+        for (const src of sourceExamples) {
+          for (const tgt of targetExamples) {
+            concatenatedExamples.push([src, ...relName, tgt].filter(Boolean).join(' - '));
+          }
+        }
+
+        // Also include ontology properties for relationships so search finds ontology-sourced names
+        const relOntologyIds = (rel.ontologies ?? []).map((o: Ontology) => o.id);
+        let ontologyProperties: string[] = [];
+        try {
+          if (relOntologyIds.length > 0) {
+            const relOntData = await ontologiesByIds(relOntologyIds);
+            ontologyProperties = Array.from(
+              new Set(
+                relOntData.flatMap((o) => (o.properties ?? []).filter((p: any): p is string => typeof p === 'string'))
+              )
+            );
+          }
+        } catch (e) {
+          ontologyProperties = [];
+        }
+
+        const candidates = [
+          ...(rel.examples ?? []).filter((item): item is string => typeof item === 'string'),
+          ...concatenatedExamples,
+          ...ontologyProperties,
+          ...this.state.additionalExamplesOptions,
+        ];
+
+        if ((this.state.suggestionsRequestSeq ?? 0) === reqId) {
+          this.setState({
+            exampleOptions: this.filterByQuery(candidates, query),
+            exampleSearchActive: true,
+            isFetchingExampleOptions: false,
+          });
+        }
+        return;
+      }
+
+      const node = entity as Node;
+      let allOntologies = node.ontologies ?? [];
+      const parentClasses = this.getAllParentClasses(node, graph);
+      const parentOntologies = parentClasses.flatMap((parentNode: Node) => parentNode.ontologies ?? []);
+      const ontologyMap = new Map<string, Ontology>();
+      [...allOntologies, ...parentOntologies].forEach((o: Ontology) => {
+        if (!ontologyMap.has(o.id)) {
+          ontologyMap.set(o.id, o);
+        }
+      });
+      allOntologies = Array.from(ontologyMap.values());
+
+      const ids = allOntologies.map((o: Ontology) => o.id);
+      const data = ids.length > 0 ? await ontologiesByIds(ids) : [];
+      const ontologyTerms = Array.from(
+        new Set(
+          data.flatMap((o) => (o.terms ?? []).filter((item): item is string => typeof item === 'string'))
+        )
+      );
+      const parentExamples = parentClasses
+        .flatMap((parentNode: Node) => parentNode.examples ?? [])
+        .filter((item): item is string => typeof item === 'string');
+      const currentExamples = (node.examples ?? []).filter((item): item is string => typeof item === 'string');
+      const candidates = [
+        ...currentExamples,
+        ...parentExamples,
+        ...ontologyTerms,
+        ...this.state.additionalExamplesOptions,
+      ];
+
+      if ((this.state.suggestionsRequestSeq ?? 0) === reqId) {
+        this.setState({
+          exampleOptions: this.filterByQuery(candidates, query),
+          exampleSearchActive: true,
+          isFetchingExampleOptions: false,
+        });
+      }
+    } catch (e) {
+      this.setState({ isFetchingExampleOptions: false });
     }
   };
 
@@ -251,7 +485,11 @@ export default class DetailInspector extends Component<
     this.setState({ isFetchingNameOptions: true, suggestionsRequestSeq: reqId });
     try {
       const data = await ontologiesByIdsWithOptions(ids, { limit: 10, random_sample: true });
-      const perOntology: string[][] = data.map((o) => (o.properties as any) || []);
+      // Ensure all properties are strings, filter out any objects
+      const perOntology: string[][] = data.map((o) => {
+        const properties = (o.properties as any) || [];
+        return properties.filter((item: any): item is string => typeof item === 'string');
+      });
       const mixed = this.sampleUniqueShuffled(perOntology, 10);
       if ((this.state.suggestionsRequestSeq ?? 0) === reqId) {
         this.setState({ nameOptions: mixed, isFetchingNameOptions: false });
@@ -261,12 +499,78 @@ export default class DetailInspector extends Component<
     }
   };
 
+  private resetNameSearch = () => {
+    this.setState({ nameOptions: [], isFetchingNameOptions: false });
+  };
+
+  private searchNameOptions = async (searchQuery: string) => {
+    const query = searchQuery.trim();
+    if (!query) {
+      this.resetNameSearch();
+      return;
+    }
+
+    const { graph, selection } = this.props;
+    const relationships = selectedRelationships(graph, selection);
+    if (relationships.length === 0) return;
+
+    const reqId = (this.state.suggestionsRequestSeq ?? 0) + 1;
+    this.setState({ isFetchingNameOptions: true, suggestionsRequestSeq: reqId });
+
+    const rel = relationships[0];
+    try {
+      // gather candidates: existing rel.examples, concatenated source-target examples, ontology properties
+      const sourceNode = graph.nodes.find((n) => n.id === rel.fromId);
+      const targetNode = graph.nodes.find((n) => n.id === rel.toId);
+      const sourceExamples = (sourceNode?.examples ?? []).filter((item): item is string => typeof item === 'string');
+      const targetExamples = (targetNode?.examples ?? []).filter((item): item is string => typeof item === 'string');
+      const relName = rel.type ? [rel.type] : [];
+
+      const concatenatedExamples: string[] = [];
+      for (const src of sourceExamples) {
+        for (const tgt of targetExamples) {
+          concatenatedExamples.push([src, ...relName, tgt].filter(Boolean).join(' - '));
+        }
+      }
+
+      const relOntologyIds = (rel.ontologies ?? []).map((o: Ontology) => o.id);
+      let ontologyProperties: string[] = [];
+      if (relOntologyIds.length > 0) {
+        try {
+          const relOntData = await ontologiesByIds(relOntologyIds);
+          ontologyProperties = Array.from(
+            new Set(
+              relOntData.flatMap((o) => (o.properties ?? []).filter((p: any): p is string => typeof p === 'string'))
+            )
+          );
+        } catch (e) {
+          ontologyProperties = [];
+        }
+      }
+
+      const candidates = [
+        ...(rel.examples ?? []).filter((item): item is string => typeof item === 'string'),
+        ...concatenatedExamples,
+        ...ontologyProperties,
+        ...this.state.additionalExamplesOptions,
+      ];
+
+      if ((this.state.suggestionsRequestSeq ?? 0) === reqId) {
+        this.setState({ nameOptions: this.filterByQuery(candidates, query), isFetchingNameOptions: false });
+      }
+    } catch (e) {
+      this.setState({ isFetchingNameOptions: false });
+    }
+  };
+
+
   render() {
     const {
       ontologies,
       selection,
       graph,
       onSaveCaption,
+      onSaveAbstract,
       onSaveCardinality,
       onSaveExamples,
       onSaveRelationshipType,
@@ -287,6 +591,8 @@ export default class DetailInspector extends Component<
       onSaveOntology,
       onSaveDescription,
       onSaveNavigation,
+      onSaveIeGuidelines,
+      onSavePattern,
     } = this.props;
 
     const { styleActive } = this.state;
@@ -310,6 +616,16 @@ export default class DetailInspector extends Component<
       return (graph.style && (graph.style['attribute-position'] as any)) || 'outside';
     })();
 
+    // Resolve current ontology-position from selection (fall back to graph style)
+    const resolvedOntologyPosition = (() => {
+      if (entities.length > 0) {
+        const entity = entities[0] as Entity;
+        const selector = getStyleSelector(entity, 'ontology-position');
+        return selector(graph) as string;
+      }
+      return (graph.style && (graph.style['ontology-position'] as any)) || 'outside';
+    })();
+
     // Build class reference options from node captions, excluding current node when single selection
     const allCaptions = graph.nodes.map((node) => node.caption).filter(Boolean);
     const rangeOptions: string[] =
@@ -327,32 +643,32 @@ export default class DetailInspector extends Component<
       entities.map((entity: Entity) => entity.description)
     );
 
-    if (
-      relationships.every(
-        (relationship) =>
-          relationship.relationshipType === RelationshipType.ASSOCIATION
-      )
-    ) {
-      fields.push(
-        <Form.Field key="description">
-          <label>Description</label>
-          <Input
-            value={description || ''}
-            onChange={(event) =>
-              onSaveDescription(selection, event.target.value)
-            }
-            placeholder={
-              description === undefined && entities.length > 1
-                ? '<multiple descriptions>'
-                : null
-            }
-          />
-        </Form.Field>
-      );
-    }
+    // If nodes are selected (and no relationships), show Class name first,
+    // then Description. For relationship selections that are all
+    // ASSOCIATION, show Description as before.
     if (selectionIncludes.nodes && !selectionIncludes.relationships) {
       const value = commonValue(
         selectedNodes.map((node: Node) => node.caption)
+      );
+      const abstractValue = commonValue(
+        selectedNodes.map((node: Node) => node.abstract ?? false)
+      );
+      const ieGuidelinesValue = commonValue(
+        selectedNodes.map((node: Node) => node.ieGuidelines)
+      );
+
+      fields.push(
+        <Form.Field key="abstract">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>Abstract</label>
+            <Checkbox
+              toggle
+              checked={abstractValue ?? false}
+              indeterminate={abstractValue === undefined}
+              onChange={(_, data) => onSaveAbstract(selection, !!data.checked)}
+            />
+          </div>
+        </Form.Field>
       );
 
       fields.push(
@@ -364,6 +680,38 @@ export default class DetailInspector extends Component<
           onConvertCaptionsToPropertyValues={onConvertCaptionsToPropertyValues}
         />
       );
+
+      fields.push(
+        <Form.Field key="description">
+          <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>Description</label>
+          <Input
+            value={description || ''}
+            onChange={(event) => onSaveDescription(selection, event.target.value)}
+            placeholder={
+              description === undefined && entities.length > 1
+                ? '<multiple descriptions>'
+                : null
+            }
+          />
+        </Form.Field>
+      );
+
+      if (!abstractValue) {
+        fields.push(
+          <Form.Field key="ie_guidelines">
+            <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>IE Guidelines</label>
+            <Input
+              value={ieGuidelinesValue || ''}
+              onChange={(event) => onSaveIeGuidelines(selection, event.target.value)}
+              placeholder={
+                ieGuidelinesValue === undefined && entities.length > 1
+                  ? '<multiple values>'
+                  : null
+              }
+            />
+          </Form.Field>
+        );
+      }
     }
 
     if (selectionIncludes.relationships && !selectionIncludes.nodes) {
@@ -388,10 +736,27 @@ export default class DetailInspector extends Component<
       const commonNavigation = commonValue(
         relationships.map((relationship) => relationship.navigation)
       );
+      const commonFromCaption = commonValue(
+        relationships.map((relationship) => {
+          const sourceNode = graph.nodes.find((node) => node.id === relationship.fromId);
+          return sourceNode?.caption || sourceNode?.id || '';
+        })
+      );
+      const commonToCaption = commonValue(
+        relationships.map((relationship) => {
+          const targetNode = graph.nodes.find((node) => node.id === relationship.toId);
+          return targetNode?.caption || targetNode?.id || '';
+        })
+      );
+      const ieGuidelinesValue = commonValue(
+        relationships.map((relationship) => relationship.ieGuidelines)
+      );
 
       fields.push(
         <Form.Field key="_relationshipType">
-          <label>Relationship type</label>
+          <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+            Relationship type
+          </label>
           <Dropdown
             value={commonRelationshipType || RelationshipType.ASSOCIATION}
             onChange={(e, { value }) =>
@@ -451,27 +816,73 @@ export default class DetailInspector extends Component<
             ? entityOntologies
                 .flatMap((ontology: Ontology) => {
                   const matching = storeOntologies.find(({ id }) => ontology.id === id);
-                  return matching
+                  const items = matching
                     ? entities[0].entityType === 'relationship'
                       ? matching.properties
                       : matching.terms
                     : [];
+                  // Ensure all items are strings, filter out any objects
+                  return (items || []).filter((item): item is string => typeof item === 'string');
                 })
                 .sort(() => Math.random() - 0.5).slice(0, 10)
             : [];
 
-          const nameOptions = (this.state.nameOptions && this.state.nameOptions.length)
-            ? this.state.nameOptions
+          const nameCandidates: string[] = (this.state.nameOptions && (this.state.nameOptions.length ?? 0) > 0)
+            ? (this.state.nameOptions ?? [])
+                .map((item: any) => this.normalizeToString(item))
+                .filter((item): item is string => item !== null)
             : ontologiesExamples;
-          const examplesOptions = [
+
+          const normalizedNameCandidates: string[] = [
             ...(commonType ? [commonType] : []),
-            ...nameOptions,
+            ...nameCandidates,
             ...this.state.additionalExamplesOptions,
-          ].map((example, index) => ({
-            key: index,
-            text: example,
-            value: example,
-          }));
+          ]
+            .map((item: any) => this.normalizeToString(item))
+            .filter((item): item is string => item !== null);
+
+          // If any selected relationship has ontologies, restrict allowed names to ontology properties
+          const selectedRelOntologyIds = Array.from(
+            new Set(
+              relationships.flatMap((r) => (r.ontologies ?? []).map((o) => o.id))
+            )
+          );
+
+          let ontologyRestrictedOptions: string[] = [];
+          if (selectedRelOntologyIds.length > 0) {
+            const storeOnt = ontologies.ontologies || [];
+            ontologyRestrictedOptions = Array.from(
+              new Set(
+                selectedRelOntologyIds.flatMap((id) => {
+                  const matching = storeOnt.find((s) => s.id === id);
+                  return (matching?.properties ?? []).filter((p: any): p is string => typeof p === 'string');
+                })
+              )
+            );
+          }
+
+          // Decide visible options: when user is actively searching use full filtered nameOptions,
+          // otherwise show a small set (up to 10) for quick selection.
+          let visibleNameCandidates: string[] = [];
+          if ((this.state.nameOptions && (this.state.nameOptions.length ?? 0) > 0)) {
+            visibleNameCandidates = this.state.nameOptions ?? [];
+          } else if (ontologyRestrictedOptions.length > 0) {
+            visibleNameCandidates = this.sampleUniqueShuffled([ontologyRestrictedOptions], 10);
+          } else {
+            visibleNameCandidates = this.sampleUniqueShuffled([normalizedNameCandidates], 10);
+          }
+
+          // Ensure the currently selected name appears in the options so it remains visible
+          const finalNameCandidates = (() => {
+            const copy = [...visibleNameCandidates];
+            const currentName = typeof commonType === 'string' && commonType ? String(commonType) : null;
+            if (currentName && !copy.map((s) => s.toLowerCase()).includes(currentName.toLowerCase())) {
+              copy.unshift(currentName);
+            }
+            return copy;
+          })();
+
+          const examplesOptions = finalNameCandidates.map((example: string, index: number) => ({ key: index, text: example, value: example }));
 
           // callback per aggiunte manuali
           const onAddType = (value: string) => {
@@ -523,10 +934,12 @@ const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
     relationships.some(isDuplicateUnnamedAssociation)
   }
 >
-  <label>Name</label>
+  <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+    Relationship name
+  </label>
   <Dropdown
-    value={typeof commonType === 'string' ? commonType : ''}
-    allowAdditions
+    value={typeof commonType === 'string' ? commonType : (commonType != null ? String(commonType) : '')}
+    allowAdditions={!(selectedRelOntologyIds && selectedRelOntologyIds.length > 0)}
     search
     clearable
     selection
@@ -539,6 +952,9 @@ const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
     loading={isFetching || this.state.isFetchingNameOptions}
     noResultsMessage={null}
     onOpen={this.fetchRandomNameOptions}
+    onSearchChange={(event, { searchQuery }) => this.searchNameOptions(searchQuery ?? '')}
+    onOpenChange={() => { /* keep existing fetchRandomNameOptions behavior */ }}
+    onClose={this.resetNameSearch}
     onChange={(event, { value }) => {
       if (value) onSaveType(selection, value as string);
       else onSaveType(selection, '');
@@ -554,7 +970,23 @@ const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
         onSaveType(selection, value);
       }
     }}
+    /* Enter auto-select disabled: selection requires explicit click on option */
+    /* Enter auto-select disabled: selection requires explicit click on option */
   />
+  {/* Show ontology mismatch if ontologies selected but current type not in properties */}
+  {(() => {
+    const currentName = typeof commonType === 'string' && commonType ? String(commonType) : null;
+    if (selectedRelOntologyIds.length > 0 && currentName) {
+      if (!ontologyRestrictedOptions.map((s) => s.toLowerCase()).includes(currentName.toLowerCase())) {
+        return (
+          <Label pointing color="red">
+            The selected ontologies do not contain the current relationship name
+          </Label>
+        );
+      }
+    }
+    return null;
+  })()}
   {relationships.some(isDuplicateAssociationByName) && (
     <Label pointing color="red">
       A relationship with this name already exists between the selected classes
@@ -565,17 +997,114 @@ const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
       A relationship with no name already exists between the selected classes
     </Label>
   )}
+  {/* Show ontology mismatch if ontologies selected but current type not in properties */}
+  {/* Note: current relationship name is included in Dropdown options so it remains visible */}
 </Form.Field>
 
 
 
           );
+
+          fields.push(
+            <Form.Field key="_from_to" style={{ marginTop: '8px' }}>
+              <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+                From / To
+              </label>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '6px', width: '100%' }}>
+                <div
+                  title={commonFromCaption || ''}
+                  style={{
+                    width: 'calc(50% - 4px)',
+                    minWidth: 0,
+                    border: '1px solid rgba(34, 36, 38, 0.15)',
+                    borderRadius: '4px',
+                    padding: '7px 8px',
+                    fontSize: '12px',
+                    lineHeight: 1.2,
+                    color: commonFromCaption ? 'rgba(0,0,0,0.87)' : 'rgba(0,0,0,0.4)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    userSelect: 'none',
+                  }}
+                >
+                  {commonFromCaption ||
+                    (commonFromCaption === undefined && relationships.length > 1
+                      ? '<multiple sources>'
+                      : 'Source')}
+                </div>
+                <div
+                  title={commonToCaption || ''}
+                  style={{
+                    width: 'calc(50% - 4px)',
+                    minWidth: 0,
+                    border: '1px solid rgba(34, 36, 38, 0.15)',
+                    borderRadius: '4px',
+                    padding: '7px 8px',
+                    fontSize: '12px',
+                    lineHeight: 1.2,
+                    color: commonToCaption ? 'rgba(0,0,0,0.87)' : 'rgba(0,0,0,0.4)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    userSelect: 'none',
+                  }}
+                >
+                  {commonToCaption ||
+                    (commonToCaption === undefined && relationships.length > 1
+                      ? '<multiple targets>'
+                      : 'Target')}
+                </div>
+              </div>
+            </Form.Field>
+          );
         }
+
+        fields.push(
+          <Form.Field key="description_relationship">
+            <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+              Description
+            </label>
+            <Input
+              value={description || ''}
+              onChange={(event) =>
+                onSaveDescription(selection, event.target.value)
+              }
+              placeholder={
+                description === undefined && entities.length > 1
+                  ? '<multiple descriptions>'
+                  : null
+              }
+            />
+          </Form.Field>
+        );
+
+        fields.push(
+          <Form.Field key="ie_guidelines_relationship">
+            <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+              IE Guidelines
+            </label>
+            <Input
+              value={ieGuidelinesValue || ''}
+              onChange={(event) =>
+                onSaveIeGuidelines(selection, event.target.value)
+              }
+              placeholder={
+                ieGuidelinesValue === undefined && relationships.length > 1
+                  ? '<multiple values>'
+                  : null
+              }
+            />
+          </Form.Field>
+        );
+
         fields.push(
           <div key="_cardinality_fields" style={{ display: 'flex', flexWrap: 'wrap', gap: '1em' }}>
             {/* Cardinality preset selector */}
             <Form.Field style={{ width: '100%' }}>
-              <label>Cardinality</label>
+              <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+                Cardinality
+              </label>
               {(() => {
                 const derivePreset = () => {
                   const sMin = commonSourceMin ?? 0;
@@ -683,7 +1212,9 @@ const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
                     </Label>
                   )}
                   <Form.Field style={{ width: '45%' }} error={sourceInvalid}>
-                    <label>Source minimum</label>
+                    <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+                      Source minimum
+                    </label>
                     <Input
                       type="number"
                       value={commonSourceMin ?? 0}
@@ -707,7 +1238,9 @@ const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
                     />
                   </Form.Field>
                   <Form.Field style={{ width: '45%' }} error={sourceInvalid}>
-                    <label>Source maximum</label>
+                    <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+                      Source maximum
+                    </label>
                     <Input
                       type="text"
                       placeholder={'N'}
@@ -753,7 +1286,9 @@ const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
                     />
                   </Form.Field>
                   <Form.Field style={{ width: '45%' }} error={targetInvalid}>
-                    <label>Target minimum</label>
+                    <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+                      Target minimum
+                    </label>
                     <Input
                       type="number"
                       value={commonTargetMin ?? 0}
@@ -777,7 +1312,9 @@ const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
                     />
                   </Form.Field>
                   <Form.Field style={{ width: '45%' }} error={targetInvalid}>
-                    <label>Target maximum</label>
+                    <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+                      Target maximum
+                    </label>
                     <Input
                       type="text"
                       placeholder={'N'}
@@ -829,8 +1366,10 @@ const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
         );
 
         fields.push(
-          <Form.Field key="_navigation">
-            <label>Navigation</label>
+          <Form.Field key="_navigation" style={{ marginTop: '12px' }}>
+            <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+              Navigation
+            </label>
             <Dropdown
               selection
               value={commonNavigation ?? Navigation.None}
@@ -858,45 +1397,88 @@ const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
     ) {
       const { ontologies: entityOntologies, examples } = entities[0];
       const { ontologies: storeOntologies, isFetching } = ontologies;
-      // Determine readiness of ontology-derived example options for entity examples
-      const selectedOntologyIds = entityOntologies
-        ? entityOntologies.map((ontology: Ontology) => ontology.id)
-        : [];
+      const resolveOntologyById = (id: string): Ontology => {
+        return (
+          storeOntologies.find((ontology) => ontology.id === id) ||
+          ({ id, name: id, description: '', namespace: '', annotator: '' } as Ontology)
+        );
+      };
+      const getOntologyId = (ontology: Ontology | string): string =>
+        typeof ontology === 'string' ? ontology : ontology.id;
+      const getOntologyLabel = (ontology: Ontology): string => ontology.name || ontology.id;
+      const getOntologyDisplayLabel = (ontology: Ontology, imported = false): string =>
+        `${getOntologyLabel(ontology).replace(/\s*\(id\)\s*$/i, '')} (${ontology.id.toUpperCase()})${imported ? ' (imported)' : ''}`;
+      
+      // Collect ontologies from the node itself and all its parent classes if this is a node
+      let allEntityOntologies = (entityOntologies ?? []).map((ontology: Ontology | string) =>
+        typeof ontology === 'string' ? resolveOntologyById(ontology) : ontology
+      );
+      let parentExamples: string[] = [];
+      if (!isRelationship(entities[0])) {
+        const node = entities[0] as Node;
+        const parentClasses = this.getAllParentClasses(node, graph);
+        const parentOntologies = parentClasses
+          .flatMap((parentNode: Node) => parentNode.ontologies ?? [])
+          .map((ontology: Ontology | string) =>
+            typeof ontology === 'string' ? resolveOntologyById(ontology) : ontology
+          );
+        // Collect examples from parent classes, ensuring they're strings
+        parentExamples = parentClasses
+          .flatMap((parentNode: Node) => parentNode.examples ?? [])
+          .filter((item): item is string => typeof item === 'string');
+        // Combine child's own ontologies with parent ontologies (child inherits parent examples)
+        const ontologyMap = new Map<string, Ontology>();
+        [...allEntityOntologies, ...parentOntologies].forEach((o: Ontology) => {
+          if (!ontologyMap.has(o.id)) {
+            ontologyMap.set(o.id, o);
+          }
+        });
+        allEntityOntologies = Array.from(ontologyMap.values());
+      }
+      
+      // Determine readiness of ontology-derived example options for entity examples.
+      // Previously this required that every selected ontology ID exist in the global
+      // store, which caused examples to stay in a permanent "loading" state for
+      // ontologies that only exist on the imported schema/canvas. We now consider
+      // examples "ready" as soon as the ontology store is not fetching, even if
+      // some ontology IDs are unknown to the store.
+      const selectedOntologyIds = allEntityOntologies.map(
+        (ontology: Ontology) => getOntologyId(ontology)
+      );
       const requiresProperties = isRelationship(entities[0]);
       const examplesReady =
-        selectedOntologyIds.length === 0 ||
-        selectedOntologyIds.every((id) => {
-          const matching = storeOntologies.find((o) => o.id === id);
-          if (!matching) return false;
-          return requiresProperties
-            ? Array.isArray(matching.properties)
-            : Array.isArray(matching.terms);
-        });
-      const ontologiesExamples = entityOntologies
-        ? entityOntologies
+        selectedOntologyIds.length === 0 || !isFetching;
+      const ontologiesExamples = allEntityOntologies.length > 0
+        ? allEntityOntologies
             .flatMap((ontology: Ontology) => {
               const matching = storeOntologies.find(
                 ({ id }) => ontology.id === id
               );
-              return matching
+              const items = matching
                 ? entities[0].entityType === 'relationship'
                   ? matching.properties
                   : matching.terms
                 : [];
+              // Ensure all items are strings, filter out any objects
+              return (items || []).filter((item): item is string => typeof item === 'string');
             })
             .sort(() => Math.random() - 0.5).slice(0, 10)
         : [];
       const exampleFallback = ontologiesExamples;
-      const currentExamples = (this.state.exampleOptions && this.state.exampleOptions.length)
-        ? this.state.exampleOptions
+      const currentExamples = (this.state.exampleSearchActive && (this.state.exampleOptions?.length ?? 0) > 0)
+        ? (this.state.exampleOptions ?? [])
         : exampleFallback;
       const examplesOptions = [
         ...(examples ?? []),
+        ...parentExamples, // Include parent class examples
         ...currentExamples,
         ...this.state.additionalExamplesOptions,
-      ].map((example, index) => {
-        return { key: index, text: example, value: example };
-      });
+      ]
+        .map((item) => this.normalizeToString(item))
+        .filter((item): item is string => item !== null)
+        .map((example, index) => {
+          return { key: index, text: String(example), value: String(example) };
+        });
       const onAddExample = (example: string) =>
         this.setState({
           ...this.state,
@@ -905,45 +1487,133 @@ const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
             example,
           ],
         });
-      const options = (
-        isRelationship(entities[0])
-          ? _.partition(storeOntologies, (ontology) =>
-              ['ro', 'so', 'sio'].includes(ontology.id)
-            ).flat()
-          : storeOntologies
-      ).map((ontology) => {
-        return {
+      const baseOntologyList = isRelationship(entities[0])
+        ? _.partition(storeOntologies, (ontology) =>
+            ['ro', 'so', 'sio'].includes(ontology.id)
+          ).flat()
+        : storeOntologies;
+
+      // Ontologies that are on the entity (from imported schema / canvas)
+      // but are NOT present in the global storeOntologies list.
+      const knownIds = new Set(baseOntologyList.map((o) => o.id));
+      const missingOntologies =
+        allEntityOntologies?.filter(
+          (ontology: Ontology) =>
+            !!ontology?.id && !knownIds.has(ontology.id)
+        ) ?? [];
+
+      const missingIds = new Set(missingOntologies.map((o) => o.id));
+
+      const preferredOntologyIds = new Map(
+        ['ro', 'so', 'sio'].map((id, index) => [id, index] as const)
+      );
+
+      const sortByOntologyLabel = (left: Ontology, right: Ontology) =>
+        getOntologyDisplayLabel(left)
+          .localeCompare(getOntologyDisplayLabel(right), undefined, { sensitivity: 'base' });
+
+      const sortOntologies = (left: Ontology, right: Ontology) => {
+        const leftPriority = preferredOntologyIds.get(left.id) ?? Number.POSITIVE_INFINITY;
+        const rightPriority = preferredOntologyIds.get(right.id) ?? Number.POSITIVE_INFINITY;
+
+        if (leftPriority !== rightPriority) {
+          return leftPriority - rightPriority;
+        }
+
+        return sortByOntologyLabel(left, right);
+      };
+
+      const combinedOntologyList = [
+        ...baseOntologyList,
+        ...missingOntologies.filter((ontology) => !knownIds.has(ontology.id)),
+      ].sort(isRelationship(entities[0]) ? sortOntologies : sortByOntologyLabel);
+
+      const options = [
+        ...combinedOntologyList.map((ontology) => ({
           key: ontology.id,
-          text: ontology.id,
+          text: getOntologyDisplayLabel(ontology, missingIds.has(ontology.id)),
           value: ontology.id,
-        };
-      });
+        })),
+      ];
 
       fields.push(
         <Form.Field key="_ontology">
-          <label>Ontologies</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '0.5em' }}>
+            <label style={{ margin: 0, cursor: 'default', fontWeight: 'bold', fontSize: '14px' }}>Ontologies</label>
+            <Button
+              type="button"
+              basic
+              color="red"
+              size="tiny"
+              content={resolvedOntologyPosition === 'hidden' ? 'Show' : 'Hide'}
+              onClick={(e) => {
+                e.stopPropagation();
+                const curr = resolvedOntologyPosition;
+                const next = curr === 'hidden' ? 'outside' : 'hidden';
+                onSaveArrowsPropertyValue(selection, 'ontology-position', next);
+              }}
+            />
+          </div>
           <Dropdown
             selection
+            fluid
+            multiple
+            search
             clearable
             value={
               entityOntologies
-                ? entityOntologies.map((ontology: Ontology) => ontology.id)
+                ? entityOntologies.map((ontology: Ontology | string) => getOntologyId(ontology))
                 : []
             }
-            multiple
-            loading={isFetching}
-            search
             placeholder={'Select an ontology'}
             options={options}
-            onChange={(e, { value }) =>
-              onSaveOntology(
-                selection,
-                storeOntologies.filter((ontology) =>
-                  (value as string[]).includes(ontology.id)
-                )
-              )
-            }
+            loading={isFetching}
             disabled={isFetching}
+            // Render selected ontology pills: those that are only present on the
+            // canvas/imported schema get a red basic label so they are visually
+            // differentiated in the panel. Known ontologies use the default style.
+            renderLabel={(label) => {
+              const value = label.value as string;
+              const isMissing = missingIds.has(value);
+              const ontology =
+                baseOntologyList.find((item) => item.id === value) ||
+                missingOntologies.find((item) => item.id === value);
+              return (
+                <Label
+                  key={value}
+                  basic={isMissing}
+                  color={isMissing ? 'red' : undefined}
+                  content={ontology ? getOntologyDisplayLabel(ontology, isMissing) : value}
+                  style={isMissing ? { borderColor: 'red', borderWidth: 1, borderStyle: 'solid' } : undefined}
+                />
+              );
+            }}
+            onChange={(e, { value }) => {
+              const selectedIds = (value as string[]) ?? [];
+
+              // Fast lookup for ontologies that are in the global store
+              const storeMap = new Map(
+                storeOntologies.map((o) => [o.id, o] as const)
+              );
+
+              // Fast lookup for ontologies that come from the current entities
+              // (e.g. imported from schema and only visible on the canvas)
+              const entityMap = new Map(
+                (allEntityOntologies ?? []).map(
+                  (o: Ontology) => [o.id, o] as const
+                )
+              );
+
+              const nextOntologies: Ontology[] = selectedIds.map((id) => {
+                return (
+                  storeMap.get(id) ||
+                  entityMap.get(id) ||
+                  ({ id, name: id } as Ontology)
+                );
+              });
+
+              onSaveOntology(selection, nextOntologies);
+            }}
             closeOnChange
           />
         </Form.Field>
@@ -962,8 +1632,8 @@ if (
   const sourceNode = graph.nodes.find((n) => n.id === rel.fromId);
   const targetNode = graph.nodes.find((n) => n.id === rel.toId);
 
-  const sourceExamples = sourceNode?.examples ?? [];
-  const targetExamples = targetNode?.examples ?? [];
+  const sourceExamples = (sourceNode?.examples ?? []).filter((item): item is string => typeof item === 'string');
+  const targetExamples = (targetNode?.examples ?? []).filter((item): item is string => typeof item === 'string');
   const relName = rel.type ? [rel.type] : [];
 
   // Generate concatenated examples
@@ -978,11 +1648,13 @@ if (
   // Subsample if too many
   const sampledExamples = concatenatedExamples.slice(0, 10);
 
-  const examplesOptions = [
-    ...(relExamples ?? []),
-    ...sampledExamples,
-    ...this.state.additionalExamplesOptions,
-  ].map((example, index) => ({ key: index, text: example, value: example }));
+  const examplesOptions: string[] = (this.state.exampleSearchActive && (this.state.exampleOptions?.length ?? 0) > 0)
+    ? (this.state.exampleOptions ?? [])
+    : [
+        ...(relExamples ?? []),
+        ...sampledExamples,
+        ...this.state.additionalExamplesOptions,
+      ];
 
   const onAddExample = (example: string) =>
     this.setState({
@@ -990,52 +1662,179 @@ if (
       additionalExamplesOptions: [...this.state.additionalExamplesOptions, example],
     });
 
+  const normalizedExamplesOptions = (examplesOptions ?? [])
+    .map((item) => this.normalizeToString(item))
+    .filter((item): item is string => item !== null);
+
   fields.push(
-    <Form.Field key="_examples">
-      <label>Examples</label>
+        <Form.Field key="_examples">
+          <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>Examples</label>
       <Dropdown
-        value={relExamples ?? []}
-        allowAdditions
-        search
-        multiple
-        clearable
         selection
-        options={examplesOptions}
+        fluid
+        multiple
+        search
+        clearable
+        allowAdditions
+        value={relExamples ?? []}
         placeholder={'Provide examples for this relationship'}
+        options={normalizedExamplesOptions.map((example: string, index: number) => ({
+          key: index,
+          text: example,
+          value: example,
+        }))}
         loading={isFetching || !examplesReady}
+        disabled={isFetching || !examplesReady}
         onChange={(event, { value }) => onSaveExamples(selection, value as string[])}
         onAddItem={(event, { value }) => onAddExample(value as string)}
-        disabled={isFetching || !examplesReady}
-        onOpen={this.fetchRandomExampleOptions}
+        onSearchChange={(event, { searchQuery }) => this.searchExampleOptions(searchQuery ?? '')}
+        onOpen={this.resetExampleSearch}
       />
     </Form.Field>
   );
 }
  else {
 
+      const normalizedExamplesOptionsEntity = (examplesOptions ?? [])
+        .map((item: any) => this.normalizeToString(item))
+        .filter((item): item is string => item !== null);
+
       fields.push(
         <Form.Field key="_examples">
-          <label>Examples</label>
+          <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>Examples</label>
           <Dropdown
-            value={examples ?? []}
-            allowAdditions
-            search
-            multiple
-            clearable
-            options={examplesOptions}
             selection
+            fluid
+            multiple
+            search
+            clearable
+            allowAdditions
+            value={(examples ?? [])
+              .map((item) => this.normalizeToString(item))
+              .filter((item): item is string => item !== null)}
+            placeholder={'Provide examples for this entity'}
+            options={normalizedExamplesOptionsEntity.map((example: string, index: number) => ({
+              key: index,
+              text: example,
+              value: example,
+            }))}
+            loading={isFetching || !examplesReady || this.state.isFetchingExampleOptions}
+            disabled={isFetching || !examplesReady}
             onChange={(event, { value }) =>
               onSaveExamples(selection, value as string[])
             }
-            placeholder={'Provide examples for this entity'}
-            loading={isFetching || !examplesReady || this.state.isFetchingExampleOptions}
             onAddItem={(event, { value }) => onAddExample(value as string)}
-            disabled={isFetching || !examplesReady}
-            onOpen={this.fetchRandomExampleOptions}
+            onSearchChange={(event, { searchQuery }) => this.searchExampleOptions(searchQuery ?? '')}
+            onOpen={this.resetExampleSearch}
           />
         </Form.Field>
       );
     }}
+
+    const associationsOnly =
+      entities.filter((entity) => isRelationship(entity)).length === 0 ||
+      entities
+        .filter((entity) => isRelationship(entity))
+        .every(
+          (entity) =>
+            (entity as Relationship).relationshipType ===
+            RelationshipType.ASSOCIATION
+        );
+
+    if (associationsOnly) {
+      const patternValue = commonValue(
+        entities.map((entity: Entity) => (entity as Node | Relationship).pattern)
+      ) as PatternDefinition | undefined;
+      const patternRules = patternValue?.rules ?? [];
+
+      fields.push(
+        <Form.Field key="_pattern_entity">
+          <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>Pattern</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 6 }}>
+            <Dropdown
+              selection
+              compact
+              value={this.state.patternOp || 'ends_with'}
+              options={[
+                { key: 'ends_with', text: 'ends with', value: 'ends_with' },
+                { key: 'not_ends_with', text: 'NOT ends with', value: 'not_ends_with' },
+                { key: 'starts_with', text: 'starts with', value: 'starts_with' },
+                { key: 'not_starts_with', text: 'NOT starts with', value: 'not_starts_with' },
+                { key: 'contains', text: 'contains', value: 'contains' },
+                { key: 'not_contains', text: 'NOT contains', value: 'not_contains' },
+                { key: 'equals', text: 'equals', value: 'equals' },
+                { key: 'not_equals', text: 'NOT equals', value: 'not_equals' },
+                { key: 'regex', text: 'regex', value: 'regex' },
+                { key: 'not_regex', text: 'NOT regex', value: 'not_regex' },
+              ]}
+              onChange={(e, { value }) =>
+                this.setState({ ...this.state, patternOp: String(value) })
+              }
+              style={{ minWidth: 170 }}
+            />
+            <Input
+              ref={(el: any) => (this.patternInput = el)}
+              fluid
+              placeholder={
+                patternValue === undefined && entities.length > 1
+                  ? '<multiple patterns>'
+                  : 'Pattern value'
+              }
+              value={this.state.pattern || ''}
+              onChange={(e) => this.setState({ ...this.state, pattern: e.target.value })}
+            />
+          </div>
+
+          {patternRules.length > 0 && (
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {patternRules.map((rule, index) => (
+                <Label key={`${rule.operator}-${rule.value}-${index}`}>
+                  {rule.operator}: {rule.value}
+                  <Icon
+                    name="delete"
+                    link
+                    onClick={() => {
+                      const nextRules = patternRules.filter((_, i) => i !== index);
+                      onSavePattern(
+                        selection,
+                        nextRules.length > 0 ? { rules: nextRules } : undefined
+                      );
+                    }}
+                  />
+                </Label>
+              ))}
+            </div>
+          )}
+
+          <Button
+            key="addPattern"
+            onClick={() => {
+              const nextValue = (this.state.pattern || '').trim();
+              if (!nextValue) {
+                return;
+              }
+              const nextRule = {
+                operator: (this.state.patternOp || 'ends_with') as PatternOperator,
+                value: nextValue,
+              };
+              onSavePattern(selection, { rules: [...patternRules, nextRule] });
+              this.setState({ ...this.state, pattern: '' }, () => {
+                try {
+                  this.patternInput && this.patternInput.focus();
+                } catch (e) {}
+              });
+            }}
+            basic
+            color="black"
+            floated="right"
+            size="tiny"
+            icon="plus"
+            content="Pattern"
+            type="button"
+          />
+        </Form.Field>
+      );
+    }
 
     if (
       (selectionIncludes.relationships || selectionIncludes.nodes) &&
@@ -1077,6 +1876,8 @@ if (
           }
         />
       );
+
+      // (pattern moved) previously here but relocated below Examples for entities
     }
 
     const groupToRelevantKeys = (group: (typeof styleAttributeGroups)[0]) =>
@@ -1142,6 +1943,8 @@ if (
         <AccordionContent active={styleActive}>{styleFields}</AccordionContent>
       </Accordion>
     );
+
+  
 
     const disabledSubmitButtonToPreventImplicitSubmission = (
       <button

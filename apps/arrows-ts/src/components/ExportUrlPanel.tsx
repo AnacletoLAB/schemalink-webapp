@@ -10,7 +10,7 @@ interface ExportUrlPanelProps {
 class ExportUrlPanel extends Component<ExportUrlPanelProps> {
   render() {
     const { graph, diagramName } = this.props;
-    const jsonString = JSON.stringify({ graph, diagramName });
+    const jsonString = JSON.stringify({ graph, name: diagramName });
     const url =
       window.location.origin + '/#/import/json=' + Base64.encode(jsonString);
 

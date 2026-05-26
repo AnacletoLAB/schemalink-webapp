@@ -33,6 +33,8 @@ export type ApplicationDialogsState = {
   showImportDialog: boolean;
   showHelpDialog: boolean;
   showAcknowledgementsDialog: boolean;
+  showEnumRegexDialog: boolean;
+  showOntologiesDialog: boolean;
   contextMenu: ContextMenuState;
   gptModal: GptModalState;
   gptExplanationModal: GptExplanationModalState;
@@ -100,6 +102,10 @@ type ApplicationDialogsAction =
       | 'HIDE_HELP_DIALOG'
       | 'SHOW_ACKNOWLEDGEMENTS_DIALOG'
       | 'HIDE_ACKNOWLEDGEMENTS_DIALOG'
+      | 'SHOW_ENUM_REGEX_DIALOG'
+      | 'HIDE_ENUM_REGEX_DIALOG'
+      | 'SHOW_ONTOLOGIES_DIALOG'
+      | 'HIDE_ONTOLOGIES_DIALOG'
     >;
 
 export default function applicationDialogs(
@@ -115,6 +121,8 @@ export default function applicationDialogs(
     showSaveAsDialog: false,
     showImportDialog: false,
     showAcknowledgementsDialog: false,
+    showEnumRegexDialog: false,
+    showOntologiesDialog: false,
     gptModal: { open: false, startingPrompt: '' },
     gptExplanationModal: { open: false, explanation: '' },
     contextMenu: { open: false, x: 0, y: 0 },
@@ -318,6 +326,30 @@ export default function applicationDialogs(
       return {
         ...state,
         showAcknowledgementsDialog: false,
+      };
+
+    case 'SHOW_ENUM_REGEX_DIALOG':
+      return {
+        ...state,
+        showEnumRegexDialog: true,
+      };
+
+    case 'HIDE_ENUM_REGEX_DIALOG':
+      return {
+        ...state,
+        showEnumRegexDialog: false,
+      };
+
+    case 'SHOW_ONTOLOGIES_DIALOG':
+      return {
+        ...state,
+        showOntologiesDialog: true,
+      };
+
+    case 'HIDE_ONTOLOGIES_DIALOG':
+      return {
+        ...state,
+        showOntologiesDialog: false,
       };
 
     case 'UPDATE_USER_DATA':

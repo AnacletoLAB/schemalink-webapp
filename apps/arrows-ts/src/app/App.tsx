@@ -17,6 +17,8 @@ import AcknowledgementsModal from '../components/AcknowledgementsModal';
 import LocalStoragePickerContainer from '../containers/LocalStoragePickerContainer';
 import SaveAsContainer from '../containers/SaveAsContainer';
 import ImportContainer from '../containers/ImportContainer';
+import EnumRegexContainer from '../containers/EnumRegexContainer';
+import OntologiesContainer from '../containers/OntologiesContainer';
 import { handlePaste } from '../actions/import';
 import { handleCopy } from '../actions/export';
 import { linkToGoogleFontsCss } from '@neo4j-arrows/graphics';
@@ -40,6 +42,8 @@ export interface AppProps {
   showInfoAccountDialog: boolean;
   showExportDialog: boolean;
   showImportDialog: boolean;
+  showEnumRegexDialog: boolean;
+  showOntologiesDialog: boolean;
   pickingFromLocalStorage: boolean;
   onCancelPicker: any;
   canvasHeight: number;
@@ -53,15 +57,19 @@ export interface AppProps {
 }
 
 class App extends Component<AppProps> {
+  private boundFireKeyboardShortcutAction: (ev: KeyboardEvent) => void;
+  private boundHandleCopy: (ev: ClipboardEvent) => void;
+  private boundHandlePaste: (ev: ClipboardEvent) => void;
+
   constructor(props: AppProps) {
     super(props);
     linkToGoogleFontsCss();
-    window.addEventListener(
-      'keydown',
-      this.fireKeyboardShortcutAction.bind(this)
-    );
-    window.addEventListener('copy', this.handleCopy.bind(this));
-    window.addEventListener('paste', this.handlePaste.bind(this));
+    this.boundFireKeyboardShortcutAction = this.fireKeyboardShortcutAction.bind(this);
+    this.boundHandleCopy = this.handleCopy.bind(this);
+    this.boundHandlePaste = this.handlePaste.bind(this);
+    window.addEventListener('keydown', this.boundFireKeyboardShortcutAction);
+    window.addEventListener('copy', this.boundHandleCopy);
+    window.addEventListener('paste', this.boundHandlePaste);
     // window.addEventListener('message', this.handleMessage.bind(this));
   }
 
@@ -76,6 +84,8 @@ class App extends Component<AppProps> {
       showInfoAccountDialog,
       showExportDialog,
       showImportDialog,
+      showEnumRegexDialog,
+      showOntologiesDialog,
       pickingFromLocalStorage,
     } = this.props;
 
@@ -87,6 +97,8 @@ class App extends Component<AppProps> {
     const subscribeToPolicyModal = showSubscribeToPolicyDialog ? <SubscribeToPolicyContainer /> : null; 
     const infoAccountModal = showInfoAccountDialog ? <InfoAccountContainer /> : null;
     const importModal = showImportDialog ? <ImportContainer /> : null;
+    const enumRegexModal = showEnumRegexDialog ? <EnumRegexContainer /> : null;
+    const ontologiesModal = showOntologiesDialog ? <OntologiesContainer /> : null;
     const localStorageModal = pickingFromLocalStorage ? (
       <LocalStoragePickerContainer />
     ) : null;
@@ -125,6 +137,8 @@ class App extends Component<AppProps> {
         {infoAccountModal}
         {exportModal}
         {importModal}
+        {enumRegexModal}
+        {ontologiesModal}
         {localStorageModal}
         <HelpModal />
         <AcknowledgementsModal />
@@ -163,6 +177,8 @@ class App extends Component<AppProps> {
 
   handlePaste(ev: ClipboardEvent) {
     if (ignoreTarget(ev)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
     this.props.handlePaste(ev);
   }
 
@@ -178,6 +194,19 @@ class App extends Component<AppProps> {
       const parsedUser = JSON.parse(savedUser);
       this.props.dispatch(loginSuccess(parsedUser));
     }
+
+    // Preload server registries (single shared cache for UI and import/export)
+    import('@neo4j-arrows/linkml').then(({ fetchEnumRegistry, fetchRegexRegistry }) => {
+      fetchEnumRegistry().catch(err => console.warn('Failed to preload enum registry:', err));
+      fetchRegexRegistry().catch(err => console.warn('Failed to preload regex registry:', err));
+    });
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('keydown', this.boundFireKeyboardShortcutAction);
+    window.removeEventListener('copy', this.boundHandleCopy);
+    window.removeEventListener('paste', this.boundHandlePaste);
+    window.removeEventListener('resize', this.props.onWindowResized);
   }
 }
 
@@ -194,6 +223,8 @@ const mapStateToProps = (state: ArrowsState) => ({
   showInfoAccountDialog: state.applicationDialogs.showInfoAccountDialog,
   showExportDialog: state.applicationDialogs.showExportDialog,
   showImportDialog: state.applicationDialogs.showImportDialog,
+  showEnumRegexDialog: state.applicationDialogs.showEnumRegexDialog,
+  showOntologiesDialog: state.applicationDialogs.showOntologiesDialog,
   userData: state.applicationDialogs.userData,
 });
 

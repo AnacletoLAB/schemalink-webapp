@@ -42,6 +42,7 @@ const ontologies = (
           });
           return deduped.map((ontology) => ({
             ...ontology,
+            name: ontology.name || ontology.id,
             annotator: `sqlite:obo:${ontology.id}`,
           }));
         })(),

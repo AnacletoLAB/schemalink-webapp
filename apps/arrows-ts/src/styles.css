@@ -3,3 +3,28 @@ body {
   padding: 0;
   font-family: sans-serif;
 }
+
+/* Replace default X icon with trash icon for clearable dropdowns */
+.ui.dropdown > .clear.icon::before,
+.ui.dropdown > .clear.icon:before,
+.ui.dropdown > .clear.dropdown.icon::before,
+.ui.dropdown > .clear.dropdown.icon:before,
+.ui.selection.dropdown > .clear.icon::before,
+.ui.selection.dropdown > .clear.icon:before,
+.ui.multiple.dropdown > .clear.icon::before,
+.ui.multiple.dropdown > .clear.icon:before {
+  content: "\f2ed" !important; /* Unicode for trash alternate outline */
+  font-family: 'Icons' !important;
+}
+
+/* Ensure visibility and hover state */
+.ui.dropdown > .clear.icon,
+.ui.dropdown > .clear.dropdown.icon {
+  display: inline-block !important;
+  opacity: 0.8;
+}
+
+.ui.dropdown > .clear.icon:hover,
+.ui.dropdown > .clear.dropdown.icon:hover {
+  opacity: 1 !important;
+}

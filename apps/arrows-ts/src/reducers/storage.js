@@ -162,7 +162,7 @@ export const handleImportMessage = (message) => {
     };
   const data = JSON.parse(message.data);
   const graph = constructGraphFromFile(data).graph;
-  const diagramName = data.diagramName || defaultName;
+  const diagramName = data.name || defaultName;
   const fileId = generateLocalFileId();
   saveGraphToLocalStorage(fileId, { graph, diagramName });
   return getFileFromLocalStorage(fileId);
@@ -170,7 +170,7 @@ export const handleImportMessage = (message) => {
 
 const storeNewDiagramInLocalStorage = (data) => {
   const graph = constructGraphFromFile(data).graph;
-  const diagramName = data.diagramName || defaultName;
+  const diagramName = data.name || defaultName;
   const fileId = generateLocalFileId();
   saveGraphToLocalStorage(fileId, { graph, diagramName });
   return {

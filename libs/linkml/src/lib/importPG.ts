@@ -9,6 +9,7 @@ import {
 } from './types';
 import { EnumType } from '@neo4j-arrows/model';
 import { normalizeOntologyToken } from './ontologies';
+import { algorithmicRulesToPatternDefinition } from './patterns';
 
 interface ImportNodesReturnType {
   nodes: LinkMLNode[];
@@ -143,6 +144,7 @@ export const importPropertyGraphNodes = (
                 )
               : {},
             entityType: 'node',
+            abstract: !!isAbstract,
             ontologies: ontologies.filter(({ id }) => {
               if (id_prefixes && id_prefixes.includes(id.toLocaleUpperCase())) {
                 return true;
@@ -165,6 +167,16 @@ export const importPropertyGraphNodes = (
                   .filter((s) => s.length > 0)
               ),
             ],
+            // Parse algorithmic_rules into node.pattern
+            ...((annotations?.algorithmic_rules || annotations?.algorithmicRules)
+              ? { pattern: algorithmicRulesToPatternDefinition((annotations?.algorithmic_rules || annotations?.algorithmicRules) as string) }
+              : {}),
+            // map annotation_rules / annotationRules into ieGuidelines for UI
+            ...(annotations?.annotation_rules ? { ieGuidelines: annotations.annotation_rules } : {}),
+            ...(annotations?.annotationRules ? { ieGuidelines: annotations.annotationRules } : {}),
+            // older direct class-level fields
+            ...(((self as any)?.annotation_rules && !(annotations?.annotation_rules || annotations?.annotationRules)) ? { ieGuidelines: (self as any).annotation_rules } : {}),
+            ...(((self as any)?.annotationRules && !(annotations?.annotation_rules || annotations?.annotationRules)) ? { ieGuidelines: (self as any).annotationRules } : {}),
             });
         }
       }
@@ -338,10 +350,19 @@ export const importPropertyGraphEdges = (
             target_minimum_cardinality,
             target_maximum_cardinality,
             description: description ?? '',
+            // Parse algorithmic_rules into relationship.pattern (support camelCase variant)
+            ...((annotations?.algorithmic_rules || annotations?.algorithmicRules || parentEdgeClass?.annotations?.algorithmic_rules || parentEdgeClass?.annotations?.algorithmicRules || slot_usage?.['predicate']?.annotations?.algorithmic_rules || slot_usage?.['predicate']?.annotations?.algorithmicRules)
+              ? { pattern: algorithmicRulesToPatternDefinition((annotations?.algorithmic_rules || annotations?.algorithmicRules || parentEdgeClass?.annotations?.algorithmic_rules || parentEdgeClass?.annotations?.algorithmicRules || slot_usage?.['predicate']?.annotations?.algorithmic_rules || slot_usage?.['predicate']?.annotations?.algorithmicRules) as string) }
+              : {}),
             annotations: {
               ...(parentEdgeClass?.annotations ?? {}),
               ...(annotations ?? {}),
             },
+            // expose annotation_rules as ieGuidelines on relationships for UI
+            ...(annotations?.annotation_rules ? { ieGuidelines: annotations.annotation_rules } : {}),
+            ...(annotations?.annotationRules ? { ieGuidelines: annotations.annotationRules } : {}),
+            ...(((parentEdgeClass as any)?.annotations?.annotation_rules && !(annotations?.annotation_rules || annotations?.annotationRules)) ? { ieGuidelines: (parentEdgeClass as any).annotations.annotation_rules } : {}),
+            ...(((parentEdgeClass as any)?.annotations?.annotationRules && !(annotations?.annotation_rules || annotations?.annotationRules)) ? { ieGuidelines: (parentEdgeClass as any).annotations.annotationRules } : {}),
             examples: [
               ...new Set([
                 ...((annotations?.['prompt.examples'] ?? '')

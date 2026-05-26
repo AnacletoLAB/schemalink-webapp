@@ -17,6 +17,8 @@ const hasType = (relationship: Relationship) =>
   relationship.type && relationship.type.length > 0;
 const hasProperty = (entity: Entity) =>
   entity.properties && Object.keys(entity.properties).length > 0;
+const hasOntology = (entity: Entity) =>
+  (entity as any).ontologies && (entity as any).ontologies.length > 0;
 
 export type Style = Record<string, unknown>;
 
@@ -67,6 +69,10 @@ const styleFilters = {
   NodeOrRelationshipWithProperty: {
     relevantToNode: hasProperty,
     relevantToRelationship: hasProperty,
+  },
+  NodeOrRelationshipWithOntology: {
+    relevantToNode: hasOntology,
+    relevantToRelationship: hasOntology,
   },
 };
 
@@ -369,18 +375,20 @@ export const styleAttributeGroups = [
         type: 'spacing',
         defaultValue: 20,
       },
-      {
-        key: 'attachment-start',
-        appliesTo: 'Relationship',
-        type: 'attachment',
-        defaultValue: 'normal',
-      },
-      {
-        key: 'attachment-end',
-        appliesTo: 'Relationship',
-        type: 'attachment',
-        defaultValue: 'normal',
-      },
+      // Disabled due to visual bug in arrows-app attachment style for relationships.
+      // More info: https://github.com/neo4j-labs/arrows.app/issues/134
+       {
+         key: 'attachment-start',
+         appliesTo: 'Relationship',
+         type: 'attachment',
+         defaultValue: 'normal',
+       },
+       {
+         key: 'attachment-end',
+         appliesTo: 'Relationship',
+         type: 'attachment',
+         defaultValue: 'normal',
+       },
       {
         key: 'relationship-icon-image',
         appliesTo: 'Relationship',
@@ -442,6 +450,12 @@ export const styleAttributeGroups = [
         defaultValue: 'outside',
       },
       {
+        key: 'ontology-position',
+        appliesTo: 'NodeOrRelationshipWithOntology',
+        type: 'inside-outside-hidden',
+        defaultValue: 'outside',
+      },
+      {
         key: 'attribute-alignment',
         appliesTo: 'NodeOrRelationshipWithProperty',
         type: 'attribute-alignment',
@@ -469,21 +483,34 @@ export const styleAttributeGroups = [
   },
 ];
 
-export const styleAttributes = Object.fromEntries(
-  styleAttributeGroups
+// Disabled due to visual bug in arrows-app attachment style for relationships.
+// More info: https://github.com/neo4j-labs/arrows.app/issues/134
+// Kept for model/validate/completeWithDefaults; not shown in UI. Defaults to 'normal'.
+const attachmentStyleAttributesForModel = [
+  { key: 'attachment-start', appliesTo: 'Relationship', type: 'attachment', defaultValue: 'normal' },
+  { key: 'attachment-end', appliesTo: 'Relationship', type: 'attachment', defaultValue: 'normal' },
+];
+
+export const styleAttributes = Object.fromEntries([
+  ...styleAttributeGroups
     .flatMap((group) => group.attributes)
-    .map((attribute) => [attribute.key, attribute])
-);
+    .map((attribute) => [attribute.key, attribute]),
+  ...attachmentStyleAttributesForModel.map((attribute) => [attribute.key, attribute]),
+]);
 
 export const nodeStyleAttributes = styleAttributeGroups
   .filter((group) => group.entityTypes.includes('node'))
   .flatMap((group) => group.attributes)
   .map((attribute) => attribute.key);
 
-export const relationshipStyleAttributes = styleAttributeGroups
-  .filter((group) => group.entityTypes.includes('relationship'))
-  .flatMap((group) => group.attributes)
-  .map((attribute) => attribute.key);
+export const relationshipStyleAttributes = [
+  ...styleAttributeGroups
+    .filter((group) => group.entityTypes.includes('relationship'))
+    .flatMap((group) => group.attributes)
+    .map((attribute) => attribute.key),
+  'attachment-start',
+  'attachment-end',
+];
 
 export const imageAttributes = styleAttributeGroups
   .flatMap((group) => group.attributes)
