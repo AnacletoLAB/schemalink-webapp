@@ -142,6 +142,9 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
                     <p style={{ fontWeight: 'bold', fontSize: '1.0em' }}>
                       <i className="cogs icon" style={{ color: '#21ba45' }}></i> 10 intelligent requests
                     </p>
+                    <p style={{ fontWeight: 'bold', fontSize: '1.0em' }}>
+                      <i className="bolt icon" style={{ color: '#21ba45' }}></i> 25 API calls
+                    </p>
                   </div>
                   <div style={{ background: '#f0fff4', padding: '0.8em 1em', borderRadius: '8px', boxShadow: 'inset 0 0 5px rgba(0,0,0,0.05)', lineHeight: '1.6'}}>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> GENERATE</p>
@@ -164,6 +167,9 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
                   </p>
                   <p style={{ fontWeight: 'bold', fontSize: '1.0em' }}>
                     <i className="cogs icon" style={{ color: '#21ba45' }}></i> 50 intelligent requests
+                  </p>
+                  <p style={{ fontWeight: 'bold', fontSize: '1.0em' }}>
+                    <i className="bolt icon" style={{ color: '#21ba45' }}></i> 100 API calls
                   </p>
                 </div>
                 <div style={{ background: '#f0fff4', padding: '0.8em 1em', borderRadius: '8px', boxShadow: 'inset 0 0 5px rgba(0,0,0,0.05)', lineHeight: '1.6'}}>
@@ -207,10 +213,13 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
                     <p style={{ fontWeight: 'bold', fontSize: '1.0em' }}>
                       <i className="database icon" style={{ color: '#21ba45' }}></i> Contribute to AI store
                     </p>
-                    <p style={{ fontWeight: 'bold', fontSize: '1.0em' }}>
-                      <i className="cogs icon" style={{ color: '#21ba45' }}></i> 100 intelligent requests
-                    </p>
-                  </div>
+                  <p style={{ fontWeight: 'bold', fontSize: '1.0em' }}>
+                    <i className="cogs icon" style={{ color: '#21ba45' }}></i> 100 intelligent requests
+                  </p>
+                  <p style={{ fontWeight: 'bold', fontSize: '1.0em' }}>
+                    <i className="bolt icon" style={{ color: '#21ba45' }}></i> 250 API calls
+                  </p>
+                </div>
                   <div style={{ background: '#f0fff4', padding: '0.8em 1em', borderRadius: '8px', boxShadow: 'inset 0 0 5px rgba(0,0,0,0.05)', lineHeight: '1.6'}}>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> GENERATE</p>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> ADD</p>
@@ -251,10 +260,13 @@ class SubscribeToPolicyModal extends Component<SubscribeToPolicyModalProps, Subs
                     <p style={{ fontWeight: 'bold', fontSize: '1.0em' }}>
                       <i className="database icon" style={{ color: '#21ba45' }}></i> Contribute to AI store
                     </p>
-                    <p style={{ fontWeight: 'bold', fontSize: '1.0em' }}>
-                      <i className="cogs icon" style={{ color: '#21ba45' }}></i> Unlimited intelligent requests
-                    </p>
-                  </div>
+                  <p style={{ fontWeight: 'bold', fontSize: '1.0em' }}>
+                    <i className="cogs icon" style={{ color: '#21ba45' }}></i> Unlimited intelligent requests
+                  </p>
+                  <p style={{ fontWeight: 'bold', fontSize: '1.0em' }}>
+                    <i className="bolt icon" style={{ color: '#21ba45' }}></i> Unlimited API calls
+                  </p>
+                </div>
                   <div style={{ background: '#f0fff4', padding: '0.8em 1em', borderRadius: '8px', boxShadow: 'inset 0 0 5px rgba(0,0,0,0.05)', lineHeight: '1.6'}}>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> GENERATE</p>
                     <p><i className="check icon" style={{ color: '#21ba45' }}></i> ADD</p>

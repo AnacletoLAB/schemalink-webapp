@@ -32,13 +32,11 @@ Web-based tool for drawing schemas.
     
 4. Open a new shell tab, and start the API:
     - cd schemalink-api
-    - If you want to exploit intelligent operations:
-        - nano .env
-        - OPENAI_API_KEY=your-openai-api-key
-    - If you want to exploit gmail-based functionalities:
-        - nano .env
-        - ADMIN_EMAIL=your-gmail@gmail.com
-        - EMAIL_PASSWORD=your-gmail-app-password (can be generated at: https://myaccount.google.com/apppasswords)
+    - cp .env.template .env
+    - Open `.env` and fill in your values:
+        - `OPENAI_API_KEY` — required for intelligent operations
+        - `ADMIN_EMAIL` and `EMAIL_PASSWORD` — required for gmail-based functionalities (app password can be generated at: https://myaccount.google.com/apppasswords)
+        - `SCHEMALINK_ENGINE_URL` — required for extraction (URL of your SchemaLink engine instance)
     - fastapi dev main.py
     
     Note: Ensure the API runs on port 8000 (check that the port is free).

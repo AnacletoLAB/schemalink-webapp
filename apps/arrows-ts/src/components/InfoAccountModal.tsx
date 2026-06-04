@@ -375,6 +375,11 @@ class InfoAccountModal extends Component<InfoAccountModalProps, InfoAccountModal
                         ? 'Unlimited'
                         : `${Math.max(subscriptionData.maxAccess - subscriptionData.operationsDone, 0)} / ${subscriptionData.maxAccess}`}
                       <br/><br/>
+                      <strong>API Calls Left:</strong>{' '}
+                      {subscriptionData.maxExtractions === null || subscriptionData.maxExtractions === undefined
+                        ? 'Unlimited'
+                        : `${Math.max(subscriptionData.maxExtractions - (subscriptionData.extractionsDone ?? 0), 0)} / ${subscriptionData.maxExtractions}`}
+                      <br/><br/>
                       <strong>Time left:</strong> {this.formatHours(subscriptionData.hoursRemaining)}<br/>
                   </Table.Cell>
                 </Table.Row>
