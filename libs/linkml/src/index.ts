@@ -164,7 +164,7 @@ export const fromGraph = (
   const relationships = maybeRelationships.filter(({ fromId, toId }) => {
     const from = findNode(fromId);
     const to = findNode(toId);
-    return from && to && from.caption !== to.caption;
+    return from && to;
   });
   const findRelationshipFromNode =
     findRelationshipsFromNodeFactory(relationships);
@@ -356,33 +356,7 @@ export const fromGraph = (
                 },
               };
             },
-            {
-              Container: {
-                ...core,
-                is_a: SpiresCoreClasses.NamedEntity,
-                description:
-                  'A document that contains relationships between two entities.',
-                attributes: relationships
-                  .filter(
-                    ({ relationshipType }) =>
-                      relationshipType === RelationshipType.ASSOCIATION
-                  )
-                  .reduce((attributes, relationship) => {
-                    return {
-                      ...attributes,
-                      [`${camelCase(
-                        toRelationshipClassName(relationship)
-                      )}Document`]: {
-                        range: `${toRelationshipClassName(
-                          relationship
-                        )}Document`,
-                        description: toDescription(relationship),
-                        annotations: { prompt: toPrompt(relationship) },
-                      },
-                    };
-                  }, {}),
-              },
-            }
+            {}
           );
       }
       case SpiresType.ER:

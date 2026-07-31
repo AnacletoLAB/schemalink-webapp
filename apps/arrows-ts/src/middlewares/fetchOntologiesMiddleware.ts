@@ -21,7 +21,12 @@ export const fetchOntologiesMiddleware =
   (store: Store<ArrowsState>) => (next: Dispatch) => (action: Action) => {
     const result = next(action);
 
-    if (action.type === 'GETTING_GRAPH') {
+    // Also fire on POSTED_FILE_TO_LOCAL_STORAGE so brand-new users (who never
+    // hit the GETTING_GRAPH path) still load the ontologies list on first visit.
+    if (
+      action.type === 'GETTING_GRAPH' ||
+      action.type === 'POSTED_FILE_TO_LOCAL_STORAGE'
+    ) {
       const hardcodedOntologiesIds = hardcodedOntologies.map(
         (ontology) => ontology.id
       );

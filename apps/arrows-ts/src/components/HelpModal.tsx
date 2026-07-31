@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import { Button, Modal, Header, Divider, Card } from 'semantic-ui-react';
+import { Button, Modal, Header, Divider, Card, Icon } from 'semantic-ui-react';
 import { hideHelpDialog } from '../actions/applicationDialogs';
 import { rememberHelpDismissed } from '../actions/localStorage';
 import {
@@ -12,15 +12,27 @@ import {
 } from '../interactions/Keybindings';
 import { Dispatch } from 'redux';
 import { ArrowsState } from '../reducers';
+import { resetTour } from './OnboardingTour';
 
 interface HelpModalProps {
   onCancel: () => void;
   showModal: boolean;
+  onStartTour?: () => void;
+  username?: string;
 }
 
 class HelpModal extends Component<HelpModalProps> {
   onCancel = () => {
     this.props.onCancel();
+  };
+
+  handleStartTour = () => {
+    resetTour(this.props.username);
+    this.onCancel();
+    // Small delay so the modal closes before spotlight appears
+    setTimeout(() => {
+      this.props.onStartTour?.();
+    }, 300);
   };
 
   render() {
@@ -47,21 +59,40 @@ class HelpModal extends Component<HelpModalProps> {
       <Modal size="small" open={this.props.showModal} onClose={this.onCancel}>
         <Modal.Header>Help</Modal.Header>
         <Modal.Content scrolling>
-          <Header size="small">New to SchemaLink?</Header>
-          <p>
-            Learn about SchemaLink by visiting{' '}
-            <a
-              href="https://anacletolab.github.io/schemalink-docs/"
-              target="_blank"
-              rel="noreferrer"
+          {/* Guided tour banner */}
+          <div style={{
+            background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
+            border: '1px solid #bfdbfe',
+            borderRadius: 10,
+            padding: '14px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            marginBottom: 18,
+          }}>
+            <span style={{ fontSize: 28 }}>🗺️</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#1e40af', marginBottom: 3 }}>
+                New to SchemaLink?
+              </div>
+              <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+                Take a 4-step interactive tour and learn the key features in under a minute.
+              </div>
+            </div>
+            <Button
+              primary
+              size="small"
+              onClick={this.handleStartTour}
+              style={{ borderRadius: 6, whiteSpace: 'nowrap' }}
             >
-              the documentation website
-            </a>
-            .
-          </p>
+              <Icon name="map signs" /> Take a tour
+            </Button>
+          </div>
+
           <Divider />
           <Header size="small">Keyboard shortcuts</Header>
           <Card.Group itemsPerRow={4}>{keyBindings}</Card.Group>
+
           <Header size="small">Feedback</Header>
           <p>
             To share great ideas about improving SchemaLink or report problems,

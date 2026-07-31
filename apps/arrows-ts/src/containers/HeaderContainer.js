@@ -27,7 +27,7 @@ import {
 } from '../actions/storage';
 import { ActionCreators as UndoActionCreators } from 'redux-undo';
 import { nodeSeparation } from '../actions/import';
-import { importNodesAndRelationships } from '../actions/graph';
+import { importNodesAndRelationships, setSchemaProperties } from '../actions/graph';
 import { on } from 'events';
 
 const mapStateToProps = (state) => {
@@ -46,8 +46,9 @@ const mapStateToProps = (state) => {
   };
 };
 
-const mapDispatchToProps = (dispatch) => {
+const mapDispatchToProps = (dispatch, ownProps) => {
   return {
+    onOpenTemplates: ownProps.onOpenTemplates || null,
     onNewDiagram: (mode) => {
       switch (mode) {
         case 'LOCAL_STORAGE':
@@ -113,6 +114,12 @@ const mapDispatchToProps = (dispatch) => {
     },
     clearGraph: () => {
       clearGraph()(dispatch);
+    },
+    setDiagramName: (name) => {
+      dispatch(renameDiagram(name));
+    },
+    setSchemaProperties: (props) => {
+      dispatch(setSchemaProperties(props));
     },
     onHelpClick: () => {
       dispatch(showHelpDialog());

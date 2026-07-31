@@ -69,14 +69,25 @@ export default class GeneralInspector extends Component<
         <ThemeCards onApplyTheme={onApplyTheme} />
       );
 
+    const hasElements = graph.nodes.length + graph.relationships.length > 0;
+
     return (
       <Segment basic style={{ margin: 0 }}>
+        {hasElements && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '7px',
+            background: '#f8fafc', border: '1px solid #e2e8f0',
+            borderRadius: '8px', padding: '8px 12px', marginBottom: '12px',
+            fontSize: '12px', color: '#64748b',
+          }}>
+            <span style={{ fontSize: '15px' }}>👆</span>
+            <span>Click a <strong>node</strong> or <strong>relationship</strong> to inspect and edit it.</span>
+          </div>
+        )}
         <Form style={{ textAlign: 'left' }}>
           <Form.Field key="_selected">
             <label>
-              {graph.nodes.length + graph.relationships.length > 0
-                ? 'Schema:'
-                : 'Empty schema'}
+              {hasElements ? 'Schema:' : 'Empty schema'}
             </label>
             {renderCounters(
               graph.nodes.map((node) => node.id),
@@ -105,6 +116,7 @@ export default class GeneralInspector extends Component<
             </label>
             <Input
               defaultValue={graph.nerGuidelines}
+              placeholder="e.g. Only extract diseases with a known OMIM ID"
               onChange={(e, { value }) =>
                 onSchemaPropertiesChange({
                   nerGuidelines: value,
@@ -118,6 +130,7 @@ export default class GeneralInspector extends Component<
             </label>
             <Input
               defaultValue={graph.reGuidelines}
+              placeholder="e.g. Only extract relations explicitly stated in the text"
               onChange={(e, { value }) =>
                 onSchemaPropertiesChange({
                   reGuidelines: value,
