@@ -120,8 +120,13 @@ export const constructGraphFromFile = (data) => {
       ...migrateLegacyCardinality(relationship),
       toId: relationship.toId,
       type: relationship.type || '',
+      // Normalizes a stale "EXCLUSIVE_INHERITANCE" (underscore) value some
+      // graphs may have persisted before the enum's key/value mismatch was
+      // fixed; the real enum value is "EXCLUSIVE INHERITANCE" (with a space).
       relationshipType:
-        relationship.relationshipType || RelationshipType.ASSOCIATION,
+        relationship.relationshipType === 'EXCLUSIVE_INHERITANCE'
+          ? RelationshipType.EXCLUSIVE_INHERITANCE
+          : relationship.relationshipType || RelationshipType.ASSOCIATION,
       ieGuidelines: relationship.relationshipType === RelationshipType.INHERITANCE ? undefined : relationship.ieGuidelines,
       pattern: relationship.relationshipType === RelationshipType.INHERITANCE ? undefined : relationship.pattern,
       description: relationship.description || '',

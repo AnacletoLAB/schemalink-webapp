@@ -55,6 +55,7 @@ export interface Attribute {
   requiredType: RequiredType;
   range?: string;
   dimensions?: number;
+  unique?: boolean;
 }
 
 export type PatternOperator =
@@ -77,6 +78,72 @@ export interface PatternRule {
 export interface PatternDefinition {
   rules: PatternRule[];
 }
+
+export type ConstraintOperator = '=' | '!=' | '>' | '<' | '>=' | '<=';
+
+export interface PropertyValueConstraint {
+  on: string;
+  type: 'property_value';
+  operator: ConstraintOperator;
+  value: string | number;
+}
+
+// One "type" per ConstraintOperator, used when the constraint targets another
+// entity's attribute (e.g. "Friend.fromId") instead of a literal value.
+export type ReferenceConstraintType =
+  | 'equal'
+  | 'not_equal'
+  | 'greater_than'
+  | 'less_than'
+  | 'greater_than_or_equal'
+  | 'less_than_or_equal';
+
+export const REFERENCE_CONSTRAINT_TYPE_BY_OPERATOR: Record<
+  ConstraintOperator,
+  ReferenceConstraintType
+> = {
+  '=': 'equal',
+  '!=': 'not_equal',
+  '>': 'greater_than',
+  '<': 'less_than',
+  '>=': 'greater_than_or_equal',
+  '<=': 'less_than_or_equal',
+};
+
+export const OPERATOR_BY_REFERENCE_CONSTRAINT_TYPE: Record<
+  ReferenceConstraintType,
+  ConstraintOperator
+> = {
+  equal: '=',
+  not_equal: '!=',
+  greater_than: '>',
+  less_than: '<',
+  greater_than_or_equal: '>=',
+  less_than_or_equal: '<=',
+};
+
+export interface PropertyReferenceConstraint {
+  on: string;
+  type: ReferenceConstraintType;
+  target: string;
+}
+
+export type PropertyConstraint =
+  | PropertyValueConstraint
+  | PropertyReferenceConstraint;
+
+export type PropertyConstraintDraft =
+  | Omit<PropertyValueConstraint, 'on'>
+  | Omit<PropertyReferenceConstraint, 'on'>;
+
+// Class-level (not property-level) constraint: declares this node's class
+// disjoint from a sibling class under the same parent.
+export interface DisjointConstraint {
+  type: 'disjoint';
+  node: string;
+}
+
+export type NodeConstraintEntry = PropertyConstraint | DisjointConstraint;
 
 export interface Entity {
   id: Id;

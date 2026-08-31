@@ -30,7 +30,7 @@ interface ImportModalState {
   errorMessage?: string;
   text: string;
   messageProps: MessageItemProps;
-  selectedFormat: 'JSON' | 'LinkML PG' | 'LinkML RDF' | 'LinkML OO';
+  selectedFormat: 'JSON' | 'LinkML PG' | 'LinkML RDF' | 'LinkML OO' | 'PG-Schema';
   isImporting: boolean;
   abortController?: AbortController;
 }
@@ -145,6 +145,19 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
           positive: true,
           header: 'JSON import',
           content: 'Paste JSON and click Import',
+        },
+      });
+      return;
+    }
+
+    if (this.state.selectedFormat === 'PG-Schema') {
+      this.setState({
+        messageProps: {
+          icon: 'wrench',
+          positive: false,
+          negative: false,
+          header: 'PG-Schema import coming soon',
+          content: 'Import from PG-Schema format will be added soon.',
         },
       });
       return;
@@ -279,6 +292,18 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
                 </div>
                 <div>
                   <Radio
+                    label="PG-Schema"
+                    checked={this.state.selectedFormat === 'PG-Schema'}
+                    onChange={() => this.setState({ selectedFormat: 'PG-Schema' }, () => this.validateText(this.state.text))}
+                  />
+                  <Popup
+                    content="PG-Schema representation (coming soon)"
+                    position="top center"
+                    trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+                  />
+                </div>
+                <div>
+                  <Radio
                     label="JSON"
                     checked={this.state.selectedFormat === 'JSON'}
                     onChange={() => this.setState({ selectedFormat: 'JSON' })}
@@ -356,6 +381,7 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
             disabled={
               this.state.isImporting ||
               this.state.text.length === 0 ||
+              this.state.selectedFormat === 'PG-Schema' ||
               ((this.state.selectedFormat === 'LinkML PG' || this.state.selectedFormat === 'LinkML RDF') && isJson)
             }
             onClick={this.tryImport}

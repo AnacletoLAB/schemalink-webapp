@@ -51,7 +51,8 @@ class ExportJsonPanel extends Component<ExportJsonPanelProps> {
       ontologies: (r.ontologies || [])
         .filter((o) => o?.id)
         .map((o) => o.id.toLowerCase()),
-      ...(r.relationshipType === 'INHERITANCE'
+      ...(r.relationshipType === 'INHERITANCE' ||
+      r.relationshipType === 'EXCLUSIVE INHERITANCE'
         ? {
             // Strip cardinality and navigation for inheritance edges in export
             source_minimum_cardinality: undefined,

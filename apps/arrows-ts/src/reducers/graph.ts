@@ -28,6 +28,9 @@ import {
   Attribute,
   PatternDefinition,
   SchemaProperties,
+  PropertyConstraint,
+  PropertyConstraintDraft,
+  NodeConstraintEntry,
 } from '@neo4j-arrows/model';
 import { toClassName } from '@neo4j-arrows/linkml';
 import { Cardinality } from '../actions/graph';
@@ -78,8 +81,28 @@ interface SetNodeCaptionAction extends SelectionAction<'SET_NODE_CAPTION'> {
   caption: string;
 }
 
+interface SetInheritanceRequiredAction
+  extends SelectionAction<'SET_INHERITANCE_REQUIRED'> {
+  required: boolean;
+}
+
 interface SetNodeAbstractAction extends SelectionAction<'SET_NODE_ABSTRACT'> {
   abstract: boolean;
+}
+
+interface SetNodeOpenAction extends SelectionAction<'SET_NODE_OPEN'> {
+  open: { class?: boolean; properties?: boolean };
+}
+
+interface SetPropertyConstraintsAction
+  extends SelectionAction<'SET_PROPERTY_CONSTRAINTS'> {
+  propertyKey: string;
+  constraints: PropertyConstraintDraft[];
+}
+
+interface SetDisjointConstraintAction
+  extends SelectionAction<'SET_DISJOINT_CONSTRAINT'> {
+  siblingCaption: string | undefined;
 }
 
 interface SetIeGuidelinesAction extends SelectionAction<'SET_IE_GUIDELINES'> {
@@ -196,8 +219,12 @@ export type GraphAction =
   | SetExamplesAction
   | SetCardinalityAction
   | SetNavigationAction
+  | SetInheritanceRequiredAction
   | SetNodeCaptionAction
   | SetNodeAbstractAction
+  | SetNodeOpenAction
+  | SetPropertyConstraintsAction
+  | SetDisjointConstraintAction
   | SetIeGuidelinesAction
   | SetPatternAction
   | RenamePropertyAction
@@ -324,13 +351,39 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
     }
 
     case 'SET_NODE_CAPTION': {
+      // Track old -> new caption so disjoint constraints referencing a renamed
+      // sibling by caption stay pointed at the right node.
+      const renamedCaptions = new Map<string, string>();
+      state.nodes.forEach((node) => {
+        if (
+          nodeSelected(action.selection, node.id) &&
+          node.caption !== action.caption
+        ) {
+          renamedCaptions.set(node.caption, action.caption);
+        }
+      });
+      const nodesAfterRename = state.nodes.map((node) =>
+        nodeSelected(action.selection, node.id)
+          ? setCaption(node, action.caption)
+          : node
+      );
+      if (renamedCaptions.size === 0) {
+        return { ...state, nodes: nodesAfterRename };
+      }
       return {
         ...state,
-        nodes: state.nodes.map((node) =>
-          nodeSelected(action.selection, node.id)
-            ? setCaption(node, action.caption)
-            : node
-        ),
+        nodes: nodesAfterRename.map((node) => {
+          if (!node.constraints) return node;
+          let changed = false;
+          const nextConstraints = node.constraints.map((c) => {
+            if (c.type === 'disjoint' && renamedCaptions.has(c.node)) {
+              changed = true;
+              return { ...c, node: renamedCaptions.get(c.node) as string };
+            }
+            return c;
+          });
+          return changed ? { ...node, constraints: nextConstraints } : node;
+        }),
       };
     }
 
@@ -350,6 +403,96 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
       };
     }
 
+    case 'SET_NODE_OPEN': {
+      const actionTyped = action as SetNodeOpenAction;
+      return {
+        ...state,
+        nodes: state.nodes.map((node) =>
+          nodeSelected(actionTyped.selection, node.id)
+            ? {
+                ...node,
+                open: {
+                  ...node.open,
+                  ...actionTyped.open,
+                },
+              }
+            : node
+        ),
+        // Relationships only have a "properties" openness (no subclasses),
+        // so "class" is ignored here even if present on the action.
+        relationships:
+          actionTyped.open.properties === undefined
+            ? state.relationships
+            : state.relationships.map((relationship) =>
+                relationshipSelected(actionTyped.selection, relationship.id)
+                  ? {
+                      ...relationship,
+                      open: {
+                        ...relationship.open,
+                        properties: actionTyped.open.properties,
+                      },
+                    }
+                  : relationship
+              ),
+      };
+    }
+
+    case 'SET_DISJOINT_CONSTRAINT': {
+      const actionTyped = action as SetDisjointConstraintAction;
+      return {
+        ...state,
+        nodes: state.nodes.map((node) => {
+          if (!nodeSelected(actionTyped.selection, node.id)) return node;
+          const otherConstraints = (node.constraints ?? []).filter(
+            (c) => c.type !== 'disjoint'
+          );
+          const nextConstraints: NodeConstraintEntry[] = actionTyped.siblingCaption
+            ? [
+                ...otherConstraints,
+                { type: 'disjoint', node: actionTyped.siblingCaption },
+              ]
+            : otherConstraints;
+          return {
+            ...node,
+            constraints: nextConstraints.length ? nextConstraints : undefined,
+          };
+        }),
+      };
+    }
+
+    case 'SET_PROPERTY_CONSTRAINTS': {
+      const actionTyped = action as SetPropertyConstraintsAction;
+      const ownConstraints: PropertyConstraint[] = actionTyped.constraints.map(
+        (c) => ({ on: actionTyped.propertyKey, ...c })
+      );
+      return {
+        ...state,
+        nodes: state.nodes.map((node) => {
+          if (!nodeSelected(actionTyped.selection, node.id)) return node;
+          const otherConstraints = (node.constraints ?? []).filter(
+            (c) => !('on' in c) || c.on !== actionTyped.propertyKey
+          );
+          const nextConstraints = [...otherConstraints, ...ownConstraints];
+          return {
+            ...node,
+            constraints: nextConstraints.length ? nextConstraints : undefined,
+          };
+        }),
+        relationships: state.relationships.map((relationship) => {
+          if (!relationshipSelected(actionTyped.selection, relationship.id))
+            return relationship;
+          const otherConstraints = (relationship.constraints ?? []).filter(
+            (c) => c.on !== actionTyped.propertyKey
+          );
+          const nextConstraints = [...otherConstraints, ...ownConstraints];
+          return {
+            ...relationship,
+            constraints: nextConstraints.length ? nextConstraints : undefined,
+          };
+        }),
+      };
+    }
+
     case 'SET_IE_GUIDELINES': {
       const actionTyped = action as SetIeGuidelinesAction;
       return {
@@ -364,7 +507,7 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
         ),
         relationships: state.relationships.map((relationship) =>
           relationshipSelected(actionTyped.selection, relationship.id) &&
-          relationship.relationshipType !== RelationshipType.INHERITANCE
+          relationship.relationshipType === RelationshipType.ASSOCIATION
             ? {
                 ...relationship,
                 ieGuidelines: actionTyped.ieGuidelines,
@@ -388,7 +531,7 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
         ),
         relationships: state.relationships.map((relationship) =>
           relationshipSelected(actionTyped.selection, relationship.id) &&
-          relationship.relationshipType !== RelationshipType.INHERITANCE
+          relationship.relationshipType === RelationshipType.ASSOCIATION
             ? {
                 ...relationship,
                 pattern: actionTyped.pattern,
@@ -490,6 +633,19 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
       };
     }
 
+    case 'SET_INHERITANCE_REQUIRED': {
+      const actionTyped = action as SetInheritanceRequiredAction;
+      return {
+        ...state,
+        relationships: state.relationships.map((relationship) =>
+          relationshipSelected(actionTyped.selection, relationship.id) &&
+          relationship.relationshipType === RelationshipType.INHERITANCE
+            ? { ...relationship, required: actionTyped.required }
+            : relationship
+        ),
+      };
+    }
+
     case 'MERGE_NODES': {
       const nodeIdMap = new Map();
       for (const spec of action.mergeSpecs) {
@@ -544,20 +700,41 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
     case 'RENAME_PROPERTY': {
       return {
         ...state,
-        nodes: state.nodes.map((node) =>
-          nodeSelected(action.selection, node.id)
-            ? renameProperty(node, action.oldPropertyKey, action.newPropertyKey)
-            : node
-        ),
-        relationships: state.relationships.map((relationship) =>
-          relationshipSelected(action.selection, relationship.id)
-            ? renameProperty(
-                relationship,
-                action.oldPropertyKey,
-                action.newPropertyKey
-              )
-            : relationship
-        ),
+        nodes: state.nodes.map((node) => {
+          if (!nodeSelected(action.selection, node.id)) return node;
+          const renamed = renameProperty(
+            node,
+            action.oldPropertyKey,
+            action.newPropertyKey
+          ) as Node;
+          if (!renamed.constraints) return renamed;
+          return {
+            ...renamed,
+            constraints: renamed.constraints.map((c) =>
+              'on' in c && c.on === action.oldPropertyKey
+                ? { ...c, on: action.newPropertyKey }
+                : c
+            ),
+          };
+        }),
+        relationships: state.relationships.map((relationship) => {
+          if (!relationshipSelected(action.selection, relationship.id))
+            return relationship;
+          const renamed = renameProperty(
+            relationship,
+            action.oldPropertyKey,
+            action.newPropertyKey
+          ) as Relationship;
+          if (!renamed.constraints) return renamed;
+          return {
+            ...renamed,
+            constraints: renamed.constraints.map((c) =>
+              c.on === action.oldPropertyKey
+                ? { ...c, on: action.newPropertyKey }
+                : c
+            ),
+          };
+        }),
       };
     }
 
@@ -611,16 +788,29 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
     case 'REMOVE_PROPERTY': {
       return {
         ...state,
-        nodes: state.nodes.map((node) =>
-          nodeSelected(action.selection, node.id)
-            ? removeProperty(node, action.key)
-            : node
-        ),
-        relationships: state.relationships.map((relationship) =>
-          relationshipSelected(action.selection, relationship.id)
-            ? removeProperty(relationship, action.key)
-            : relationship
-        ),
+        nodes: state.nodes.map((node) => {
+          if (!nodeSelected(action.selection, node.id)) return node;
+          const removed = removeProperty(node, action.key) as Node;
+          if (!removed.constraints) return removed;
+          const filtered = removed.constraints.filter(
+            (c) => !('on' in c) || c.on !== action.key
+          );
+          return {
+            ...removed,
+            constraints: filtered.length ? filtered : undefined,
+          };
+        }),
+        relationships: state.relationships.map((relationship) => {
+          if (!relationshipSelected(action.selection, relationship.id))
+            return relationship;
+          const removed = removeProperty(relationship, action.key) as Relationship;
+          if (!removed.constraints) return removed;
+          const filtered = removed.constraints.filter((c) => c.on !== action.key);
+          return {
+            ...removed,
+            constraints: filtered.length ? filtered : undefined,
+          };
+        }),
       };
     }
 
@@ -699,12 +889,16 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
     case 'SET_RELATIONSHIP_TYPE': {
       const actionTyped = action as SetRelationshipTypeAction;
 
-      // If switching to INHERITANCE, prevent duplicates between the same two nodes
-      if (actionTyped.relationshipType === RelationshipType.INHERITANCE) {
-        // Collect existing inheritance pairs so we can block creating a second one
-        const seenInheritancePairs = new Set(
+      // If switching to INHERITANCE or EXCLUSIVE_INHERITANCE, prevent duplicates
+      // of that same type between the same two nodes
+      if (
+        actionTyped.relationshipType === RelationshipType.INHERITANCE ||
+        actionTyped.relationshipType === RelationshipType.EXCLUSIVE_INHERITANCE
+      ) {
+        // Collect existing pairs of this type so we can block creating a second one
+        const seenPairs = new Set(
           state.relationships
-            .filter((r) => r.relationshipType === RelationshipType.INHERITANCE)
+            .filter((r) => r.relationshipType === actionTyped.relationshipType)
             .map((r) => `${r.fromId}->${r.toId}`)
         );
 
@@ -717,13 +911,13 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
 
             const pairKey = `${relationship.fromId}->${relationship.toId}`;
 
-            // If an inheritance already exists for this pair, do not convert this one
-            if (seenInheritancePairs.has(pairKey)) {
+            // If a relationship of this type already exists for this pair, do not convert this one
+            if (seenPairs.has(pairKey)) {
               return relationship;
             }
 
-            // Reserve this pair and convert to inheritance
-            seenInheritancePairs.add(pairKey);
+            // Reserve this pair and convert
+            seenPairs.add(pairKey);
             return setRelationshipType(
               relationship,
               actionTyped.relationshipType
@@ -751,6 +945,7 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
           idsMatch(n.id, spec.oldNodeId)
         ) as unknown as Node;
         const newNode: Node = {
+          ...oldNode,
           entityType: 'node',
           id: newNodeId,
           position: spec.position,
@@ -777,12 +972,14 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
           fromId: spec.fromId,
           toId: spec.toId,
         };
-        // Prevent duplicate INHERITANCE relationships between the same nodes
+        // Prevent duplicate INHERITANCE/EXCLUSIVE_INHERITANCE relationships between the same nodes
         const isDuplicateInheritance =
-          newRelationship.relationshipType === RelationshipType.INHERITANCE &&
+          (newRelationship.relationshipType === RelationshipType.INHERITANCE ||
+            newRelationship.relationshipType ===
+              RelationshipType.EXCLUSIVE_INHERITANCE) &&
           newRelationships.some(
             (r) =>
-              r.relationshipType === RelationshipType.INHERITANCE &&
+              r.relationshipType === newRelationship.relationshipType &&
               idsMatch(r.fromId, newRelationship.fromId) &&
               idsMatch(r.toId, newRelationship.toId)
           );
@@ -801,14 +998,15 @@ const graph = (state: Graph = emptyGraph(), action: GraphAction) => {
 
     case 'IMPORT_NODES_AND_RELATIONSHIPS': {
       const newNodes = [...state.nodes, ...action.nodes];
-      // Merge relationships while preventing duplicate INHERITANCE edges
+      // Merge relationships while preventing duplicate INHERITANCE/EXCLUSIVE_INHERITANCE edges
       const newRelationships = [...state.relationships];
       for (const rel of action.relationships) {
         const duplicateInheritance =
-          rel.relationshipType === RelationshipType.INHERITANCE &&
+          (rel.relationshipType === RelationshipType.INHERITANCE ||
+            rel.relationshipType === RelationshipType.EXCLUSIVE_INHERITANCE) &&
           newRelationships.some(
             (r) =>
-              r.relationshipType === RelationshipType.INHERITANCE &&
+              r.relationshipType === rel.relationshipType &&
               idsMatch(r.fromId, rel.fromId) &&
               idsMatch(r.toId, rel.toId)
           );

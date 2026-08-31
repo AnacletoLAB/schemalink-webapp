@@ -3,7 +3,11 @@ import { RelationshipType } from '@neo4j-arrows/model';
 export const sanitizeInternalGraph = (graph) => {
   const nodes = (graph.nodes || []).map((node) => node);
   const relationships = (graph.relationships || []).map((r) => {
-    if (r.relationshipType !== RelationshipType.INHERITANCE) return r;
+    if (
+      r.relationshipType !== RelationshipType.INHERITANCE &&
+      r.relationshipType !== RelationshipType.EXCLUSIVE_INHERITANCE
+    )
+      return r;
     const {
       ieGuidelines,
       pattern,

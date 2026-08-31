@@ -7,6 +7,11 @@ import {
   RegexType,
   RequiredType,
   ValueSummary,
+  ConstraintOperator,
+  PropertyConstraint,
+  PropertyConstraintDraft,
+  REFERENCE_CONSTRAINT_TYPE_BY_OPERATOR,
+  OPERATOR_BY_REFERENCE_CONSTRAINT_TYPE,
 } from '@neo4j-arrows/model';
 import React, { Component } from 'react';
 import { getFilteredEnumTypes, getFilteredRegexTypes } from '../utils/enumRegexFilter';
@@ -21,6 +26,7 @@ import {
   AccordionTitle,
   AccordionContent,
   Dropdown,
+  Checkbox,
 } from 'semantic-ui-react';
 
 interface PropertyRowProps {
@@ -40,6 +46,9 @@ interface PropertyRowProps {
   valueDisabled: boolean;
   active: boolean;
   onClick: () => void;
+  constraints?: PropertyConstraint[];
+  constraintTargetOptions?: string[];
+  onConstraintsChange?: (constraints: PropertyConstraintDraft[]) => void;
 }
 
 interface PropertyRowState {
@@ -110,6 +119,9 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
       valueDisabled,
       active,
       onClick,
+      constraints,
+      constraintTargetOptions = [],
+      onConstraintsChange,
     } = this.props;
     const handleKeyPress = (source: 'key' | 'value', evt: KeyboardEvent) => {
       if (evt.key === 'Enter') {
@@ -497,6 +509,207 @@ export class PropertyRow extends Component<PropertyRowProps, PropertyRowState> {
               disabled={valueDisabled}
             />
           </Form.Field>
+          <Form.Field>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <label style={{ margin: 0, fontWeight: 'bold' }}>
+                Unique
+                <Popup
+                  content="PG-Schema only — not available when exporting to LinkML."
+                  position="top center"
+                  trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+                />
+              </label>
+              <Checkbox
+                toggle
+                checked={!!attributeValue.unique}
+                onChange={(e, { checked }) =>
+                  onValueChange({ ...attributeValue, unique: !!checked })
+                }
+                disabled={valueDisabled}
+              />
+            </div>
+          </Form.Field>
+          {onConstraintsChange ? (
+            <Form.Field>
+              <label>
+                Value Constraints
+                <Popup
+                  content="PG-Schema only — not available when exporting to LinkML."
+                  position="top center"
+                  trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+                />
+              </label>
+              {(constraints ?? []).map((c, index) => {
+                const toDraft = (
+                  existing: PropertyConstraint
+                ): PropertyConstraintDraft =>
+                  existing.type === 'property_value'
+                    ? {
+                        type: 'property_value',
+                        operator: existing.operator,
+                        value: existing.value,
+                      }
+                    : { type: existing.type, target: existing.target };
+                const replaceAt = (next: PropertyConstraintDraft) => {
+                  onConstraintsChange(
+                    (constraints ?? []).map((existing, i) =>
+                      i === index ? next : toDraft(existing)
+                    )
+                  );
+                };
+                const isReference = c.type !== 'property_value';
+                const operator: ConstraintOperator = isReference
+                  ? OPERATOR_BY_REFERENCE_CONSTRAINT_TYPE[c.type]
+                  : c.operator;
+
+                const handleOperatorChange = (newOperator: ConstraintOperator) => {
+                  if (isReference) {
+                    replaceAt({
+                      type: REFERENCE_CONSTRAINT_TYPE_BY_OPERATOR[newOperator],
+                      target: c.target,
+                    });
+                  } else {
+                    replaceAt({
+                      type: 'property_value',
+                      operator: newOperator,
+                      value: c.value,
+                    });
+                  }
+                };
+
+                const handleModeChange = (mode: 'value' | 'reference') => {
+                  if (mode === 'reference') {
+                    replaceAt({
+                      type: REFERENCE_CONSTRAINT_TYPE_BY_OPERATOR[operator],
+                      target: constraintTargetOptions[0] ?? '',
+                    });
+                  } else {
+                    replaceAt({ type: 'property_value', operator, value: '' });
+                  }
+                };
+
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      border: '1px solid rgba(34, 36, 38, 0.15)',
+                      borderRadius: '4px',
+                      padding: '6px',
+                      marginBottom: '6px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'center',
+                        marginBottom: '6px',
+                      }}
+                    >
+                      <Dropdown
+                        selection
+                        placeholder="Operator"
+                        value={operator}
+                        options={(
+                          ['=', '!=', '>', '<', '>=', '<='] as ConstraintOperator[]
+                        ).map((op) => ({ key: op, text: op, value: op }))}
+                        onChange={(e, { value }) =>
+                          handleOperatorChange(value as ConstraintOperator)
+                        }
+                        style={{ minWidth: '90px' }}
+                        disabled={valueDisabled}
+                      />
+                      <Dropdown
+                        selection
+                        value={isReference ? 'reference' : 'value'}
+                        options={[
+                          { key: 'value', text: 'Literal value', value: 'value' },
+                          {
+                            key: 'reference',
+                            text: 'Reference attribute',
+                            value: 'reference',
+                          },
+                        ]}
+                        onChange={(e, { value }) =>
+                          handleModeChange(value as 'value' | 'reference')
+                        }
+                        style={{ minWidth: '150px' }}
+                        disabled={valueDisabled}
+                      />
+                      <Icon
+                        name="trash alternate outline"
+                        style={{ cursor: 'pointer', marginLeft: 'auto' }}
+                        onClick={() =>
+                          onConstraintsChange(
+                            (constraints ?? [])
+                              .filter((_, i) => i !== index)
+                              .map(toDraft)
+                          )
+                        }
+                      />
+                    </div>
+                    {isReference ? (
+                      <Dropdown
+                        selection
+                        search
+                        fluid
+                        placeholder="Class.attribute"
+                        value={c.target}
+                        options={constraintTargetOptions.map((target) => ({
+                          key: target,
+                          text: target,
+                          value: target,
+                        }))}
+                        onChange={(e, { value }) =>
+                          replaceAt({ type: c.type, target: value as string })
+                        }
+                        disabled={valueDisabled}
+                      />
+                    ) : (
+                      <Input
+                        placeholder="Value (int or string)"
+                        value={c.value}
+                        onChange={(event) => {
+                          const raw = event.target.value;
+                          const isNumeric = raw !== '' && !isNaN(Number(raw));
+                          replaceAt({
+                            type: 'property_value',
+                            operator,
+                            value: isNumeric ? Number(raw) : raw,
+                          });
+                        }}
+                        disabled={valueDisabled}
+                        fluid
+                      />
+                    )}
+                  </div>
+                );
+              })}
+              <Button
+                type="button"
+                basic
+                color="black"
+                size="tiny"
+                icon="plus"
+                content="Constraint"
+                onClick={() =>
+                  onConstraintsChange([
+                    ...(constraints ?? []).map((existing): PropertyConstraintDraft =>
+                      existing.type === 'property_value'
+                        ? {
+                            type: 'property_value',
+                            operator: existing.operator,
+                            value: existing.value,
+                          }
+                        : { type: existing.type, target: existing.target }
+                    ),
+                    { type: 'property_value', operator: '=', value: '' },
+                  ])
+                }
+                disabled={valueDisabled}
+              />
+            </Form.Field>
+          ) : null}
         </AccordionContent>
       </div>
     );

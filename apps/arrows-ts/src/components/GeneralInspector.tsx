@@ -4,6 +4,7 @@ import {
   Form,
   Button,
   ButtonGroup,
+  Checkbox,
   Divider,
   Input,
   Dropdown,
@@ -11,6 +12,7 @@ import {
   AccordionContent,
   Accordion,
   Icon,
+  Popup,
 } from 'semantic-ui-react';
 import { GeneralToolbox } from './GeneralToolbox';
 import GeneralStyling from './GeneralStyling';
@@ -159,6 +161,35 @@ export default class GeneralInspector extends Component<
                 };
               })}
             />
+          </Form.Field>
+          <Form.Field key="_graph_type_mode">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+                Schema Type
+                <Popup
+                  content="PG-Schema only — not available when exporting to LinkML."
+                  position="top center"
+                  trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+                />
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', color: graph.graphTypeMode === 'Strict' ? '#aaa' : '#000' }}>
+                  Loose
+                </span>
+                <Checkbox
+                  toggle
+                  checked={graph.graphTypeMode === 'Strict'}
+                  onChange={(e, { checked }) =>
+                    onSchemaPropertiesChange({
+                      graphTypeMode: checked ? 'Strict' : 'Loose',
+                    })
+                  }
+                />
+                <span style={{ fontSize: '12px', color: graph.graphTypeMode === 'Strict' ? '#000' : '#aaa' }}>
+                  Strict
+                </span>
+              </div>
+            </div>
           </Form.Field>
           <Accordion>
             <AccordionTitle

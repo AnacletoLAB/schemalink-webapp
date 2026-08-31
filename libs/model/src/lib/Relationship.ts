@@ -1,9 +1,10 @@
-import { Entity, Id, PatternDefinition } from './Id';
+import { Entity, Id, PatternDefinition, PropertyConstraint } from './Id';
 import { Ontology } from './Ontology';
 
 export enum RelationshipType {
   ASSOCIATION = 'ASSOCIATION',
   INHERITANCE = 'INHERITANCE',
+  EXCLUSIVE_INHERITANCE = 'EXCLUSIVE INHERITANCE',
 }
 
 export enum Navigation {
@@ -37,6 +38,11 @@ export interface Relationship extends Entity {
   target_minimum_cardinality?: number;
   target_maximum_cardinality?: CardinalityMax;
   navigation?: Navigation;
+  // Only meaningful for INHERITANCE relationships. Defaults to true.
+  required?: boolean;
+  constraints?: PropertyConstraint[];
+  // Only "properties" applies to relationships (they have no subclasses).
+  open?: { properties?: boolean };
 }
 
 export const setType = (relationship: Relationship, type: string) => {
@@ -60,6 +66,19 @@ export const setRelationshipType = (
       ontologies: undefined,
       examples: undefined,
       properties: {},
+      constraints: undefined,
+      required: relationship.required ?? true,
+    }),
+    ...(relationshipType === RelationshipType.EXCLUSIVE_INHERITANCE && {
+      description: undefined,
+      type: undefined,
+      ieGuidelines: undefined,
+      pattern: undefined,
+      ontologies: undefined,
+      examples: undefined,
+      properties: {},
+      constraints: undefined,
+      required: undefined,
     }),
     ...(relationshipType === RelationshipType.ASSOCIATION && {
       // ensure new cardinality fields have defaults when association
@@ -71,6 +90,7 @@ export const setRelationshipType = (
         relationship.source_maximum_cardinality ?? 'N',
       target_maximum_cardinality:
         relationship.target_maximum_cardinality ?? 'N',
+      required: undefined,
     }),
     relationshipType,
   };

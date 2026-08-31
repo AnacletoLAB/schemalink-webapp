@@ -13,6 +13,7 @@ export interface SchemaProperties {
   license?: License;
   nerGuidelines?: string;
   reGuidelines?: string;
+  graphTypeMode?: 'Strict' | 'Loose';
 }
 
 export interface Graph extends SchemaProperties {
@@ -100,7 +101,8 @@ export const graphsDifferInMoreThanPositions = (
     graph1.description !== graph2.description ||
     graph1.license !== graph2.license ||
     graph1.nerGuidelines !== graph2.nerGuidelines ||
-    graph1.reGuidelines !== graph2.reGuidelines
+    graph1.reGuidelines !== graph2.reGuidelines ||
+    graph1.graphTypeMode !== graph2.graphTypeMode
   );
 };
 
@@ -116,7 +118,9 @@ const nodesDifferInMoreThanPositions = (nodes1: Node[], nodes2: Node[]) => {
       node1.pattern !== node2.pattern ||
       node1.description !== node2.description ||
       node1.style !== node2.style ||
-      node1.properties !== node2.properties
+      node1.properties !== node2.properties ||
+      node1.open !== node2.open ||
+      node1.constraints !== node2.constraints
     );
   });
 };

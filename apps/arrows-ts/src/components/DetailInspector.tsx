@@ -13,6 +13,7 @@ import {
   Accordion,
   Icon,
   Label,
+  Popup,
 } from 'semantic-ui-react';
 import {
   categoriesPresent,
@@ -38,6 +39,9 @@ import {
   PatternDefinition,
   PatternOperator,
   getStyleSelector,
+  PropertyConstraintDraft,
+  PropertyConstraint,
+  DisjointConstraint,
 } from '@neo4j-arrows/model';
 import { renderCounters } from './EntityCounters';
 import PropertyTable from './PropertyTable';
@@ -57,6 +61,19 @@ interface DetailInspectorProps {
   ontologies: OntologyState;
   onSaveCaption: (selection: EntitySelection, caption: string) => void;
   onSaveAbstract: (selection: EntitySelection, abstract: boolean) => void;
+  onSaveOpen: (
+    selection: EntitySelection,
+    open: { class?: boolean; properties?: boolean }
+  ) => void;
+  onSaveConstraints: (
+    selection: EntitySelection,
+    propertyKey: string,
+    constraints: PropertyConstraintDraft[]
+  ) => void;
+  onSaveDisjointConstraint: (
+    selection: EntitySelection,
+    siblingCaption: string | undefined
+  ) => void;
   onSaveExamples: (selection: EntitySelection, examples: string[]) => void;
   onConvertCaptionsToPropertyValues: () => void;
   onSaveCardinality: (
@@ -73,6 +90,7 @@ interface DetailInspectorProps {
     relationshipType: RelationshipType
   ) => void;
   onSaveNavigation: (selection: EntitySelection, navigation: Navigation) => void;
+  onSaveInheritanceRequired: (selection: EntitySelection, required: boolean) => void;
   onSaveType: (selection: EntitySelection, type: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -294,7 +312,8 @@ export default class DetailInspector extends Component<
 
       const inheritanceRels = graph.relationships.filter(
         (rel) =>
-          rel.relationshipType === RelationshipType.INHERITANCE &&
+          (rel.relationshipType === RelationshipType.INHERITANCE ||
+            rel.relationshipType === RelationshipType.EXCLUSIVE_INHERITANCE) &&
           rel.fromId === currentNode.id
       );
 
@@ -309,6 +328,33 @@ export default class DetailInspector extends Component<
 
     collectParents(node);
     return parentClasses;
+  };
+
+  // Other nodes that inherit from the same direct parent(s) as this node.
+  private getSiblingCaptions = (node: Node, graph: Graph): string[] => {
+    const isInheritanceRel = (rel: { relationshipType: RelationshipType }) =>
+      rel.relationshipType === RelationshipType.INHERITANCE ||
+      rel.relationshipType === RelationshipType.EXCLUSIVE_INHERITANCE;
+
+    const parentIds = graph.relationships
+      .filter((rel) => isInheritanceRel(rel) && rel.fromId === node.id)
+      .map((rel) => rel.toId);
+
+    const siblingCaptions = new Set<string>();
+    parentIds.forEach((parentId) => {
+      graph.relationships
+        .filter(
+          (rel) =>
+            isInheritanceRel(rel) &&
+            rel.toId === parentId &&
+            rel.fromId !== node.id
+        )
+        .forEach((rel) => {
+          const sibling = graph.nodes.find((n) => n.id === rel.fromId);
+          if (sibling?.caption) siblingCaptions.add(sibling.caption);
+        });
+    });
+    return Array.from(siblingCaptions);
   };
 
   // Fetch 10 random suggestions for class Examples (ontology terms)
@@ -571,6 +617,9 @@ export default class DetailInspector extends Component<
       graph,
       onSaveCaption,
       onSaveAbstract,
+      onSaveOpen,
+      onSaveConstraints,
+      onSaveDisjointConstraint,
       onSaveCardinality,
       onSaveExamples,
       onSaveRelationshipType,
@@ -591,6 +640,7 @@ export default class DetailInspector extends Component<
       onSaveOntology,
       onSaveDescription,
       onSaveNavigation,
+      onSaveInheritanceRequired,
       onSaveIeGuidelines,
       onSavePattern,
     } = this.props;
@@ -633,6 +683,35 @@ export default class DetailInspector extends Component<
         ? allCaptions.filter((name) => name !== selectedNodes[0].caption)
         : allCaptions;
 
+    // "ClassName.propertyName" options for value-constraint references, e.g.
+    // "Friend.fromId". Nodes are addressed by caption; relationships by type
+    // (or relationshipType as a fallback), and always expose fromId/toId
+    // alongside their own attributes since those are core relationship fields.
+    // INHERITANCE / EXCLUSIVE_INHERITANCE edges are excluded: they represent
+    // generalization, not data-bearing associations, so they have nothing
+    // meaningful to reference.
+    const constraintTargetOptions: string[] = [];
+    graph.nodes.forEach((node) => {
+      if (!node.caption) return;
+      Object.keys(node.properties || {}).forEach((key) => {
+        constraintTargetOptions.push(`${node.caption}.${key}`);
+      });
+    });
+    graph.relationships
+      .filter(
+        (relationship) =>
+          relationship.relationshipType === RelationshipType.ASSOCIATION
+      )
+      .forEach((relationship) => {
+        const name = relationship.type || relationship.relationshipType;
+        if (!name) return;
+        constraintTargetOptions.push(`${name}.fromId`);
+        constraintTargetOptions.push(`${name}.toId`);
+        Object.keys(relationship.properties || {}).forEach((key) => {
+          constraintTargetOptions.push(`${name}.${key}`);
+        });
+      });
+
     fields.push(
       <Divider key="DataDivider" horizontal clearing style={{ paddingTop: 50 }}>
         Data
@@ -657,6 +736,10 @@ export default class DetailInspector extends Component<
         selectedNodes.map((node: Node) => node.ieGuidelines)
       );
 
+      const openClassValue = commonValue(
+        selectedNodes.map((node: Node) => node.open?.class ?? false)
+      );
+
       fields.push(
         <Form.Field key="abstract">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
@@ -670,6 +753,79 @@ export default class DetailInspector extends Component<
           </div>
         </Form.Field>
       );
+
+      fields.push(
+        <Form.Field key="open_class">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+              Open Class
+              <Popup
+                content="PG-Schema only — not available when exporting to LinkML."
+                position="top center"
+                trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+              />
+            </label>
+            <Checkbox
+              toggle
+              checked={openClassValue ?? false}
+              indeterminate={openClassValue === undefined}
+              onChange={(_, data) => onSaveOpen(selection, { class: !!data.checked })}
+            />
+          </div>
+        </Form.Field>
+      );
+
+      if (selectedNodes.length === 1) {
+        const siblingCaptions = this.getSiblingCaptions(selectedNodes[0], graph);
+        if (siblingCaptions.length > 0) {
+          const existingDisjoint = (selectedNodes[0].constraints ?? []).find(
+            (c): c is DisjointConstraint => c.type === 'disjoint'
+          );
+          const disjointEnabled = !!existingDisjoint;
+          const disjointTarget = existingDisjoint?.node ?? siblingCaptions[0];
+
+          fields.push(
+            <Form.Field key="disjoint">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+                  Disjoint
+                  <Popup
+                    content="PG-Schema only — not available when exporting to LinkML."
+                    position="top center"
+                    trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+                  />
+                </label>
+                <Checkbox
+                  toggle
+                  checked={disjointEnabled}
+                  onChange={(_, data) =>
+                    onSaveDisjointConstraint(
+                      selection,
+                      data.checked ? disjointTarget : undefined
+                    )
+                  }
+                />
+              </div>
+              {disjointEnabled ? (
+                <Dropdown
+                  selection
+                  fluid
+                  style={{ marginTop: '8px' }}
+                  value={disjointTarget}
+                  options={siblingCaptions.map((caption) => ({
+                    key: caption,
+                    text: caption,
+                    value: caption,
+                  }))}
+                  onChange={(e, { value }) =>
+                    onSaveDisjointConstraint(selection, value as string)
+                  }
+                />
+              ) : null}
+            </Form.Field>
+          );
+        }
+      }
 
       fields.push(
         <CaptionInspector
@@ -712,6 +868,7 @@ export default class DetailInspector extends Component<
           </Form.Field>
         );
       }
+
     }
 
     if (selectionIncludes.relationships && !selectionIncludes.nodes) {
@@ -756,6 +913,13 @@ export default class DetailInspector extends Component<
         <Form.Field key="_relationshipType">
           <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
             Relationship type
+            {commonRelationshipType === RelationshipType.EXCLUSIVE_INHERITANCE ? (
+              <Popup
+                content="EXCLUSIVE INHERITANCE is PG-Schema only — not available when exporting to LinkML."
+                position="top center"
+                trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+              />
+            ) : null}
           </label>
           <Dropdown
             value={commonRelationshipType || RelationshipType.ASSOCIATION}
@@ -767,25 +931,28 @@ export default class DetailInspector extends Component<
             }
             selection
             options={(() => {
-              // Hide INHERITANCE when an inheritance already exists between
-              // the selected relationship's source and target nodes.
-              const inheritanceBlockedForAnySelectedPair = relationships.some(
-                (rel) =>
+              // Hide INHERITANCE / EXCLUSIVE_INHERITANCE options when a relationship
+              // of that same type already exists between the selected relationship's
+              // source and target nodes (only one edge of a given structural type
+              // is allowed per node pair).
+              const isPairBlockedForType = (type: RelationshipType) =>
+                relationships.some((rel) =>
                   graph.relationships.some(
                     (r) =>
-                      r.relationshipType === RelationshipType.INHERITANCE &&
+                      r.relationshipType === type &&
                       r.fromId === rel.fromId &&
                       r.toId === rel.toId &&
-                      // allow the option when the selected relationship IS the inheritance
+                      // allow the option when the selected relationship IS that one
                       r.id !== rel.id
                   )
-              );
+                );
 
-              return Object.keys(RelationshipType)
+              return Object.values(RelationshipType)
                 .filter(
                   (rt) =>
-                    rt !== RelationshipType.INHERITANCE ||
-                    !inheritanceBlockedForAnySelectedPair
+                    (rt !== RelationshipType.INHERITANCE &&
+                      rt !== RelationshipType.EXCLUSIVE_INHERITANCE) ||
+                    !isPairBlockedForType(rt)
                 )
                 .map((relationshipType) => ({
                   key: relationshipType,
@@ -1387,6 +1554,71 @@ const isDuplicateUnnamedAssociation = (relationship: Relationship) =>
 
 
       }
+
+      if (
+        relationships.every(
+          (relationship) =>
+            relationship.relationshipType === RelationshipType.INHERITANCE
+        )
+      ) {
+        const commonRequired = commonValue(
+          relationships.map((relationship) => relationship.required ?? true)
+        );
+
+        fields.push(
+          <Form.Field key="_inheritance_required">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+                Required
+                <Popup
+                  content="PG-Schema only — not available when exporting to LinkML."
+                  position="top center"
+                  trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+                />
+              </label>
+              <Checkbox
+                toggle
+                checked={commonRequired ?? true}
+                indeterminate={commonRequired === undefined}
+                onChange={(_, data) =>
+                  onSaveInheritanceRequired(selection, !!data.checked)
+                }
+              />
+            </div>
+          </Form.Field>
+        );
+      }
+
+      if (
+        relationships.every(
+          (relationship) =>
+            relationship.relationshipType ===
+            RelationshipType.EXCLUSIVE_INHERITANCE
+        )
+      ) {
+        const invalidExclusiveInheritance = relationships.some(
+          (relationship) => {
+            const siblingCount = graph.relationships.filter(
+              (r) =>
+                r.relationshipType ===
+                  RelationshipType.EXCLUSIVE_INHERITANCE &&
+                r.toId === relationship.toId
+            ).length;
+            return siblingCount < 2;
+          }
+        );
+
+        if (invalidExclusiveInheritance) {
+          fields.push(
+            <Form.Field key="_exclusive_inheritance_warning">
+              <Label pointing color="red">
+                Exclusive inheritance requires at least two child
+                relationships pointing to the same parent
+              </Label>
+            </Form.Field>
+          );
+        }
+      }
     }
 
     if (
@@ -1849,6 +2081,22 @@ if (
       const properties = combineProperties(entities);
       const propertySummary = summarizeProperties(entities, graph);
 
+      // Constraints are stored on the entity itself, keyed by property name, so
+      // they're only well-defined for a single selected node or relationship
+      // (merging them across multiple entities would be ambiguous).
+      const constraintsEditable =
+        (selectionIncludes.nodes &&
+          !selectionIncludes.relationships &&
+          selectedNodes.length === 1) ||
+        (selectionIncludes.relationships &&
+          !selectionIncludes.nodes &&
+          relationships.length === 1);
+      const constraintsOwner = constraintsEditable
+        ? selectionIncludes.nodes
+          ? selectedNodes[0]
+          : relationships[0]
+        : undefined;
+
       fields.push(
         <PropertyTable
           key={`properties-${entities.map((entity) => entity.id).join(',')}`}
@@ -1874,8 +2122,58 @@ if (
           onDeleteProperty={(propertyKey: string) =>
             onDeleteProperty(selection, propertyKey)
           }
+          constraints={
+            constraintsOwner
+              ? (constraintsOwner.constraints ?? []).filter(
+                  (c): c is PropertyConstraint => c.type !== 'disjoint'
+                )
+              : undefined
+          }
+          constraintTargetOptions={constraintTargetOptions}
+          onSaveConstraints={
+            constraintsEditable
+              ? (propertyKey: string, constraints) =>
+                  onSaveConstraints(selection, propertyKey, constraints)
+              : undefined
+          }
         />
       );
+
+      if (
+        (selectionIncludes.nodes && !selectionIncludes.relationships) ||
+        (selectionIncludes.relationships && !selectionIncludes.nodes)
+      ) {
+        const openPropertiesValue = selectionIncludes.nodes
+          ? commonValue(
+              selectedNodes.map((node: Node) => node.open?.properties ?? false)
+            )
+          : commonValue(
+              relationships.map(
+                (relationship) => relationship.open?.properties ?? false
+              )
+            );
+
+        fields.push(
+          <Form.Field key="open_properties" style={{ marginTop: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <label style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
+                Open attributes
+                <Popup
+                  content="PG-Schema only — not available when exporting to LinkML."
+                  position="top center"
+                  trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
+                />
+              </label>
+              <Checkbox
+                toggle
+                checked={openPropertiesValue ?? false}
+                indeterminate={openPropertiesValue === undefined}
+                onChange={(_, data) => onSaveOpen(selection, { properties: !!data.checked })}
+              />
+            </div>
+          </Form.Field>
+        );
+      }
 
       // (pattern moved) previously here but relocated below Examples for entities
     }

@@ -3,6 +3,9 @@ import {
   setProperty,
   setNodeCaption,
   setNodeAbstract,
+  setNodeOpen,
+  setPropertyConstraints,
+  setDisjointConstraint,
   setIeGuidelines,
   setPattern,
   setRelationshipType,
@@ -21,6 +24,7 @@ import {
   setCardinality,
   setDescription,
   setNavigation,
+  setInheritanceRequired,
   onSaveOntology,
 } from '../actions/graph';
 import DetailInspector from '../components/DetailInspector';
@@ -28,7 +32,7 @@ import { getSelectedNodes } from '@neo4j-arrows/selectors';
 import { getOntologies, getPresentGraph } from '../selectors';
 import { toggleSelection } from '../actions/selection';
 import { Dispatch } from 'redux';
-import { Attribute, Entity, EntitySelection, Ontology, PatternDefinition, RelationshipType, Navigation } from '@neo4j-arrows/model';
+import { Attribute, Entity, EntitySelection, Ontology, PatternDefinition, RelationshipType, Navigation, PropertyConstraintDraft } from '@neo4j-arrows/model';
 import { ArrowsState } from '../reducers';
 
 const mapStateToProps = (state: ArrowsState) => {
@@ -51,6 +55,25 @@ const mapDispatchToProps = (dispatch: any) => {
     },
     onSaveAbstract: (selection: EntitySelection, abstract: boolean) => {
       dispatch(setNodeAbstract(selection, abstract));
+    },
+    onSaveOpen: (
+      selection: EntitySelection,
+      open: { class?: boolean; properties?: boolean }
+    ) => {
+      dispatch(setNodeOpen(selection, open));
+    },
+    onSaveConstraints: (
+      selection: EntitySelection,
+      propertyKey: string,
+      constraints: PropertyConstraintDraft[]
+    ) => {
+      dispatch(setPropertyConstraints(selection, propertyKey, constraints));
+    },
+    onSaveDisjointConstraint: (
+      selection: EntitySelection,
+      siblingCaption: string | undefined
+    ) => {
+      dispatch(setDisjointConstraint(selection, siblingCaption));
     },
     onConvertCaptionsToPropertyValues: () => {
       dispatch(convertCaptionsToPropertyValues());
@@ -119,6 +142,9 @@ const mapDispatchToProps = (dispatch: any) => {
     },
     onSaveNavigation: (selection: EntitySelection, navigation: Navigation) => {
       dispatch(setNavigation(selection, navigation));
+    },
+    onSaveInheritanceRequired: (selection: EntitySelection, required: boolean) => {
+      dispatch(setInheritanceRequired(selection, required));
     },
     onSaveDescription: (selection: EntitySelection, description: string) => {
       dispatch(setDescription(selection, description));

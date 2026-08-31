@@ -4,6 +4,7 @@ import ExportPngPanel from './ExportPngPanel';
 import ExportSvgPanel from './ExportSvgPanel';
 import ExportJsonPanel from './ExportJsonPanel';
 import ExportLinkMLPanel from './ExportLinkMLPanel';
+import ExportPgSchemaPanel from './ExportPgSchemaPanel';
 import {
   loadFavoriteExportTab,
   saveFavoriteExportTab,
@@ -31,7 +32,7 @@ class ExportModal extends Component<ExportModalProps, ExportModalState> {
     super(props);
     this.state = {
       // Should point to LinkML tab by default
-      activeIndex: loadFavoriteExportTab() || 4,
+      activeIndex: loadFavoriteExportTab() || 5,
       linkMLCache: {},
     };
   }
@@ -205,6 +206,14 @@ class ExportModal extends Component<ExportModalProps, ExportModalState> {
               graph={this.props.graph}
               diagramName={this.props.diagramName}
             />
+          </Tab.Pane>
+        ),
+      },
+      {
+        menuItem: 'PG-Schema',
+        render: () => (
+          <Tab.Pane attached={false}>
+            <ExportPgSchemaPanel />
           </Tab.Pane>
         ),
       },

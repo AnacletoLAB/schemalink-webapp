@@ -9,7 +9,8 @@ export const handleCopy = () => {
     const graph = getPresentGraph(state);
     const nodes = selectedNodes(graph, state.selection);
     const relationships = selectedRelationships(graph, state.selection).map((r) =>
-      r.relationshipType === RelationshipType.INHERITANCE
+      r.relationshipType === RelationshipType.INHERITANCE ||
+      r.relationshipType === RelationshipType.EXCLUSIVE_INHERITANCE
         ? { ...r, ontologies: undefined }
         : r
     );

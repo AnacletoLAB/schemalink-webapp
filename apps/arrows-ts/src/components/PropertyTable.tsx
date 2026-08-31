@@ -8,6 +8,8 @@ import {
   Property,
   RequiredType,
   BasicType,
+  PropertyConstraint,
+  PropertyConstraintDraft,
 } from '@neo4j-arrows/model';
 
 interface PropertyTableProps {
@@ -20,6 +22,12 @@ interface PropertyTableProps {
   rangeOptions?: string[];
   attributesHidden?: boolean;
   onToggleAttributes?: () => void;
+  constraints?: PropertyConstraint[];
+  constraintTargetOptions?: string[];
+  onSaveConstraints?: (
+    propertyKey: string,
+    constraints: PropertyConstraintDraft[]
+  ) => void;
 }
 
 interface PropertyTableState {
@@ -82,6 +90,9 @@ export default class PropertyTable extends Component<
       rangeOptions = [],
       attributesHidden = false,
       onToggleAttributes,
+      constraints,
+      constraintTargetOptions = [],
+      onSaveConstraints,
     } = this.props;
     const {
       properties: localProperties,
@@ -181,6 +192,13 @@ export default class PropertyTable extends Component<
             keyDisabled={!!error && invalidIndex !== index}
             valueDisabled={!!error}
             attributeValue={prop.value ?? { range: BasicType.STRING, requiredType: RequiredType.OPTIONAL, description: '' }}
+            constraints={constraints?.filter((c) => c.on === key) ?? []}
+            constraintTargetOptions={constraintTargetOptions}
+            onConstraintsChange={
+              onSaveConstraints
+                ? (nextConstraints) => onSaveConstraints(key, nextConstraints)
+                : undefined
+            }
             active={this.state.activeIndex === index}
             onClick={() =>
               this.setState({

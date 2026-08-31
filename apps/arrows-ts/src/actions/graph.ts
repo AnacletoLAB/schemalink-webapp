@@ -39,6 +39,7 @@ import {
   PatternDefinition,
   SchemaProperties,
   hardcodedOntologies,
+  PropertyConstraintDraft,
 } from '@neo4j-arrows/model';
 import { BoundingBox, calculateBoundingBox } from '@neo4j-arrows/graphics';
 import { lockHandleDragType } from './mouse';
@@ -545,6 +546,38 @@ export const setNodeAbstract = (
   abstract,
 });
 
+export const setNodeOpen = (
+  selection: EntitySelection,
+  open: { class?: boolean; properties?: boolean }
+): GraphAction => ({
+  category: 'GRAPH',
+  type: 'SET_NODE_OPEN',
+  selection,
+  open,
+});
+
+export const setPropertyConstraints = (
+  selection: EntitySelection,
+  propertyKey: string,
+  constraints: PropertyConstraintDraft[]
+): GraphAction => ({
+  category: 'GRAPH',
+  type: 'SET_PROPERTY_CONSTRAINTS',
+  selection,
+  propertyKey,
+  constraints,
+});
+
+export const setDisjointConstraint = (
+  selection: EntitySelection,
+  siblingCaption: string | undefined
+): GraphAction => ({
+  category: 'GRAPH',
+  type: 'SET_DISJOINT_CONSTRAINT',
+  selection,
+  siblingCaption,
+});
+
 export const setIeGuidelines = (
   selection: EntitySelection,
   ieGuidelines: string
@@ -600,6 +633,16 @@ export const setNavigation = (
   type: 'SET_NAVIGATION',
   selection,
   navigation,
+});
+
+export const setInheritanceRequired = (
+  selection: EntitySelection,
+  required: boolean
+) => ({
+  category: 'GRAPH',
+  type: 'SET_INHERITANCE_REQUIRED',
+  selection,
+  required,
 });
 
 export const setSchemaProperties = (

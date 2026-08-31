@@ -662,7 +662,8 @@ const mapStateToProps = (state: ArrowsState) => {
       entities: state.selection.entities.filter(
         (entity: Entity) =>
           !isRelationship(entity) ||
-          entity.relationshipType !== RelationshipType.INHERITANCE
+          (entity.relationshipType !== RelationshipType.INHERITANCE &&
+            entity.relationshipType !== RelationshipType.EXCLUSIVE_INHERITANCE)
       ),
     },
     nodes: selectedNodes(state.graph.present, state.selection),
@@ -671,7 +672,8 @@ const mapStateToProps = (state: ArrowsState) => {
       state.selection
     ).filter(
       ({ relationshipType }) =>
-        relationshipType !== RelationshipType.INHERITANCE
+        relationshipType !== RelationshipType.INHERITANCE &&
+        relationshipType !== RelationshipType.EXCLUSIVE_INHERITANCE
     ),
     separation: nodeSeparation(state),
   };
