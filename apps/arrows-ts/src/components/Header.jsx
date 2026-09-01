@@ -1,5 +1,5 @@
 import React, { PureComponent } from 'react';
-import { Icon, Menu, Button, ButtonGroup, Dropdown, Modal, Checkbox } from 'semantic-ui-react';
+import { Icon, Menu, Button, ButtonGroup, Dropdown, Modal, Checkbox, Radio } from 'semantic-ui-react';
 import { DiagramNameEditor } from './DiagramNameEditor';
 import arrows_logo from '../images/arrows_logo.svg';
 import { defaultCallbackFactory } from './GptModal';
@@ -13,6 +13,177 @@ import {
 const storageNames = {
   LOCAL_STORAGE: 'Web Browser storage',
 };
+
+// Bio-Viber knowledge graph schemas: each KG lists which "Subject - predicate - Object"
+// relation patterns it supports, grouped by class pair.
+const KG_SCHEMA_RELATIONS = {
+  'miRNA-KG': {
+    'Gene - Disease': ['Gene - causes or contributes to condition - Disease'],
+    'miRNA - miRNA': ['miRNA - in similarity relationship with - miRNA'],
+    'miRNA - Disease': [
+      'miRNA - causes or contributes to condition - Disease',
+      'miRNA - under expressed in - Disease',
+      'miRNA - over expressed in - Disease',
+      'miRNA - is causal somatic mutation in - Disease',
+    ],
+    'Gene - Gene': ['Gene - genetically interacts with - Gene'],
+    'miRNA - Gene': ['miRNA - regulates activity of - Gene'],
+    'miRNA - GO': [
+      'miRNA - participates in - GO',
+      'miRNA - has function - GO',
+      'miRNA - located in - GO',
+      'miRNA - part of - GO',
+    ],
+  },
+  'PKT-KG': {
+    'Protein - Anatomy': ['Protein - located in - Anatomy'],
+    'Protein - Cell': ['Protein - located in - Cell'],
+    'Protein - Protein': ['Protein - molecularly interacts with - Protein'],
+    'GO - GO': [
+      'GO - negatively regulates - GO',
+      'GO - positively regulates - GO',
+      'GO - regulates - GO',
+    ],
+    'Chemical - GO': [
+      'Chemical - participates in - GO',
+      'Chemical - molecularly interacts with - GO',
+    ],
+    'Protein - GO': ['Protein - enables - GO', 'Protein - located in - GO'],
+    'Chemical - Gene': ['Chemical - interacts with - Gene'],
+    'Chemical - Protein': [
+      'Chemical - interacts with - Protein',
+      'Chemical - molecularly interacts with - Protein',
+    ],
+    'Chemical - Disease': ['Chemical - is substance that treats - Disease'],
+    'Chemical - Pathway': ['Chemical - participates in - Pathway'],
+    'Protein - Pathway': ['Protein - participates in - Pathway'],
+    'Gene - Disease': ['Gene - causes or contributes to condition - Disease'],
+    'Gene - Gene': ['Gene - genetically interacts with - Gene'],
+    'Gene - Protein': ['Gene - interacts with - Protein'],
+    'Gene - Pathway': ['Gene - participates in - Pathway'],
+  },
+  Hetionet: {
+    'Anatomy - Gene': [
+      'Anatomy - downregulates - Gene',
+      'Anatomy - expresses - Gene',
+      'Anatomy - upregulates - Gene',
+    ],
+    'Compund - Gene': [
+      'Compound - binds - Gene',
+      'Compound - downregulates - Gene',
+      'Compound - upregulates - Gene',
+    ],
+    'Compound - Side_effect': ['Compound - causes - Side_effect'],
+    'Compound - Compound': ['Compound - resembles - Compound'],
+    'Disease - Gene': [
+      'Disease - associates - Gene',
+      'Disease - downregulates - Gene',
+      'Disease - upregulates - Gene',
+    ],
+    'Disease - Anatomy': ['Disease - localizes - Anatomy'],
+    'Disease - Symptom': ['Disease - presents - Symptom'],
+    'Gene - Gene': [
+      'Gene - covaries - Gene',
+      'Gene - interacts - Gene',
+      'Gene - regulates - Gene',
+    ],
+    'Gene - Biological_process': ['Gene - participates - Biological_process'],
+    'Gene - Cellular_component': ['Gene - participates - Cellular_component'],
+    'Gene - Molecular_function': ['Gene - participates - Molecular_function'],
+    'Gene - Pathway': ['Gene - participates - Pathway'],
+    'Pharmacologic_class  - Compound': ['Pharmacologic_class - includes - Compound'],
+  },
+  PrimeKG: {
+    'Anatomy - Gene_and_or_protein': [
+      'Anatomy - expression absent - Gene_and_or_protein',
+      'Anatomy - expression present - Gene_and_or_protein',
+    ],
+    'Biological_process - Exposure': ['Biological_process - interacts with - Exposure'],
+    'Biological_process - Gene_and_or_protein': [
+      'Biological_process - interacts with - Gene_and_or_protein',
+    ],
+    'Cellular_component - Gene_and_or_protein': [
+      'Cellular_component - interacts with - Gene_and_or_protein',
+    ],
+    'Disease - Gene_and_or_protein': ['Disease - associated with - Gene_and_or_protein'],
+    'Disease - Drug': [
+      'Disease - contraindication - Drug',
+      'Disease - indication - Drug',
+      'Disease - off label use - Drug',
+    ],
+    'Disease - Exposure': ['Disease - linked to - Exposure'],
+    'Disease - Effect_and_or_phenotype': [
+      'Disease - phenotype absent - Effect_and_or_phenotype',
+      'Disease - phenotype present - Effect_and_or_phenotype',
+    ],
+    'Drug - Gene_and_or_protein': [
+      'Drug - enzyme - Gene_and_or_protein',
+      'Drug - target - Gene_and_or_protein',
+      'Drug - transporter - Gene_and_or_protein',
+    ],
+    'Drug - Effect_and_or_phenotype': ['Drug - side effect - Effect_and_or_phenotype'],
+    'Drug - Drug': ['Drug - synergistic interaction - Drug'],
+    'Effect_and_or_phenotype - Gene_and_or_protein': [
+      'Effect_and_or_phenotype - associated with - Gene_and_or_protein',
+    ],
+    'Exposure - Gene_and_or_protein': ['Exposure - interacts with - Gene_and_or_protein'],
+    'Gene_and_or_protein - Molecular_function': [
+      'Gene_and_or_protein - interacts with - Molecular_function',
+    ],
+    'Gene_and_or_protein - Pathway': ['Gene_and_or_protein - interacts with - Pathway'],
+    'Gene_and_or_protein - Gene_and_or_protein': ['Gene_and_or_protein - ppi - Gene_and_or_protein'],
+  },
+  OptimusKG: {
+    'Anatomy - Gene': [
+      'Anatomy - EXPRESSION_ABSENT - Gene',
+      'Anatomy - EXPRESSION_PRESENT - Gene',
+    ],
+    'Drug - Phenotype': [
+      'Drug - ASSOCIATED_WITH - Phenotype',
+      'Drug - CONTRAINDICATION - Phenotype',
+      'Drug - INDICATION - Phenotype',
+    ],
+    'Drug - Disease': [
+      'Drug - OFF_LABEL_USE - Disease',
+      'Drug - CONTRAINDICATION - Disease',
+      'Drug - INDICATION - Disease',
+    ],
+    'Drug - Gene': [
+      'Drug - TARGET - Gene',
+      'Drug - TRANSPORTER - Gene',
+      'Drug - ENZYME - Gene',
+    ],
+    'Biological_process - Gene': ['Biological_process - INTERACTS_WITH - Gene'],
+    'Cellular_component - Gene': ['Cellular_component - INTERACTS_WITH - Gene'],
+    'Disease - Gene': ['Disease - ASSOCIATED_WITH - Gene'],
+    'Pathway - Gene': ['Pathway - INTERACTS_WITH - Gene'],
+    'Disease - Phenotype': ['Disease - PHENOTYPE_PRESENT - Phenotype'],
+    'Drug - Drug': ['Drug - SYNERGISTIC_INTERACTION - Drug'],
+    'Exposure - Biological_process': ['Exposure - INTERACTS_WITH - Biological_process'],
+    'Exposure - Gene': ['Exposure - INTERACTS_WITH - Gene'],
+    'Exposure - Disease': ['Exposure - LINKED_TO - Disease'],
+    'Phenotype - Gene': ['Phenotype - ASSOCIATED_WITH - Gene'],
+    'Gene - Gene': ['Gene - INTERACTS_WITH - Gene'],
+    'Molecular_function - Gene': ['Molecular_function - INTERACTS_WITH - Gene'],
+  },
+};
+
+const KG_OPTIONS = Object.keys(KG_SCHEMA_RELATIONS);
+
+// Flatten each KG's nested class-pair → [triples] structure into one flat Set of triple
+// strings, so checking whether a given "Subject - predicate - Object" string is compliant
+// with a KG is an O(1) lookup. Normalized (lowercased, underscores treated as spaces) since
+// formatting isn't consistent between the app's own class/predicate spelling and how a KG's
+// schema happens to write it — e.g. "MiRNA" vs "miRNA", or OptimusKG's "INTERACTS_WITH" vs
+// the space-separated "interacts with" the humanizer produces. Compliance should be about the
+// semantic triple, not incidental capitalization/underscore choices.
+const normalizeForCompliance = (s) => s.toLowerCase().replace(/_/g, ' ');
+const KG_RELATION_SETS = Object.fromEntries(
+  Object.entries(KG_SCHEMA_RELATIONS).map(([kg, byPair]) => [
+    kg,
+    new Set(Object.values(byPair).flat().map(normalizeForCompliance)),
+  ])
+);
 
 const storageStatusMessage = (props) => {
   const storageName = storageNames[props.storage.mode];
@@ -76,6 +247,9 @@ class Header extends PureComponent {
     streamLogWidth: 210,  // activity panel width in px (resizable)
     exportDropdownOpen: false,
     selectedPubmedArticle: null,  // { pmid, title, abstract, authors, year, journal }
+    extractSelectedKG: null,      // 'miRNA-KG' | 'PKT-KG' | 'Hetionet' | 'PrimeKG' | 'OptimusKG' — Bio-Viber tab
+    bioViberSending: false,
+    bioViberError: null,
   };
 
   componentDidMount() {
@@ -850,7 +1024,7 @@ class Header extends PureComponent {
             </div>
             <Modal
               open={this.state.extractOpen}
-              onClose={() => this.setState({ extractOpen: false, extractView: 'input', extractResult: null, extractError: null, pubmedResults: [], pubmedQuery: '', pubmedError: null, extractModel: 'gpt-4o-mini', streamProgress: [], streamCurrentClass: null, streamLog: [] })}
+                onClose={() => this.setState({ extractOpen: false, extractView: 'input', extractResult: null, extractError: null, pubmedResults: [], pubmedQuery: '', pubmedError: null, extractModel: 'gpt-4o-mini', streamProgress: [], streamCurrentClass: null, streamLog: [], extractSelectedKG: null })}
               closeOnDimmerClick={false}
               closeOnEscape={false}
               size="large"
@@ -1041,6 +1215,26 @@ class Header extends PureComponent {
                   });
                   const entityKeys = Object.keys(entityClasses);
                   const relationKeys = Object.keys(relationClasses);
+
+                    // Turn a schema relation class name like "GeneGeneticallyInteractsWithGeneRelationship"
+                    // into a readable "Gene - genetically interacts with - Gene". Relies on the known
+                    // entity class names (entityKeys) to figure out where subject/object begin and end,
+                    // since the class name is just those concatenated with the predicate in PascalCase.
+                    const splitWords = (s) =>
+                      s.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').trim();
+                    const humanizeRelationClass = (cls) => {
+                      let base = cls.replace(/Relationship$/, '').replace(/Triple$/, '');
+                      const byLengthDesc = [...entityKeys].sort((a, b) => b.length - a.length);
+                      const subjectCls = byLengthDesc.find((e) => base.startsWith(e));
+                      const rest = subjectCls ? base.slice(subjectCls.length) : base;
+                      const objectCls = byLengthDesc.find((e) => rest.endsWith(e));
+                      const predicate = objectCls ? rest.slice(0, rest.length - objectCls.length) : rest;
+                      const predicateWords = splitWords(predicate).toLowerCase();
+                      if (subjectCls && objectCls && predicateWords) {
+                        return `${subjectCls} - ${predicateWords} - ${objectCls}`;
+                      }
+                      return splitWords(cls); // fallback: can't confidently split, just space it out
+                    };
 
                   // Highlight entity mentions in input text
                   const buildHighlightSegments = () => {
@@ -1514,7 +1708,7 @@ class Header extends PureComponent {
                                   <label key={cls} style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}
                                     onClick={() => toggleClass(cls)}>
                                     <Checkbox checked={!!this.state.extractVisibleClasses[cls]} onChange={() => toggleClass(cls)} />
-                                    <span style={{ color: '#555' }}>{cls}</span>
+                                      <span style={{ color: '#555' }}>{humanizeRelationClass(cls)}</span>
                                   </label>
                                 ))}
                               </div>
@@ -1788,7 +1982,7 @@ class Header extends PureComponent {
                                                 }}>
                                                   <ClassRow
                                                     stepKey={`re_gpt_${cls}`}
-                                                    step={`${cls} — GPT extraction`}
+                                                      step={`${humanizeRelationClass(cls)} — GPT extraction`}
                                                     status={init.length > 0 ? '🔵' : '⚪'}
                                                     outcome={
                                                       init.length === 0
@@ -1806,7 +2000,7 @@ class Header extends PureComponent {
                                                   {validating && (
                                                     <ClassRow
                                                       stepKey={`re_val_${cls}`}
-                                                      step={`${cls} — entity validation`}
+                                                        step={`${humanizeRelationClass(cls)} — entity validation`}
                                                       status={removed.length > 0 ? '✂️' : '✅'}
                                                       outcome={
                                                         <span>
@@ -1826,7 +2020,7 @@ class Header extends PureComponent {
                                                   {finalItems.length > 0 && (
                                                     <ClassRow
                                                       stepKey={`re_final_${cls}`}
-                                                      step={`${cls} — resolved`}
+                                                        step={`${humanizeRelationClass(cls)} — resolved`}
                                                       status='✅'
                                                       outcome={
                                                         <span><strong style={{ color: rac.text }}>{finalItems.length}</strong> relation{finalItems.length !== 1 ? 's' : ''}: <em style={{ color:'#475569' }}>{finalItems.slice(0,2).map(relLabel).join('; ')}{finalItems.length > 2 ? ` +${finalItems.length-2} more` : ''}</em></span>
@@ -1942,7 +2136,7 @@ class Header extends PureComponent {
                                     const extra = Object.entries(m).filter(([k]) => !['subject','predicate','object'].includes(k));
                                     return (
                                       <div key={`${cls}-${j}`} style={{ background: rcc.bg, border: `1px solid ${rcc.border}33`, borderLeft: `4px solid ${rcc.border}`, borderRadius: '8px', padding: '10px 12px' }}>
-                                        <span style={{ fontSize: '10px', fontWeight: 700, color: rcc.border, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{cls}</span>
+                                          <span style={{ fontSize: '11px', fontWeight: 700, color: rcc.border }}>{humanizeRelationClass(cls)}</span>
                                         {/* Arrow display */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
                                           <span style={{ background: `${rcc.border}18`, color: rcc.border, borderRadius: '6px', padding: '3px 8px', fontSize: '12px', fontWeight: 600, fontFamily: 'monospace' }}>{subj}</span>
@@ -1996,7 +2190,40 @@ class Header extends PureComponent {
                         )}
 
                         {/* ── RELATIONS TAB ── */}
-                        {activeTab === 'relations' && (
+                          {activeTab === 'relations' && (() => {
+                            const selectedKG = this.state.extractSelectedKG;
+
+                            const sendToBioViber = async () => {
+                              const triples = _buildRelRows().map(({ cls, subj, pred, obj }) => ({
+                                class: cls, subject: subj, predicate: pred, object: obj,
+                              }));
+                              const apiUrl = new URL('https://bio-viber.biodata.di.unimi.it/api/schemalink');
+                              apiUrl.searchParams.set('json', JSON.stringify(triples));
+                              apiUrl.searchParams.set('kg', selectedKG);
+
+                              this.setState({ bioViberSending: true, bioViberError: null });
+                              try {
+                                const res = await fetch(apiUrl.toString());
+                                if (!res.ok) throw new Error(`Bio-Viber returned ${res.status}`);
+                                window.open('https://bio-viber.biodata.di.unimi.it/homePage', '_blank', 'noopener,noreferrer');
+                                this.setState({ bioViberSending: false });
+                              } catch (e) {
+                                this.setState({ bioViberSending: false, bioViberError: e.message });
+                              }
+                            };
+
+                            // For each extracted relation class, humanize it to "Subject - predicate -
+                            // Object" and check which KGs' schemas contain that pattern (case-insensitive,
+                            // since e.g. the app's "MiRNA" class vs a KG's "miRNA" spelling shouldn't
+                            // count as a mismatch).
+                            const relationHumanized = relationKeys.map(cls => ({ cls, humanized: humanizeRelationClass(cls) }));
+                            const kgCompliance = KG_OPTIONS.map(kg => ({
+                              kg,
+                              compliant: relationHumanized.filter(r => KG_RELATION_SETS[kg].has(normalizeForCompliance(r.humanized))),
+                              total: relationHumanized.length,
+                            }));
+
+                            return (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             {relationKeys.length === 0 && <div style={{ color: '#888' }}>No relations extracted.</div>}
                             {relationKeys.map((cls, ri) => {
@@ -2013,7 +2240,7 @@ class Header extends PureComponent {
                               return (
                                 <div key={cls}>
                                   <div style={{ fontWeight: 700, marginBottom: '8px', fontSize: '14px', color: rcc.text }}>
-                                    {cls} <span style={{ fontWeight: 400, color: '#888', fontSize: '12px' }}>({mentions.length} mention{mentions.length !== 1 ? 's' : ''})</span>
+                                        {humanizeRelationClass(cls)} <span style={{ fontWeight: 400, color: '#888', fontSize: '12px' }}>({mentions.length} mention{mentions.length !== 1 ? 's' : ''})</span>
                                   </div>
                                   {mentions.length === 0
                                     ? <div style={{ color: '#888', fontSize: '13px' }}>No relations extracted.</div>
@@ -2034,8 +2261,75 @@ class Header extends PureComponent {
                                 </div>
                               );
                             })}
+
+                                {/* ── Bio-Viber: KG compliance + send ── */}
+                                <div style={{ marginTop: '8px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+                                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>
+                                    Please choose your Knowledge Graph:
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>
+                                    Compliance is checked against the relation types extracted above.
+                                  </div>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                                    {kgCompliance.map(({ kg, compliant, total }) => {
+                                      const isSelected = selectedKG === kg;
+                                      return (
+                                        <div key={kg} style={{
+                                          border: `1px solid ${isSelected ? '#1d4ed8' : '#e2e8f0'}`,
+                                          borderRadius: '8px', padding: '10px 12px',
+                                          background: isSelected ? '#eff6ff' : 'white',
+                                        }}>
+                                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                            <Radio
+                                              name="bioViberKG"
+                                              value={kg}
+                                              checked={isSelected}
+                                              onChange={() => this.setState({ extractSelectedKG: kg })}
+                                            />
+                                            <span style={{ fontWeight: 600, fontSize: '13px' }}>{kg}</span>
+                                            <span style={{
+                                              marginLeft: 'auto', fontSize: '11px', fontWeight: 700,
+                                              padding: '2px 8px', borderRadius: '999px',
+                                              background: compliant.length > 0 ? '#dcfce7' : '#fee2e2',
+                                              color: compliant.length > 0 ? '#15803d' : '#b91c1c',
+                                            }}>
+                                              {compliant.length}/{total} compliant
+                                            </span>
+                                          </label>
+                                          {total > 0 && (
+                                            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '3px', paddingLeft: '26px' }}>
+                                              {relationHumanized.map(({ cls, humanized }) => {
+                                                const ok = compliant.some(c => c.cls === cls);
+                                                return (
+                                                  <div key={cls} style={{ fontSize: '11px', color: ok ? '#15803d' : '#94a3b8' }}>
+                                                    {ok ? '✅' : '—'} {humanized}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                  <div style={{ marginTop: '16px' }}>
+                                    <Button
+                                      primary
+                                      disabled={!selectedKG}
+                                      loading={this.state.bioViberSending}
+                                      onClick={sendToBioViber}
+                                      content="Send to Bio-Viber"
+                                    />
+                                  </div>
+                                  {this.state.bioViberError && (
+                                    <div style={{ marginTop: '8px', color: '#b91c1c', background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '4px', padding: '8px 12px', fontSize: '13px', maxWidth: '480px' }}>
+                                      {this.state.bioViberError}
                           </div>
                         )}
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                         {/* ── JSON TAB ── */}
                         {activeTab === 'json' && (
@@ -2311,28 +2605,36 @@ class Header extends PureComponent {
                       <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
                         <div style={{ flexShrink:0, width:16, height:16, display:'flex', alignItems:'center', justifyContent:'center' }}>
                           {streamCurrentClass && statusOf(streamCurrentClass, curType) === 'extracting' ? (
-                            <span style={{ display:'inline-block', width:12, height:12, borderRadius:'50%',
+                                  <span style={{
+                                    display: 'inline-block', width: 12, height: 12, borderRadius: '50%',
                               border:'2.5px solid #3b82f6', borderTopColor:'transparent',
-                              animation:'sl-spin .7s linear infinite' }} />
+                                    animation: 'sl-spin .7s linear infinite'
+                                  }} />
                           ) : isFinished ? (
                             <span style={{ color:'#16a34a', fontSize:14, fontWeight:800 }}>✓</span>
                           ) : (
-                            <span style={{ display:'inline-block', width:8, height:8, borderRadius:'50%',
-                              background:'#9ca3af', animation:'sl-pulse 1.2s ease-in-out infinite' }} />
+                                  <span style={{
+                                    display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+                                    background: '#9ca3af', animation: 'sl-pulse 1.2s ease-in-out infinite'
+                                  }} />
                           )}
                         </div>
                         <div style={{ flex:1 }}>
                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:3 }}>
-                            <span style={{ fontSize:12, fontWeight:600,
-                              color: streamCurrentClass ? '#1d4ed8' : isFinished ? '#15803d' : '#6b7280' }}>
+                                  <span style={{
+                                    fontSize: 12, fontWeight: 600,
+                                    color: streamCurrentClass ? '#1d4ed8' : isFinished ? '#15803d' : '#6b7280'
+                                  }}>
                               {statusLabel}
                             </span>
                             <span style={{ fontSize:11, color:'#9ca3af' }}>{doneCount}/{total}</span>
                           </div>
                           <div style={{ height:4, borderRadius:4, background:'#e5e7eb', overflow:'hidden' }}>
-                            <div style={{ height:'100%', borderRadius:4,
+                                  <div style={{
+                                    height: '100%', borderRadius: 4,
                               background:'linear-gradient(90deg,#4ade80,#22c55e)',
-                              width:`${pct}%`, transition:'width .5s cubic-bezier(.4,0,.2,1)' }} />
+                                    width: `${pct}%`, transition: 'width .5s cubic-bezier(.4,0,.2,1)'
+                                  }} />
                           </div>
                         </div>
                       </div>
@@ -2443,7 +2745,7 @@ class Header extends PureComponent {
                     <Button
                       icon="arrow left"
                       content="Back"
-                      onClick={() => this.setState({ extractView: 'input', extractResult: null, extractError: null, extractActiveTab: 'text', pubmedResults: [], pubmedQuery: '', pubmedError: null })}
+                        onClick={() => this.setState({ extractView: 'input', extractResult: null, extractError: null, extractActiveTab: 'text', pubmedResults: [], pubmedQuery: '', pubmedError: null, extractSelectedKG: null })}
                       basic
                     />
                   )}
@@ -2511,7 +2813,7 @@ class Header extends PureComponent {
                       content="Run Extraction"
                     />
                   )}
-                  <Button onClick={() => this.setState({ extractOpen: false, extractView: 'input', extractResult: null, extractError: null, pubmedResults: [], pubmedQuery: '', pubmedError: null, extractModel: 'gpt-4o-mini', streamProgress: [], streamCurrentClass: null, streamLog: [] })} basic>
+                    <Button onClick={() => this.setState({ extractOpen: false, extractView: 'input', extractResult: null, extractError: null, pubmedResults: [], pubmedQuery: '', pubmedError: null, extractModel: 'gpt-4o-mini', streamProgress: [], streamCurrentClass: null, streamLog: [], extractSelectedKG: null })} basic>
                     Close
                   </Button>
                 </div>
