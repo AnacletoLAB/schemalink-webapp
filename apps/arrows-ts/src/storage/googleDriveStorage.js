@@ -108,6 +108,8 @@ export const constructGraphFromFile = (data) => {
     examples: node.examples || [],
     properties: node.properties || {},
     style: node.style || {},
+    open: node.open,
+    constraints: node.constraints,
   }));
 
   const relationships = adaptLegacyGraph(graph).relationships
@@ -127,13 +129,24 @@ export const constructGraphFromFile = (data) => {
         relationship.relationshipType === 'EXCLUSIVE_INHERITANCE'
           ? RelationshipType.EXCLUSIVE_INHERITANCE
           : relationship.relationshipType || RelationshipType.ASSOCIATION,
-      ieGuidelines: relationship.relationshipType === RelationshipType.INHERITANCE ? undefined : relationship.ieGuidelines,
-      pattern: relationship.relationshipType === RelationshipType.INHERITANCE ? undefined : relationship.pattern,
+      ieGuidelines:
+        relationship.relationshipType === RelationshipType.INHERITANCE ||
+        relationship.relationshipType === RelationshipType.EXCLUSIVE_INHERITANCE
+          ? undefined
+          : relationship.ieGuidelines,
+      pattern:
+        relationship.relationshipType === RelationshipType.INHERITANCE ||
+        relationship.relationshipType === RelationshipType.EXCLUSIVE_INHERITANCE
+          ? undefined
+          : relationship.pattern,
       description: relationship.description || '',
       ontologies: rehydrateOntologies(relationship.ontologies),
       examples: relationship.examples || [],
       properties: relationship.properties || {},
       style: relationship.style || {},
+      open: relationship.open,
+      constraints: relationship.constraints,
+      required: relationship.required,
     }));
 
   return {

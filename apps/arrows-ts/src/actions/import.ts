@@ -74,6 +74,7 @@ export const tryImport = (dispatch: Dispatch) => {
         license: importedGraph.license,
         nerGuidelines: importedGraph.nerGuidelines,
         reGuidelines: importedGraph.reGuidelines,
+        graphTypeMode: importedGraph.graphTypeMode,
       })
     );
     dispatch(hideImportDialog());
@@ -142,6 +143,7 @@ export const handlePaste = (pasteEvent: ClipboardEvent) => {
             license: graph.license,
             nerGuidelines: graph.nerGuidelines,
             reGuidelines: graph.reGuidelines,
+            graphTypeMode: graph.graphTypeMode,
           })
         );
       },
@@ -191,7 +193,9 @@ interface GraphFormat extends Format {
     separation: number,
     ontologies: Ontology[],
     signal?: AbortSignal
-  ) => Promise<{ nodes: Node[]; relationships: Relationship[] }> | { nodes: Node[]; relationships: Relationship[] };
+  ) =>
+    | Promise<{ nodes: Node[]; relationships: Relationship[]; graphTypeMode?: 'Strict' | 'Loose' }>
+    | { nodes: Node[]; relationships: Relationship[]; graphTypeMode?: 'Strict' | 'Loose' };
   getDiagramName?: (plainText: string) => string;
 }
 
@@ -430,16 +434,17 @@ const getFormats = (selectedFormat?: string): FormatType[] => [
     parse: (plainText: string, separation?: number, ontologies?: Ontology[], signal?: AbortSignal) => {
       const object = JSON.parse(plainText);
       const graphData: { graph: Graph } = constructGraphFromFile(object);
-      const { nodes, relationships } = graphData.graph;
-      
+      const { nodes, relationships, graphTypeMode } = graphData.graph;
+
       // Check for empty nodes array
       if (nodes.length === 0) {
         return {
           nodes: [],
           relationships,
+          graphTypeMode,
         };
       }
-      
+
       const left = Math.min(...nodes.map((node) => node.position.x));
       const top = Math.min(...nodes.map((node) => node.position.y));
       const vector = new Vector(-left, -top);
@@ -447,6 +452,7 @@ const getFormats = (selectedFormat?: string): FormatType[] => [
       return {
         nodes: originNodes,
         relationships,
+        graphTypeMode,
       };
     },
     getDiagramName: (plainText: string) => {

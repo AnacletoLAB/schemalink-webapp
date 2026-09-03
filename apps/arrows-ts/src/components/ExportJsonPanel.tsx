@@ -82,6 +82,9 @@ class ExportJsonPanel extends Component<ExportJsonPanelProps> {
       ...((graph as any).license !== undefined
         ? { license: (graph as any).license }
         : {}),
+      ...((graph as any).graphTypeMode !== undefined
+        ? { graphTypeMode: (graph as any).graphTypeMode }
+        : {}),
       nodes: compactNodes,
       relationships: compactRelationships,
       style: graph.style,
