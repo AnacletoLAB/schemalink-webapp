@@ -22,6 +22,9 @@ export interface Node extends Entity {
   examples?: string[];
   open?: NodeOpen;
   constraints?: NodeConstraintEntry[];
+  // Not rendered in the UI; preserved on import/export for interop with external PG-Schema tooling.
+  note?: string;
+  original_type_name?: string;
 }
 
 export const moveTo = (node: Node, newPosition: Point): Node => {

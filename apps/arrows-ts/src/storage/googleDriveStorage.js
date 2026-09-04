@@ -110,6 +110,8 @@ export const constructGraphFromFile = (data) => {
     style: node.style || {},
     open: node.open,
     constraints: node.constraints,
+    note: node.note,
+    original_type_name: node.original_type_name,
   }));
 
   const relationships = adaptLegacyGraph(graph).relationships
