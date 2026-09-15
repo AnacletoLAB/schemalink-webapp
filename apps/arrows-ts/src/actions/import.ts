@@ -25,7 +25,7 @@ import { Dispatch } from 'redux';
 import { ArrowsState } from '../reducers';
 import { defaultName } from '../reducers/diagramName';
 import { renameDiagram } from './diagramName';
-import { translateLinkMLOO } from '@neo4j-arrows/api';
+import { translateLinkMLOO, translatePgSchema } from '@neo4j-arrows/api';
 import { RelationshipType, Navigation } from '@neo4j-arrows/model';
 
 export const tryImport = (dispatch: Dispatch) => {
@@ -422,10 +422,116 @@ const createLinkMLOOFormat = (selectedFormat?: string): GraphFormat => ({
   },
 });
 
+const createPgSchemaFormat = (selectedFormat?: string): GraphFormat => ({
+  recognise: (plainText: string) => {
+    return selectedFormat === 'PG-Schema' && plainText.trim().length > 0;
+  },
+  outputType: 'graph',
+  parse: async (plainText: string, separation: number, ontologies: Ontology[], signal?: AbortSignal) => {
+    const apiResponse = await translatePgSchema(plainText, undefined, signal);
+
+    // Handle empty response
+    if (!apiResponse.nodes || apiResponse.nodes.length === 0) {
+      return {
+        nodes: [] as Node[],
+        relationships: [] as Relationship[],
+        style: apiResponse.style || {},
+        description: apiResponse.description || 'Empty schema imported',
+        graphTypeMode: apiResponse.graphTypeMode,
+      };
+    }
+
+    const nodes: Node[] = apiResponse.nodes.map((node) => ({
+      id: node.id,
+      caption: node.caption,
+      position: new Point(node.position.x, node.position.y),
+      style: node.style || {},
+      properties: node.properties || {},
+      entityType: node.entityType || 'node',
+      description: node.description || '',
+      abstract: node.abstract || false,
+      original_type_name: node.original_type_name,
+      note: node.note,
+      open: node.open || {},
+      constraints: node.constraints || [],
+    })) as Node[];
+
+    const sanitizeCardinalityMax = (value: any): number | 'N' => {
+      if (value === 'N' || value === 'n') return 'N';
+      if (typeof value === 'number' && isFinite(value) && value >= 0) return value;
+      return 'N';
+    };
+
+    const relationships: Relationship[] = (apiResponse.relationships || []).map((rel) => {
+      let relationshipType = RelationshipType.ASSOCIATION;
+      if (rel.relationshipType === 'INHERITANCE') {
+        relationshipType = RelationshipType.INHERITANCE;
+      } else if (rel.relationshipType === 'EXCLUSIVE INHERITANCE') {
+        relationshipType = RelationshipType.EXCLUSIVE_INHERITANCE;
+      }
+
+      const sourceMin = rel.source_minimum_cardinality ?? 0;
+      const sourceMax = sanitizeCardinalityMax(rel.source_maximum_cardinality);
+      const targetMin = rel.target_minimum_cardinality ?? 0;
+      const targetMax = sanitizeCardinalityMax(rel.target_maximum_cardinality);
+
+      let navigation: Navigation | undefined;
+      if (rel.navigation === 'directional' || rel.navigation === 'Directional') {
+        navigation = Navigation.Directional;
+      } else {
+        navigation = Navigation.None;
+      }
+
+      return {
+        id: rel.id,
+        type: rel.type,
+        relationshipType,
+        fromId: rel.fromId,
+        toId: rel.toId,
+        style: rel.style || {},
+        properties: rel.properties || {},
+        entityType: rel.entityType || 'relationship',
+        description: rel.description || '',
+        required: rel.required,
+        constraints: rel.constraints || [],
+        source_minimum_cardinality: sourceMin,
+        source_maximum_cardinality: sourceMax,
+        target_minimum_cardinality: targetMin,
+        target_maximum_cardinality: targetMax,
+        navigation,
+      } as Relationship;
+    });
+
+    if (nodes.length === 0) {
+      return {
+        nodes: [] as Node[],
+        relationships,
+        style: apiResponse.style || {},
+        description: apiResponse.description || '',
+        graphTypeMode: apiResponse.graphTypeMode,
+      };
+    }
+
+    const left = Math.min(...nodes.map((node) => node.position.x));
+    const top = Math.min(...nodes.map((node) => node.position.y));
+    const vector = new Vector(-left, -top);
+    const originNodes = nodes.map((node) => translate(node, vector));
+
+    return {
+      nodes: originNodes,
+      relationships,
+      style: apiResponse.style || {},
+      description: apiResponse.description || '',
+      graphTypeMode: apiResponse.graphTypeMode,
+    };
+  },
+});
+
 const getFormats = (selectedFormat?: string): FormatType[] => [
   createLinkMLFormat('LinkML PG', toGraphPG, selectedFormat),
   createLinkMLFormat('LinkML RDF', toGraph, selectedFormat),
   createLinkMLOOFormat(selectedFormat),
+  createPgSchemaFormat(selectedFormat),
   {
     // JSON
     recognise: (plainText: string) =>

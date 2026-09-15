@@ -153,11 +153,10 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
     if (this.state.selectedFormat === 'PG-Schema') {
       this.setState({
         messageProps: {
-          icon: 'wrench',
-          positive: false,
-          negative: false,
-          header: 'PG-Schema import coming soon',
-          content: 'Import from PG-Schema format will be added soon.',
+          icon: 'checkmark',
+          positive: true,
+          header: 'PG-Schema import',
+          content: 'Paste PG-Schema and click Import',
         },
       });
       return;
@@ -297,7 +296,7 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
                     onChange={() => this.setState({ selectedFormat: 'PG-Schema' }, () => this.validateText(this.state.text))}
                   />
                   <Popup
-                    content="PG-Schema representation (coming soon)"
+                    content="PG-Schema representation"
                     position="top center"
                     trigger={<Icon name="question circle outline" style={{ marginLeft: 6, cursor: 'help' }} />}
                   />
@@ -348,11 +347,11 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
               <Message {...this.state.messageProps} />
             ) : null}
           </Form>
-          {this.state.isImporting && this.state.selectedFormat === 'LinkML OO' ? (
+          {this.state.isImporting && (this.state.selectedFormat === 'LinkML OO' || this.state.selectedFormat === 'PG-Schema') ? (
             <Message info icon>
               <Icon name="spinner" loading />
               <Message.Content>
-                <Message.Header>Importing LinkML OO schema</Message.Header>
+                <Message.Header>Importing {this.state.selectedFormat} schema</Message.Header>
                 <p>Please wait while we translate your schema. This may take a few moments...</p>
               </Message.Content>
             </Message>
@@ -381,7 +380,6 @@ class ImportModal extends Component<ImportModalProps, ImportModalState> {
             disabled={
               this.state.isImporting ||
               this.state.text.length === 0 ||
-              this.state.selectedFormat === 'PG-Schema' ||
               ((this.state.selectedFormat === 'LinkML PG' || this.state.selectedFormat === 'LinkML RDF') && isJson)
             }
             onClick={this.tryImport}

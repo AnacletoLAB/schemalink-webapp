@@ -209,6 +209,178 @@ export const exportLinkMLOO = async (
   }
 };
 
+interface TranslatePgSchemaResponse {
+  nodes: Array<{
+    id: string;
+    caption: string;
+    style?: Record<string, string>;
+    properties: Record<string, any>;
+    description?: string;
+    position: { x: number; y: number };
+    entityType: string;
+    abstract?: boolean;
+    original_type_name?: string;
+    note?: string;
+    open?: { class?: boolean; properties?: boolean };
+    constraints?: any[];
+  }>;
+  relationships: Array<{
+    id: string;
+    type: string;
+    fromId: string;
+    toId: string;
+    relationshipType: string;
+    entityType: string;
+    style?: Record<string, string>;
+    properties?: Record<string, any>;
+    source_minimum_cardinality?: number;
+    source_maximum_cardinality?: number | string;
+    target_minimum_cardinality?: number;
+    target_maximum_cardinality?: number | string;
+    description?: string;
+    navigation?: string;
+    required?: boolean;
+    constraints?: any[];
+  }>;
+  style?: Record<string, any>;
+  description?: string;
+  graphTypeMode?: 'Strict' | 'Loose';
+}
+
+export const translatePgSchema = async (
+  pgschemaContent: string,
+  url?: string,
+  signal?: AbortSignal,
+  timeoutMs = 30000
+): Promise<TranslatePgSchemaResponse> => {
+  const endpoint = url || import.meta.env['VITE_PGSCHEMA_TRANSLATE_ENDPOINT'];
+
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
+
+  const combinedSignal = signal
+    ? (() => {
+        const combined = new AbortController();
+        signal.addEventListener('abort', () => combined.abort());
+        timeoutController.signal.addEventListener('abort', () => combined.abort());
+        return combined.signal;
+      })()
+    : timeoutController.signal;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pgschema_content: pgschemaContent,
+      }),
+      signal: combinedSignal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      let errorMessage = errorData?.detail || `Request failed with status ${response.status}`;
+
+      if (response.status === 400) {
+        errorMessage = `Invalid PG-Schema: ${errorData?.detail || 'Please check your PG-Schema syntax.'}`;
+      } else if (response.status === 500) {
+        errorMessage = `Server error: ${errorData?.detail || 'The server encountered an error processing your schema.'}`;
+      } else if (response.status === 503) {
+        errorMessage = 'Service temporarily unavailable. Please try again later.';
+      } else if (response.status === 0 || response.status === 408) {
+        errorMessage = 'Request timed out. The server took too long to respond.';
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+
+    if (error.name === 'AbortError' || timeoutController.signal.aborted) {
+      if (signal?.aborted) {
+        throw new Error('Request was cancelled.');
+      } else {
+        throw new Error(`Request timed out after ${timeoutMs / 1000} seconds. Please try again with a smaller schema or check your network connection.`);
+      }
+    }
+
+    if (error.message && !error.message.includes('Request failed')) {
+      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        throw new Error('Network error: Unable to connect to the server. Please check your internet connection and try again.');
+      }
+    }
+
+    throw error;
+  }
+};
+
+export const exportPgSchema = async (
+  graphJson: Record<string, any>,
+  url?: string,
+  signal?: AbortSignal,
+  timeoutMs = 30000
+): Promise<string> => {
+  const endpoint = url || import.meta.env['VITE_EXPORT_PGSCHEMA_ENDPOINT'];
+
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
+
+  const combinedSignal = signal
+    ? (() => {
+        const combined = new AbortController();
+        signal.addEventListener('abort', () => combined.abort());
+        timeoutController.signal.addEventListener('abort', () => combined.abort());
+        return combined.signal;
+      })()
+    : timeoutController.signal;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        graph_json: graphJson,
+      }),
+      signal: combinedSignal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData?.detail || `Request failed with status ${response.status}`;
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return result.pgschema_content;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+
+    if (error.name === 'AbortError' || timeoutController.signal.aborted) {
+      if (signal?.aborted) {
+        throw new Error('Request was cancelled.');
+      } else {
+        throw new Error(`Request timed out after ${timeoutMs / 1000} seconds.`);
+      }
+    }
+
+    if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+      throw new Error('Network error: Unable to connect to the server.');
+    }
+
+    throw error;
+  }
+};
+
 export const translateLinkMLOO = async (
   yamlContent: string,
   url?: string,

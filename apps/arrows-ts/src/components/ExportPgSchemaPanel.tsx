@@ -1,16 +1,39 @@
 import React, { Component } from 'react';
-import { Message, Icon } from 'semantic-ui-react';
+import { Form, Icon, TextArea } from 'semantic-ui-react';
+import { Base64 } from 'js-base64';
 
-class ExportPgSchemaPanel extends Component {
+interface ExportPgSchemaPanelProps {
+  diagramName: string;
+  pgSchemaString: string;
+}
+
+class ExportPgSchemaPanel extends Component<ExportPgSchemaPanelProps> {
   render() {
+    const { diagramName, pgSchemaString } = this.props;
+
+    const dataUrl =
+      'data:text/plain;base64,' + Base64.encode(pgSchemaString);
+
     return (
-      <Message icon info>
-        <Icon name="wrench" />
-        <Message.Content>
-          <Message.Header>PG-Schema export coming soon</Message.Header>
-          <p>Export to PG-Schema format will be added soon.</p>
-        </Message.Content>
-      </Message>
+      <Form>
+        <Form.Field>
+          <a
+            className="ui button"
+            href={dataUrl}
+            download={diagramName + '.pgs'}
+          >
+            <Icon name="download" />
+            Download
+          </a>
+        </Form.Field>
+        <TextArea
+          style={{
+            height: 500,
+            fontFamily: 'monospace',
+          }}
+          value={pgSchemaString}
+        />
+      </Form>
     );
   }
 }
