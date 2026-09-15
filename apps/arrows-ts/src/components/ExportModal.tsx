@@ -13,7 +13,7 @@ import ExportUrlPanel from './ExportUrlPanel';
 import { fromGraph, SpiresType, toYaml } from '@neo4j-arrows/linkml';
 import { Graph } from '@neo4j-arrows/model';
 import { ImageInfo } from '@neo4j-arrows/graphics';
-import { exportLinkMLOO } from '@neo4j-arrows/api';
+import { exportLinkMLOO, exportPgSchema } from '@neo4j-arrows/api';
 
 interface ExportModalProps {
   cachedImages: Record<string, ImageInfo>;
@@ -25,6 +25,7 @@ interface ExportModalProps {
 interface ExportModalState {
   activeIndex: number;
   linkMLCache: Record<string, string>; // Cache LinkML strings by SpiresType
+  pgSchemaString: string;
 }
 
 class ExportModal extends Component<ExportModalProps, ExportModalState> {
@@ -34,13 +35,58 @@ class ExportModal extends Component<ExportModalProps, ExportModalState> {
       // Should point to LinkML tab by default
       activeIndex: loadFavoriteExportTab() || 5,
       linkMLCache: {},
+      pgSchemaString: 'Loading...',
     };
   }
 
   componentDidMount() {
     // Generate LinkML for all SpiresType variants (synchronous now)
     this.generateLinkML();
+    this.generatePgSchema();
   }
+
+  generatePgSchema = async () => {
+    try {
+      const graphJson = this.buildGraphJsonForPgSchema();
+      const pgSchemaString = await exportPgSchema(graphJson);
+      this.setState({ pgSchemaString });
+    } catch (error) {
+      console.error('Failed to generate PG-Schema:', error);
+      this.setState({ pgSchemaString: 'Error: Failed to generate PG-Schema' });
+    }
+  };
+
+  buildGraphJsonForPgSchema = () => {
+    const { graph, diagramName } = this.props;
+
+    return {
+      name: diagramName,
+      graphTypeMode: graph.graphTypeMode || 'Strict',
+      nodes: graph.nodes.map((node) => ({
+        id: node.id,
+        caption: node.caption,
+        original_type_name: (node as any).original_type_name,
+        abstract: node.abstract || false,
+        note: (node as any).note,
+        properties: node.properties || {},
+        open: node.open || {},
+        constraints: (node as any).constraints || [],
+      })),
+      relationships: graph.relationships.map((rel) => ({
+        id: rel.id,
+        type: rel.type,
+        original_type_name: (rel as any).original_type_name,
+        fromId: rel.fromId,
+        toId: rel.toId,
+        relationshipType: rel.relationshipType,
+        properties: rel.properties || {},
+        required: rel.required,
+        constraints: (rel as any).constraints || [],
+        target_minimum_cardinality: rel.target_minimum_cardinality,
+        target_maximum_cardinality: rel.target_maximum_cardinality,
+      })),
+    };
+  };
 
   generateLinkML = async () => {
     const cache: Record<string, string> = {};
@@ -213,7 +259,10 @@ class ExportModal extends Component<ExportModalProps, ExportModalState> {
         menuItem: 'PG-Schema',
         render: () => (
           <Tab.Pane attached={false}>
-            <ExportPgSchemaPanel />
+            <ExportPgSchemaPanel
+              pgSchemaString={this.state.pgSchemaString}
+              diagramName={this.props.diagramName}
+            />
           </Tab.Pane>
         ),
       },
