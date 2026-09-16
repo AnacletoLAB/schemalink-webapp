@@ -250,6 +250,12 @@ class Header extends PureComponent {
     extractSelectedKG: null,      // 'miRNA-KG' | 'PKT-KG' | 'Hetionet' | 'PrimeKG' | 'OptimusKG' — Bio-Viber tab
     bioViberSending: false,
     bioViberError: null,
+    // Extract modal top-level tabs
+    extractMainTab: 'extract',   // 'extract' | 'history'
+    historyItems: [],            // [{date, title, schema_yaml, input_text, result_json, call_count, extraction_status}]
+    historyLoading: false,
+    historyError: null,
+    historySelectedItem: null,   // item being previewed
   };
 
   componentDidMount() {
@@ -651,6 +657,7 @@ class Header extends PureComponent {
               Object.keys(responses).forEach(k => { visibleClasses[k] = true; });
               Object.keys(trace).forEach(k => { visibleClasses[k] = true; });
               addLog('🎉', 'Extraction complete!');
+              this.saveExtractionToHistory(payload);
               this.setState(prev => ({
                 extractResult: payload,
                 extractVisibleClasses: visibleClasses,
@@ -670,6 +677,75 @@ class Header extends PureComponent {
     } catch (err) {
       this.setState({ extractError: 'Network error: ' + err.message, extractView: 'input', extractLoading: false });
     }
+  };
+
+  fetchHistory = async () => {
+    const username = this.props.userData?.username;
+    if (!username) return;
+    this.setState({ historyLoading: true, historyError: null });
+    try {
+      const resp = await fetch(import.meta.env.VITE_EXTRACTIONS_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username }),
+      });
+      if (!resp.ok) throw new Error('Failed to load history');
+      const items = await resp.json();
+      this.setState({ historyItems: items, historyLoading: false });
+    } catch (err) {
+      this.setState({ historyError: err.message, historyLoading: false });
+    }
+  };
+
+  saveExtractionToHistory = async (result) => {
+    const username = this.props.userData?.username;
+    if (!username) return;
+    const { extractSchema, extractText } = this.state;
+    // Build a short auto-title from schema classes
+    const nodes = this.props.graph?.nodes || [];
+    const rels  = this.props.graph?.relationships || [];
+    const classNames = [
+      ...nodes.filter(n => n.caption).map(n => n.caption),
+      ...rels.filter(r => r.type).map(r => r.type),
+    ];
+    const autoTitle = classNames.slice(0, 3).join(', ') || 'Extraction';
+    // Count GPT calls from result trace
+    const trace = result?.trace || {};
+    const callCount = Object.keys(trace).length;
+    try {
+      await fetch(import.meta.env.VITE_EXTRACTIONS_SAVE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          username,
+          title: autoTitle,
+          schema_yaml: extractSchema,
+          input_text: extractText,
+          result_json: JSON.stringify(result),
+          call_count: callCount,
+          extraction_status: 'success',
+        }),
+      });
+    } catch (_) { /* non-blocking — ignore failures */ }
+  };
+
+  deleteHistoryItem = async (item) => {
+    const username = this.props.userData?.username;
+    if (!username) return;
+    try {
+      await fetch(import.meta.env.VITE_EXTRACTIONS_DELETE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, date: item.date }),
+      });
+      this.setState(prev => ({
+        historyItems: prev.historyItems.filter(h => h.date !== item.date),
+        historySelectedItem: prev.historySelectedItem?.date === item.date ? null : prev.historySelectedItem,
+      }));
+    } catch (_) {}
   };
 
   render() {
@@ -1024,17 +1100,319 @@ class Header extends PureComponent {
             </div>
             <Modal
               open={this.state.extractOpen}
-                onClose={() => this.setState({ extractOpen: false, extractView: 'input', extractResult: null, extractError: null, pubmedResults: [], pubmedQuery: '', pubmedError: null, extractModel: 'gpt-4o-mini', streamProgress: [], streamCurrentClass: null, streamLog: [], extractSelectedKG: null })}
+                onClose={() => this.setState({ extractOpen: false, extractView: 'input', extractResult: null, extractError: null, pubmedResults: [], pubmedQuery: '', pubmedError: null, extractModel: 'gpt-4o-mini', streamProgress: [], streamCurrentClass: null, streamLog: [], extractSelectedKG: null, extractMainTab: 'extract', historySelectedItem: null })}
               closeOnDimmerClick={false}
               closeOnEscape={false}
               size="large"
               style={{ width: '86%', maxWidth: '1200px' }}
             >
-              <Modal.Header>
-                {this.state.extractView === 'result' ? 'Extraction Result' : this.state.extractView === 'streaming' ? 'Extracting…' : 'Extract'}
+              <Modal.Header style={{ padding: '0', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'stretch', gap: 0 }}>
+                  {[
+                    { id: 'extract', label: this.state.extractView === 'result' ? 'Extraction Result' : this.state.extractView === 'streaming' ? 'Extracting…' : 'Extract', icon: '⚡' },
+                    { id: 'history', label: 'Previous Tasks', icon: '🕓' },
+                  ].map(tab => {
+                    const active = this.state.extractMainTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          this.setState({ extractMainTab: tab.id, historySelectedItem: null });
+                          if (tab.id === 'history') this.fetchHistory();
+                        }}
+                        style={{
+                          flex: 'none', padding: '16px 24px',
+                          border: 'none', borderBottom: active ? '3px solid #1d4ed8' : '3px solid transparent',
+                          background: 'none', cursor: 'pointer',
+                          fontSize: '15px', fontWeight: active ? 700 : 500,
+                          color: active ? '#1d4ed8' : '#64748b',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        {tab.icon} {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </Modal.Header>
               <Modal.Content>
-                {this.state.extractView === 'input' && (() => {
+
+                {/* ── History tab ──────────────────────────────────────── */}
+                {this.state.extractMainTab === 'history' && (() => {
+                  const { historyItems, historyLoading, historyError, historySelectedItem } = this.state;
+
+                  if (historySelectedItem) {
+                    // ── Detail view ─────────────────────────────────────
+                    let parsedResult = null;
+                    try { parsedResult = JSON.parse(historySelectedItem.result_json); } catch (_) {}
+
+                    // Helper: safely classify classes and count mentions
+                    const _safeIsRe = (traceVal, cls) => {
+                      try {
+                        return (traceVal && typeof traceVal === 'object' &&
+                          (traceVal['RE_INIT'] !== undefined || traceVal['RE_FINAL'] !== undefined)) ||
+                          cls.includes('Relationship') || cls.includes('Triple');
+                      } catch (_) { return false; }
+                    };
+                    const _hResponses = (parsedResult && parsedResult.responses) ? parsedResult.responses : {};
+                    const _hTrace     = (parsedResult && parsedResult.trace)     ? parsedResult.trace     : {};
+                    const _hReClasses = new Set(
+                      Object.keys(_hTrace).filter(k => _safeIsRe(_hTrace[k], k))
+                    );
+                    let entryCount = 0, relCount = 0;
+                    try {
+                      Object.entries(_hResponses).forEach(([cls, data]) => {
+                        if (!data || typeof data !== 'object') return;
+                        const rKey = `${cls}Relationships`;
+                        const isRel = _hReClasses.has(cls) || data[rKey] !== undefined || cls.includes('Relationship') || cls.includes('Triple');
+                        if (isRel) relCount   += ((data[rKey] || (data.schemaResponse && data.schemaResponse.mentions) || []).length || 0);
+                        else       entryCount += (((data.schemaResponse && data.schemaResponse.mentions) || []).length || 0);
+                      });
+                    } catch (_) {}
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '420px' }}>
+                        {/* back bar */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <button
+                            onClick={() => this.setState({ historySelectedItem: null })}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', fontSize: '13px', padding: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            ← Back to list
+                          </button>
+                          <span style={{ fontSize: '13px', color: '#64748b' }}>|</span>
+                          <span style={{ fontWeight: 700, fontSize: '15px' }}>{historySelectedItem.title || 'Extraction'}</span>
+                          <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: 'auto' }}>{new Date(historySelectedItem.date).toLocaleString()}</span>
+                        </div>
+                        {/* summary pills */}
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ background: '#dbeafe', color: '#1e40af', borderRadius: '12px', padding: '3px 10px', fontSize: '12px', fontWeight: 600 }}>{entryCount} entities</span>
+                          <span style={{ background: '#f3e8ff', color: '#6b21a8', borderRadius: '12px', padding: '3px 10px', fontSize: '12px', fontWeight: 600 }}>{relCount} relations</span>
+                          {historySelectedItem.call_count != null && (
+                            <span style={{ background: '#fef9c3', color: '#854d0e', borderRadius: '12px', padding: '3px 10px', fontSize: '12px', fontWeight: 600 }}>{historySelectedItem.call_count} GPT calls</span>
+                          )}
+                          <span style={{ background: historySelectedItem.extraction_status === 'success' ? '#dcfce7' : '#fee2e2', color: historySelectedItem.extraction_status === 'success' ? '#166534' : '#991b1b', borderRadius: '12px', padding: '3px 10px', fontSize: '12px', fontWeight: 600 }}>
+                            {historySelectedItem.extraction_status || 'success'}
+                          </span>
+                        </div>
+                        {/* tabs: Entities & Relations / Input Text / Result JSON */}
+                        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e2e8f0' }}>
+                          {['Entities & Relations', 'Input Text', 'Result JSON'].map(t => {
+                            const a = (this.state._historyDetailTab || 'Entities & Relations') === t;
+                            return (
+                              <button key={t} onClick={() => this.setState({ _historyDetailTab: t })}
+                                style={{ padding: '8px 18px', border: 'none', borderBottom: a ? '2px solid #1d4ed8' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: a ? 700 : 400, color: a ? '#1d4ed8' : '#64748b', fontSize: '13px' }}>
+                                {t}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {(this.state._historyDetailTab || 'Entities & Relations') === 'Entities & Relations' && (() => {
+                          try {
+                            const _rsp = (parsedResult && parsedResult.responses) ? parsedResult.responses : {};
+                            const _trc = (parsedResult && parsedResult.trace)     ? parsedResult.trace     : {};
+                            const _reCls = new Set(Object.keys(_trc).filter(k => _safeIsRe(_trc[k], k)));
+                            const entityEntries = [];
+                            const relationEntries = [];
+                            Object.entries(_rsp).forEach(([cls, data]) => {
+                              if (!data || typeof data !== 'object') return;
+                              const rKey = `${cls}Relationships`;
+                              const isRel = _reCls.has(cls) || data[rKey] !== undefined || cls.includes('Relationship') || cls.includes('Triple');
+                              if (isRel) {
+                                const mentions = data[rKey] || (data.schemaResponse && data.schemaResponse.mentions) || [];
+                                relationEntries.push({ cls, mentions: Array.isArray(mentions) ? mentions : [] });
+                              } else {
+                                const mentions = (data.schemaResponse && data.schemaResponse.mentions) || [];
+                                entityEntries.push({ cls, mentions: Array.isArray(mentions) ? mentions : [] });
+                              }
+                            });
+                            const clsColors  = ['#dbeafe','#fce7f3','#dcfce7','#fef9c3','#ede9fe','#ffedd5'];
+                            const textColors = ['#1d4ed8','#9d174d','#166534','#854d0e','#5b21b6','#c2410c'];
+                            if (entityEntries.length === 0 && relationEntries.length === 0) {
+                              return <div style={{ color: '#94a3b8', fontSize: '13px', padding: '20px 0', textAlign: 'center' }}>No extraction data available.</div>;
+                            }
+                            return (
+                              <div style={{ maxHeight: '340px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', paddingRight: '4px' }}>
+                                {entityEntries.length > 0 && (
+                                  <div>
+                                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Entities</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                      {entityEntries.map(({ cls, mentions }, i) => (
+                                        <div key={cls} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px' }}>
+                                          <div style={{ fontWeight: 600, fontSize: '13px', color: '#1e293b', marginBottom: mentions.length > 0 ? '8px' : 0 }}>{cls}</div>
+                                          {mentions.length === 0 ? (
+                                            <span style={{ fontSize: '12px', color: '#94a3b8' }}>no mentions extracted</span>
+                                          ) : (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                                              {mentions.map((m, j) => {
+                                                const label = typeof m === 'string' ? m : ((m && (m.label || m.name)) || JSON.stringify(m));
+                                                const id    = (m && typeof m === 'object' && m.id) ? String(m.id) : '';
+                                                return (
+                                                  <span key={j} style={{ background: clsColors[i % clsColors.length], color: textColors[i % textColors.length], borderRadius: '10px', padding: '2px 9px', fontSize: '12px', fontWeight: 500 }}>
+                                                    {label}{id ? <span style={{ opacity: 0.65, marginLeft: '4px', fontSize: '11px' }}>{id}</span> : null}
+                                                  </span>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {relationEntries.length > 0 && (
+                                  <div>
+                                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Relations</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                      {relationEntries.map(({ cls, mentions }, i) => (
+                                        <div key={cls} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px' }}>
+                                          <div style={{ fontWeight: 600, fontSize: '13px', color: '#1e293b', marginBottom: mentions.length > 0 ? '8px' : 0 }}>{cls}</div>
+                                          {mentions.length === 0 ? (
+                                            <span style={{ fontSize: '12px', color: '#94a3b8' }}>no relations extracted</span>
+                                          ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                              {mentions.map((m, j) => {
+                                                if (!m || typeof m !== 'object') return null;
+                                                const _lbl = (v) => { if (!v) return ''; if (typeof v === 'string') return v; if (typeof v === 'object') return v.label || v.name || v.id || ''; return String(v); };
+                                                const subj = _lbl(m.subject  || m.subjectId  || m.subject_id);
+                                                const pred = _lbl(m.predicate || m.predicateId || m.predicate_id);
+                                                const obj  = _lbl(m.object   || m.objectId   || m.object_id);
+                                                return (
+                                                  <div key={j} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', background: '#f8fafc', borderRadius: '6px', padding: '4px 8px' }}>
+                                                    <span style={{ background: clsColors[i % clsColors.length], color: textColors[i % textColors.length], borderRadius: '8px', padding: '1px 7px', fontWeight: 500 }}>{subj}</span>
+                                                    <span style={{ color: '#64748b', fontStyle: 'italic' }}>{pred}</span>
+                                                    <span style={{ background: clsColors[(i+2) % clsColors.length], color: textColors[(i+2) % textColors.length], borderRadius: '8px', padding: '1px 7px', fontWeight: 500 }}>{obj}</span>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          } catch (_err) {
+                            return <div style={{ color: '#94a3b8', fontSize: '13px', padding: '20px 0', textAlign: 'center' }}>Could not render extraction data.</div>;
+                          }
+                        })()}
+
+                        {(this.state._historyDetailTab || 'Entities & Relations') === 'Input Text' && (
+                          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', fontSize: '13px', lineHeight: 1.6, maxHeight: '340px', overflowY: 'auto', whiteSpace: 'pre-wrap', color: '#1e293b' }}>
+                            {historySelectedItem.input_text || <span style={{ color: '#94a3b8' }}>(no input text saved)</span>}
+                          </div>
+                        )}
+
+                        {(this.state._historyDetailTab || 'Entities & Relations') === 'Result JSON' && (
+                          <pre style={{ background: '#0f172a', color: '#e2e8f0', borderRadius: '8px', padding: '12px', fontSize: '12px', overflowX: 'auto', maxHeight: '340px', overflowY: 'auto' }}>
+                            {(() => { try { return historySelectedItem.result_json ? JSON.stringify(JSON.parse(historySelectedItem.result_json), null, 2) : '(no result saved)'; } catch (_) { return historySelectedItem.result_json || '(no result saved)'; } })()}
+                          </pre>
+                        )}
+                        {/* load into form */}
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => {
+                              this.setState({
+                                extractMainTab: 'extract',
+                                extractText: historySelectedItem.input_text || '',
+                                extractView: 'input',
+                                historySelectedItem: null,
+                              });
+                            }}
+                            style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+                          >
+                            ↩ Re-run with this text
+                          </button>
+                          <button
+                            onClick={() => this.deleteHistoryItem(historySelectedItem)}
+                            style={{ background: 'white', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontSize: '13px' }}
+                          >
+                            🗑 Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // ── List view ──────────────────────────────────────────
+                  return (
+                    <div style={{ minHeight: '420px' }}>
+                      {historyLoading && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#64748b', fontSize: '14px' }}>
+                          Loading history…
+                        </div>
+                      )}
+                      {historyError && (
+                        <div style={{ color: '#dc2626', padding: '16px', background: '#fef2f2', borderRadius: '8px', fontSize: '13px' }}>
+                          ⚠️ {historyError}
+                        </div>
+                      )}
+                      {!historyLoading && !historyError && historyItems.length === 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '12px', color: '#94a3b8' }}>
+                          <span style={{ fontSize: '40px' }}>📭</span>
+                          <span style={{ fontSize: '14px' }}>No previous extractions yet.</span>
+                          <span style={{ fontSize: '12px' }}>Run your first extraction from the Extract tab.</span>
+                        </div>
+                      )}
+                      {!historyLoading && historyItems.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>{historyItems.length} extraction{historyItems.length !== 1 ? 's' : ''} saved</div>
+                          {historyItems.map((item, i) => {
+                            let entityCount = 0, relCount = 0;
+                            try {
+                              const r = JSON.parse(item.result_json || '{}');
+                              const _rsp = r.responses || {};
+                              const _trc = r.trace || {};
+                              const _reCls = new Set(Object.keys(_trc).filter(k => _trc[k]['RE_INIT'] !== undefined || _trc[k]['RE_FINAL'] !== undefined));
+                              Object.entries(_rsp).forEach(([cls, data]) => {
+                                const rKey = `${cls}Relationships`;
+                                const isRel = _reCls.has(cls) || data[rKey] !== undefined || cls.includes('Relationship') || cls.includes('Triple');
+                                if (isRel) relCount    += (data[rKey] || data?.schemaResponse?.mentions || []).length;
+                                else       entityCount += (data?.schemaResponse?.mentions || []).length;
+                              });
+                            } catch (_) {}
+                            return (
+                              <div
+                                key={item.date || i}
+                                onClick={() => this.setState({ historySelectedItem: item, _historyDetailTab: 'Entities & Relations' })}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: '12px',
+                                  padding: '12px 16px', borderRadius: '10px',
+                                  border: '1px solid #e2e8f0', background: 'white',
+                                  cursor: 'pointer', transition: 'box-shadow 0.15s',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10)'}
+                                onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+                              >
+                                <span style={{ fontSize: '22px' }}>🧬</span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontWeight: 600, fontSize: '14px', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {item.title || 'Extraction'}
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                                    {new Date(item.date).toLocaleString()}
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                  {entityCount > 0 && <span style={{ background: '#dbeafe', color: '#1e40af', borderRadius: '10px', padding: '2px 8px', fontSize: '11px', fontWeight: 600 }}>{entityCount} ent</span>}
+                                  {relCount > 0    && <span style={{ background: '#f3e8ff', color: '#6b21a8', borderRadius: '10px', padding: '2px 8px', fontSize: '11px', fontWeight: 600 }}>{relCount} rel</span>}
+                                  {item.call_count != null && <span style={{ background: '#fef9c3', color: '#854d0e', borderRadius: '10px', padding: '2px 8px', fontSize: '11px' }}>{item.call_count} calls</span>}
+                                </div>
+                                <span style={{ color: '#cbd5e1', fontSize: '18px' }}>›</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* ── Extract tab ──────────────────────────────────────── */}
+                {this.state.extractMainTab === 'extract' && this.state.extractView === 'input' && (() => {
                   const { extractSchemaSource, extractTextSource, pubmedQuery, pubmedResults, pubmedSearching, pubmedError } = this.state;
                   const graph = this.props.graph;
                   const nodeLabels = (graph?.nodes || []).map(n => n.caption || n.labels?.[0] || '').filter(Boolean);
@@ -1187,7 +1565,7 @@ class Header extends PureComponent {
                   );
                 })()}
 
-                {this.state.extractView === 'result' && (() => {
+                {this.state.extractMainTab === 'extract' && this.state.extractView === 'result' && (() => {
                   const responses = this.state.extractResult?.responses || {};
                   const trace = this.state.extractResult?.trace || {};
                   const outputLog = this.state.extractResult?.output || '';
@@ -2344,7 +2722,7 @@ class Header extends PureComponent {
                 })()}
 
                 {/* ── Streaming progress view ── */}
-                {this.state.extractView === 'streaming' && (() => {
+                {this.state.extractMainTab === 'extract' && this.state.extractView === 'streaming' && (() => {
                   const { streamProgress, streamCurrentClass, streamLog } = this.state;
                   const graph = this.props.graph;
                   const nodes = graph?.nodes || [];
@@ -2741,7 +3119,7 @@ class Header extends PureComponent {
               <Modal.Actions style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
                 {/* Left side — model selector (input view) or Back button (result view) */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  {this.state.extractView === 'result' && (
+                  {this.state.extractMainTab === 'extract' && this.state.extractView === 'result' && (
                     <Button
                       icon="arrow left"
                       content="Back"
@@ -2749,7 +3127,7 @@ class Header extends PureComponent {
                       basic
                     />
                   )}
-                  {this.state.extractView === 'input' && (() => {
+                  {this.state.extractMainTab === 'extract' && this.state.extractView === 'input' && (() => {
                     const sel = this.state.extractModel;
                     return (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -2803,7 +3181,7 @@ class Header extends PureComponent {
 
                 {/* Right side — primary action + close */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {this.state.extractView === 'input' && (
+                  {this.state.extractMainTab === 'extract' && this.state.extractView === 'input' && (
                     <Button
                       primary
                       loading={this.state.extractLoading}
@@ -2813,7 +3191,7 @@ class Header extends PureComponent {
                       content="Run Extraction"
                     />
                   )}
-                    <Button onClick={() => this.setState({ extractOpen: false, extractView: 'input', extractResult: null, extractError: null, pubmedResults: [], pubmedQuery: '', pubmedError: null, extractModel: 'gpt-4o-mini', streamProgress: [], streamCurrentClass: null, streamLog: [], extractSelectedKG: null })} basic>
+                    <Button onClick={() => this.setState({ extractOpen: false, extractView: 'input', extractResult: null, extractError: null, pubmedResults: [], pubmedQuery: '', pubmedError: null, extractModel: 'gpt-4o-mini', streamProgress: [], streamCurrentClass: null, streamLog: [], extractSelectedKG: null, extractMainTab: 'extract', historySelectedItem: null })} basic>
                     Close
                   </Button>
                 </div>
