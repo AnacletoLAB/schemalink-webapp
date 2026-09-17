@@ -86,6 +86,8 @@ export class BalloonArrow {
       ctx.rotate(Math.PI - this.deflection);
       ctx.fillStyle = this.dimensions.arrowColor;
       ctx.lineWidth = this.dimensions.arrowHeadsWidth;
+      ctx.strokeStyle = this.dimensions.arrowColor;
+      ctx.setLineDash(this.dimensions.arrowHeadsDashed ? [4, 3] : []);
       arrowHead(
         ctx,
         this.dimensions.headHeight,
@@ -101,12 +103,15 @@ export class BalloonArrow {
     this.path(ctx);
     ctx.lineWidth = this.dimensions.shaftWidth;
     ctx.strokeStyle = this.dimensions.arrowColor;
+    ctx.setLineDash(this.dimensions.shaftDashed ? [6, 4] : []);
     ctx.stroke();
     if (this.dimensions.hasOutgoingArrowHead) {
       ctx.rotate(Math.PI + this.deflection);
       ctx.translate(-this.nodeRadius, 0);
       ctx.lineWidth = this.dimensions.arrowHeadsWidth;
       ctx.fillStyle = this.dimensions.arrowColor;
+      ctx.strokeStyle = this.dimensions.arrowColor;
+      ctx.setLineDash(this.dimensions.arrowHeadsDashed ? [4, 3] : []);
       arrowHead(
         ctx,
         this.dimensions.headHeight,
@@ -123,6 +128,7 @@ export class BalloonArrow {
     const indicatorWidth = 10;
     ctx.save();
     ctx.strokeStyle = this.dimensions.selectionColor;
+    ctx.setLineDash([]);
     ctx.translate(...this.nodeCentre.xy);
     ctx.rotate(this.angle);
     if (this.dimensions.hasIngoingArrowHead) {

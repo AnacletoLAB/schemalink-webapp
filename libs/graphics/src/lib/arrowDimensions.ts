@@ -20,6 +20,8 @@ export interface ArrowDimensions {
   fillArrowHeads: boolean;
   arrowHeadsWidth: number;
   shaftWidth: number;
+  shaftDashed: boolean;
+  arrowHeadsDashed: boolean;
 }
 
 export const relationshipArrowDimensions = (
@@ -29,21 +31,25 @@ export const relationshipArrowDimensions = (
 ): ArrowDimensions => {
   const {
     relationshipType,
+    required,
     source_maximum_cardinality,
     target_maximum_cardinality,
   } = resolvedRelationship.relationship;
+  const isInheritance =
+    relationshipType === RelationshipType.INHERITANCE ||
+    relationshipType === RelationshipType.EXCLUSIVE_INHERITANCE;
   const style = (styleKey: string) =>
     getStyleSelector(resolvedRelationship.relationship, styleKey)(graph);
   const reverseArrowHeads =
-    resolvedRelationship.relationship.style?.['reverse-arrow-heads'] ===
-    'true';
+    resolvedRelationship.relationship.style?.['reverse-arrow-heads'] === 'true';
   const startRadius = resolvedRelationship.from.radius + style('margin-start');
   const endRadius = resolvedRelationship.to.radius + style('margin-end');
   const arrowWidth = style('arrow-width');
-  const shaftWidth =
-    relationshipType === RelationshipType.INHERITANCE
-      ? 1
-      : style('arrow-width');
+  const shaftWidth = isInheritance ? 1 : style('arrow-width');
+  const shaftDashed =
+    relationshipType === RelationshipType.INHERITANCE && required === false;
+  const arrowHeadsDashed =
+    relationshipType === RelationshipType.EXCLUSIVE_INHERITANCE;
   const arrowColor = style('arrow-color');
   const selectionColor = adaptForBackground(selectionBorder, style);
 
@@ -68,7 +74,7 @@ export const relationshipArrowDimensions = (
       : isOne(source_maximum_cardinality);
   }
 
-  if (relationshipType === RelationshipType.INHERITANCE) {
+  if (isInheritance) {
     hasOutgoingArrowHead = true;
   }
 
@@ -94,5 +100,7 @@ export const relationshipArrowDimensions = (
     fillArrowHeads,
     arrowHeadsWidth,
     shaftWidth,
+    shaftDashed,
+    arrowHeadsDashed,
   };
 };

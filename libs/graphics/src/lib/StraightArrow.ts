@@ -69,6 +69,8 @@ export class StraightArrow {
       ctx.rotate(this.startAttach.vectorFrom(this.endAttach).angle());
       ctx.lineWidth = this.dimensions.arrowHeadsWidth;
       ctx.fillStyle = this.dimensions.arrowColor;
+      ctx.strokeStyle = this.dimensions.arrowColor;
+      ctx.setLineDash(this.dimensions.arrowHeadsDashed ? [4, 3] : []);
       arrowHead(
         ctx,
         this.dimensions.headHeight,
@@ -85,12 +87,15 @@ export class StraightArrow {
     ctx.lineTo(this.endShaft.x, this.endShaft.y);
     ctx.lineWidth = this.dimensions.shaftWidth;
     ctx.strokeStyle = this.dimensions.arrowColor;
+    ctx.setLineDash(this.dimensions.shaftDashed ? [6, 4] : []);
     ctx.stroke();
     if (this.dimensions.hasOutgoingArrowHead) {
       ctx.translate(this.endAttach.x, this.endAttach.y);
       ctx.rotate(this.endAttach.vectorFrom(this.startAttach).angle());
       ctx.lineWidth = this.dimensions.arrowHeadsWidth;
       ctx.fillStyle = this.dimensions.arrowColor;
+      ctx.strokeStyle = this.dimensions.arrowColor;
+      ctx.setLineDash(this.dimensions.arrowHeadsDashed ? [4, 3] : []);
       arrowHead(
         ctx,
         this.dimensions.headHeight,
@@ -109,6 +114,7 @@ export class StraightArrow {
     ctx.translate(this.startCentre.x, this.startCentre.y);
     ctx.rotate(this.angle);
     ctx.strokeStyle = this.dimensions.selectionColor;
+    ctx.setLineDash([]);
     ctx.lineJoin = 'round';
     if (this.dimensions.hasIngoingArrowHead) {
       ctx.translate(this.startAttach.x, 0);

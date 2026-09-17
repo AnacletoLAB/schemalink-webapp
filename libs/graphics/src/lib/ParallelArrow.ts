@@ -123,6 +123,8 @@ export class ParallelArrow {
       ctx.rotate(Math.PI + this.endDeflection);
       ctx.lineWidth = this.dimensions.arrowHeadsWidth;
       ctx.fillStyle = this.dimensions.arrowColor;
+      ctx.strokeStyle = this.dimensions.arrowColor;
+      ctx.setLineDash(this.dimensions.arrowHeadsDashed ? [4, 3] : []);
       arrowHead(
         ctx,
         this.dimensions.headHeight,
@@ -138,6 +140,7 @@ export class ParallelArrow {
     this.path(ctx);
     ctx.lineWidth = this.dimensions.shaftWidth;
     ctx.strokeStyle = this.dimensions.arrowColor;
+    ctx.setLineDash(this.dimensions.shaftDashed ? [6, 4] : []);
     ctx.stroke();
     if (this.dimensions.hasOutgoingArrowHead) {
       ctx.translate(this.centreDistance, 0);
@@ -145,6 +148,8 @@ export class ParallelArrow {
       ctx.translate(-this.endRadius, 0);
       ctx.lineWidth = this.dimensions.arrowHeadsWidth;
       ctx.fillStyle = this.dimensions.arrowColor;
+      ctx.strokeStyle = this.dimensions.arrowColor;
+      ctx.setLineDash(this.dimensions.arrowHeadsDashed ? [4, 3] : []);
       arrowHead(
         ctx,
         this.dimensions.headHeight,
@@ -163,6 +168,7 @@ export class ParallelArrow {
     ctx.translate(this.startCentre.x, this.startCentre.y);
     ctx.rotate(this.angle);
     ctx.strokeStyle = this.dimensions.selectionColor;
+    ctx.setLineDash([]);
     if (this.dimensions.hasIngoingArrowHead) {
       const [x, y] = this.startAttach.xy;
       ctx.translate(x, y);
